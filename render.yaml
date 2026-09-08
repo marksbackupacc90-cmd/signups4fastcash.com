@@ -4,6 +4,8 @@ services:
     env: node
     plan: free
     region: oregon
+    domains:
+      - signups4fastcash.com
     buildCommand: npm install && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
