@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: signups4fastcash
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        value: https://signups4fastcash.com
+      - key: GEMINI_API_KEY
+        sync: false

@@ -1,0 +1,6 @@
+{
+  "name": "signups4fastcash.com",
+  "description": "Lightning-fast platform for verified referral and affiliate signups with transparent terms, step-by-step speedrun hints, and automated CashBot curation.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

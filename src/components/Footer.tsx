@@ -1,0 +1,121 @@
+import React from 'react';
+import { ShieldCheck, Zap, Lock, ExternalLink, Mail, CheckCircle2 } from 'lucide-react';
+
+interface FooterProps {
+  onOpenNewsletter: () => void;
+  onOpenExportModal: () => void;
+  onSelectAdmin: () => void;
+  onSelectGuide?: () => void;
+  isAdminUnlocked?: boolean;
+}
+
+export const Footer: React.FC<FooterProps> = ({
+  onOpenNewsletter,
+  onOpenExportModal,
+  onSelectAdmin,
+  onSelectGuide,
+  isAdminUnlocked = false,
+}) => {
+  return (
+    <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        
+        {/* Top row */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          
+          {/* Col 1: Brand & Promise */}
+          <div className="md:col-span-2 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-[#10141d] border border-white/10 flex items-center justify-center text-[#00f2fe] font-mono font-bold text-xs">
+                $
+              </div>
+              <span className="font-mono font-bold text-white text-base">
+                signups<span className="text-[#00f2fe]">4</span>fastcash<span className="text-zinc-500 font-normal text-xs">.com</span>
+              </span>
+            </div>
+            
+            <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
+              The internet's most transparent referral bonus aggregator. Zero fluff, zero fine-print traps. We find the highest-paying legal bonuses, break down the catch honestly, and provide step-by-step speedrun guides.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
+              <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Non-Custodial: $0 User Fees
+              </span>
+              <span className="inline-flex items-center gap-1 text-[#00f2fe] bg-[#00f2fe]/10 px-2 py-0.5 rounded border border-[#00f2fe]/20">
+                <Zap className="w-3.5 h-3.5" />
+                Edge SSG Performance
+              </span>
+            </div>
+          </div>
+
+          {/* Col 2: Navigation & Quick Links */}
+          <div className="space-y-2">
+            <div className="font-mono font-semibold text-white uppercase text-xs tracking-wider">
+              Quick Navigation
+            </div>
+            <ul className="space-y-1.5 text-zinc-400 font-sans">
+              <li>
+                <a href="#offers" className="hover:text-white transition-colors">
+                  All Verified Signups
+                </a>
+              </li>
+              {onSelectGuide && (
+                <li>
+                  <button onClick={onSelectGuide} className="hover:text-emerald-300 text-emerald-400/90 transition-colors text-left flex items-center gap-1 font-mono text-[11px]">
+                    <span className="text-emerald-400">✦</span>
+                    <span>$0 to $1,000 Blueprint</span>
+                  </button>
+                </li>
+              )}
+              <li>
+                <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
+                  Email Drop Alerts
+                </button>
+              </li>
+              <li>
+                <button onClick={onOpenExportModal} className="hover:text-white transition-colors text-left flex items-center gap-1">
+                  <span>SSG Build Feed</span>
+                  <Zap className="w-3 h-3 text-[#00f2fe]" />
+                </button>
+              </li>
+              {isAdminUnlocked && (
+                <li>
+                  <button onClick={onSelectAdmin} className="hover:text-amber-300 transition-colors text-left flex items-center gap-1 text-zinc-500">
+                    <Lock className="w-3 h-3" />
+                    <span>Admin Panel</span>
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+
+          {/* Col 3: Honest Disclosure */}
+          <div className="space-y-2">
+            <div className="font-mono font-semibold text-white uppercase text-xs tracking-wider">
+              Truth in Advertising
+            </div>
+            <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
+              <strong>Affiliate Disclosure:</strong> When you sign up via our verified links, we may receive compensation from the merchant at zero cost to you. We will never promote an offer that we wouldn't use ourselves. All payouts are disbursed directly by the financial institutions.
+            </p>
+          </div>
+
+        </div>
+
+        {/* Bottom copyright & disclaimer */}
+        <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-zinc-500">
+          <div>
+            &copy; {new Date().getFullYear()} signups4fastcash.com — All rights reserved.
+          </div>
+          <div className="flex items-center gap-4">
+            <span>Powered by CashBot Autonomous Engine</span>
+            <span>•</span>
+            <span className="text-emerald-400">100% Honest Verification Guarantee</span>
+          </div>
+        </div>
+
+      </div>
+    </footer>
+  );
+};
