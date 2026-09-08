@@ -13,6 +13,7 @@ import { StaticExportModal } from './components/StaticExportModal';
 import { AICouncilModal } from './components/AICouncilModal';
 import { ZeroToHeroGuide } from './components/ZeroToHeroGuide';
 import { Footer } from './components/Footer';
+import { TrustAndFaq } from './components/TrustAndFaq';
 import { Bell, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 
 export default function App() {
@@ -606,6 +607,8 @@ export default function App() {
                   </button>
                 </div>
               </div>
+
+              <TrustAndFaq />
 
             </div>
           </div>

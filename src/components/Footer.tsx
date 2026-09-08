@@ -35,7 +35,7 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             
             <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
-              The internet's most transparent referral bonus aggregator. Zero fluff, zero fine-print traps. We find the highest-paying legal bonuses, break down the catch honestly, and provide step-by-step speedrun guides.
+              A transparent referral bonus comparison site. We summarize publicly available promotions, show the requirements and fine print, and send you to the official merchant to apply.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
@@ -97,7 +97,7 @@ export const Footer: React.FC<FooterProps> = ({
               Truth in Advertising
             </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
-              <strong>Affiliate Disclosure:</strong> When you sign up via our verified links, we may receive compensation from the merchant at zero cost to you. We will never promote an offer that we wouldn't use ourselves. All payouts are disbursed directly by the financial institutions.
+              <strong>Affiliate Disclosure:</strong> Some links may compensate us at no additional cost to you. Offers are controlled by their merchants; eligibility, terms, taxes, fees, and payout timing can change. We do not provide financial, tax, legal, or investment advice.
             </p>
           </div>
 
@@ -111,7 +111,7 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="flex items-center gap-4">
             <span>Powered by CashBot Autonomous Engine</span>
             <span>•</span>
-            <span className="text-emerald-400">100% Honest Verification Guarantee</span>
+            <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How verification works</a>
           </div>
         </div>
 
