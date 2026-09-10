@@ -658,6 +658,55 @@ export const PUBLIC_OFFERS = INITIAL_OFFERS.filter(
   (offer) => !['offer-stake-us', 'offer-acebet'].includes(offer.id),
 );
 
+const AXOS_REFERRAL_REVIEW: Offer = {
+  id: 'cashbot-find-axos-referral-program',
+  company: 'Axos Bank',
+  companySlug: 'axos',
+  title: 'Axos Referral Program: $50-$500 Depending on Product',
+  category: 'fintech',
+  incentiveAmount: '$50 - $500',
+  incentiveValue: 100,
+  payoutSpeed: 'Confirm with Axos terms',
+  difficulty: 'Standard (10 min)',
+  depositRequired: 'Product-specific qualification',
+  officialMerchantUrl: 'https://www.axosbank.com/referral-program',
+  referralCode: 'PENDING_ADMIN_CODE',
+  referralUrl: 'https://www.axosbank.com/referral-program',
+  sourceUrl: 'https://www.axosbank.com/referral-program',
+  verificationStatus: 'unverified',
+  honestTruth: {
+    summary: 'Axos displays referral rewards for Axos ONE, Axos Checking, Summit Savings, personal loans, mortgages, and business products.',
+    theCatch: 'The reward, qualification, timing, eligibility, and whether the reward is available to the referrer or referred customer vary by product. Verify the current official terms before publishing a specific offer.',
+    minimumHoldTime: 'Product-specific; not verified from the submitted screenshots.',
+    idVerificationRequired: true,
+    hiddenFeesWarning: 'Account, loan, mortgage, and business-product fees and approval requirements vary. Review the applicable product disclosures.',
+    trustScore: 90,
+  },
+  speedrunHints: [
+    {
+      step: 1,
+      instruction: 'Open the official Axos referral-program page and select the exact product being referred.',
+      proTip: 'Do not rely on the headline amount alone; open the product-specific qualification terms.'
+    },
+    {
+      step: 2,
+      instruction: 'Confirm the referral URL, reward recipient, funding or closing requirement, and payout timing.',
+      proTip: 'Save the terms page and date checked before submitting the offer for publication.'
+    },
+    {
+      step: 3,
+      instruction: 'Submit the verified product details and authorized referral link for admin review.',
+      proTip: 'This review item stays unpublished until a real referral link and current terms are attached.'
+    },
+  ],
+  status: 'pending',
+  featured: false,
+  clicksCount: 0,
+  conversionsCount: 0,
+  createdAt: '2026-09-10T12:26:00Z',
+  updatedAt: '2026-09-10T12:26:00Z',
+};
+
 export const INITIAL_PENDING_OFFERS: Offer[] = [
   {
     id: 'cashbot-find-coinbase',
@@ -776,5 +825,6 @@ export const INITIAL_PENDING_OFFERS: Offer[] = [
     conversionsCount: 0,
     createdAt: '2026-09-07T18:10:00Z',
     updatedAt: '2026-09-07T18:10:00Z',
-  }
+  },
+  AXOS_REFERRAL_REVIEW,
 ];
