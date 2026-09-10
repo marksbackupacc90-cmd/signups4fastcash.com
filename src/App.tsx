@@ -8,7 +8,6 @@ import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
 import { StaticExportModal } from './components/StaticExportModal';
-import { AICouncilModal } from './components/AICouncilModal';
 import { ZeroToHeroGuide } from './components/ZeroToHeroGuide';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
@@ -131,7 +130,6 @@ export default function App() {
   // Modals & Push
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isAICouncilOpen, setIsAICouncilOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
 
   // CashBot state
@@ -481,7 +479,6 @@ export default function App() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenAICouncil={() => setIsAICouncilOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -500,7 +497,6 @@ export default function App() {
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
               totalCashPotential={totalCashPotential}
-              onOpenAICouncil={() => setIsAICouncilOpen(true)}
             />
 
             {/* Container for CashBot Status & Offers List */}
@@ -626,12 +622,6 @@ export default function App() {
         offers={liveOffers}
       />
 
-      <AICouncilModal
-        isOpen={isAICouncilOpen}
-        onClose={() => setIsAICouncilOpen(false)}
-        availableOffers={liveOffers}
-        onSelectOffer={handleSelectOfferFromCouncil}
-      />
 
       {/* Toast Notification */}
       {toastMessage && (

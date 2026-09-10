@@ -1,16 +1,14 @@
 import React from 'react';
-import { Sparkles, Cpu } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'offers' | 'guide' | 'analytics' | 'admin';
   setActiveTab: (tab: 'offers' | 'guide' | 'analytics' | 'admin') => void;
-  onOpenAICouncil: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  onOpenAICouncil,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#090b0e]/90 backdrop-blur-md">
@@ -75,18 +73,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Omni-AI Council Matchmaker Button */}
-          <button
-            id="btn-omni-ai-header"
-            onClick={onOpenAICouncil}
-            title="Launch 5-AI Consensus Syndicate (Gemini, DeepSeek, LLaMA, Mistral, Qwen)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-300 text-xs font-mono font-medium transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] group"
-          >
-            <Cpu className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-180 transition-transform duration-500" />
-            <span className="hidden sm:inline">Ask AI</span>
-            <span className="sm:hidden">AI</span>
-          </button>
-
         </div>
 
       </div>

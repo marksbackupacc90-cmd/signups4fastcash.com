@@ -33,8 +33,8 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'FDIC Insured up to $2M / OCC Regulated Bank',
       qwenEfficiencyScore: '3 steps / 2 min speedrun',
-      geminiLiveVerified: 'Verified active promo & instant Plaid debit link',
-      councilSummary: '5/5 Unanimous Consensus: The absolute cleanest instant low-deposit banking bonus online with zero lockup period.',
+      geminiLiveVerified: 'Source reports active promo & instant Plaid debit link',
+      councilSummary: 'Automated review: The absolute cleanest instant low-deposit banking bonus online with zero lockup period.',
     },
     speedrunHints: [
       {
@@ -92,8 +92,8 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'FINRA / SIPC Member Protected up to $500k in securities',
       qwenEfficiencyScore: '3 steps / 3.5 min execution',
-      geminiLiveVerified: 'Verified active promotion with instant purchasing power',
-      councilSummary: '5/5 AI Consensus: Unrivaled mathematical leverage on a single dollar deposit.',
+      geminiLiveVerified: 'Source reports active promotion with instant purchasing power',
+      councilSummary: 'Automated review: Unrivaled mathematical leverage on a single dollar deposit.',
     },
     speedrunHints: [
       {
@@ -151,7 +151,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'Better Business Bureau A+ / Trusted since 1998',
       qwenEfficiencyScore: '3 steps / 2 min 10s execution',
-      geminiLiveVerified: 'Verified active promo with PayPal instant cashout option',
+      geminiLiveVerified: 'Source reports active promo with PayPal instant cashout option',
       councilSummary: 'Consensus: Perfect for immediate everyday shopping rebate with zero bank link required.',
     },
     speedrunHints: [
@@ -210,7 +210,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'FDIC Insured through The Bancorp Bank or Stride Bank',
       qwenEfficiencyScore: '3 steps / 4 min setup',
-      geminiLiveVerified: 'Verified active direct deposit campaign',
+      geminiLiveVerified: 'Source reports active direct deposit campaign',
       councilSummary: 'Consensus: Best guaranteed $100 payout if you have a workplace payroll direct deposit.',
     },
     speedrunHints: [
@@ -269,7 +269,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'SEC Registered / SIPC Protected up to $500,000',
       qwenEfficiencyScore: '3 steps / 2.5 min speedrun',
-      geminiLiveVerified: 'Verified active gift box draw on account link',
+      geminiLiveVerified: 'Source reports active gift box draw on account link',
       councilSummary: 'Consensus: The quintessential $0 deposit bonus; LLaMA notes 30-day cash hold after selling stock before bank withdrawal.',
     },
     speedrunHints: [
@@ -328,7 +328,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'FCA & European Banking Authority / Partner Bank Metropolitan Commercial',
       qwenEfficiencyScore: '3 steps / 4 min execution with virtual card',
-      geminiLiveVerified: 'Verified active referral campaign with instant Apple/Google Pay virtual card',
+      geminiLiveVerified: 'Source reports active referral campaign with instant Apple/Google Pay virtual card',
       councilSummary: 'Consensus: Fast international fintech cash drop. Use virtual debit card immediately to avoid waiting for mail.',
     },
     speedrunHints: [
@@ -387,7 +387,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'Zero subscription cost / Direct NACHA ACH transfer',
       qwenEfficiencyScore: '3 steps / 2 min account activation',
-      geminiLiveVerified: 'Verified active new member bonus tier',
+      geminiLiveVerified: 'Source reports active new member bonus tier',
       councilSummary: 'Consensus: Ideal background cashback multiplier with no payment details needed upfront.',
     },
     speedrunHints: [
@@ -446,8 +446,8 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'US Sweepstakes Compliant / Licensed',
       qwenEfficiencyScore: '2 steps / 90 sec registration',
-      geminiLiveVerified: 'Verified active promo code fastcash',
-      councilSummary: '5/5 Unanimous: Top no-deposit reward online. Code fastcash immediately credits 25 Stake Cash.',
+      geminiLiveVerified: 'Source reports active promo code fastcash',
+      councilSummary: 'Automated review: Top no-deposit reward online. Code fastcash immediately credits 25 Stake Cash.',
     },
     speedrunHints: [
       {
@@ -505,7 +505,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'Trustpilot 4.6/5 rated with over 80,000 reviews',
       qwenEfficiencyScore: '2 steps / 1 min registration',
-      geminiLiveVerified: 'Verified code wintercash active',
+      geminiLiveVerified: 'Source reports code wintercash active',
       councilSummary: 'Consensus: Highest rated micro-earning platform with genuine instant crypto and cash payouts.',
     },
     speedrunHints: [
@@ -564,8 +564,8 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Low',
       mistralCompliance: 'Capital One Financial Corp (NYSE: COF / Fortune 100)',
       qwenEfficiencyScore: '2 steps / 2 min install',
-      geminiLiveVerified: 'Verified active referral campaign',
-      councilSummary: '5/5 Unanimous: Safe, reputable corporate cashback backed by Capital One.',
+      geminiLiveVerified: 'Source reports active referral campaign',
+      councilSummary: 'Automated review: Safe, reputable corporate cashback backed by Capital One.',
     },
     speedrunHints: [
       {
@@ -623,7 +623,7 @@ export const INITIAL_OFFERS: Offer[] = [
       llamaCatchRisk: 'Moderate',
       mistralCompliance: 'Licensed entertainment operator',
       qwenEfficiencyScore: '3 steps / 3 min registration',
-      geminiLiveVerified: 'Verified referral link active',
+      geminiLiveVerified: 'Source reports referral link active',
       councilSummary: 'Consensus: Good for entertainment match bonus with promo code casino.',
     },
     speedrunHints: [
@@ -685,7 +685,7 @@ export const INITIAL_PENDING_OFFERS: Offer[] = [
       llamaCatchRisk: 'Moderate',
       mistralCompliance: 'NASDAQ: COIN Listed / NY DFS BitLicense Regulated',
       qwenEfficiencyScore: '2 steps / 3 min quiz completion',
-      geminiLiveVerified: 'Verified active quiz reward pool',
+      geminiLiveVerified: 'Source reports active quiz reward pool',
       councilSummary: 'Consensus: Highest yielding true $0 deposit opportunity via learning quizzes. Cash out instantly.',
     },
     speedrunHints: [
@@ -744,7 +744,7 @@ export const INITIAL_PENDING_OFFERS: Offer[] = [
       llamaCatchRisk: 'Moderate',
       mistralCompliance: 'SEC Registered Investment Advisor / SIPC Member',
       qwenEfficiencyScore: '3 steps / 2 min account opening',
-      geminiLiveVerified: 'Verified active promotional match',
+      geminiLiveVerified: 'Source reports active promotional match',
       councilSummary: 'Consensus: 4/5 Approval. LLaMA warns of the $3/month recurring fee starting on day 30 if not managed.',
     },
     speedrunHints: [

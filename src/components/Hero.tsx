@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal, Cpu, ArrowRight } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { OfferCategory } from '../types';
 
 interface HeroProps {
@@ -11,7 +11,6 @@ interface HeroProps {
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
   totalOffersCount: number;
   totalCashPotential: number;
-  onOpenAICouncil: () => void;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -31,7 +30,6 @@ export const Hero: React.FC<HeroProps> = ({
   setSortBy,
   totalOffersCount,
   totalCashPotential,
-  onOpenAICouncil,
 }) => {
   return (
     <section className="relative pt-12 pb-8 border-b border-white/[0.08] overflow-hidden">
@@ -52,15 +50,6 @@ export const Hero: React.FC<HeroProps> = ({
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
             Compare real referral bonuses with the deposit, payout speed, and fine print visible up front. No hype, no payment handling.
           </p>
-          <button
-            onClick={onOpenAICouncil}
-            id="hero-launch-ai-council-btn"
-            className="mt-6 px-4 py-2.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-xs font-mono transition-colors inline-flex items-center gap-1.5"
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            Ask the 5-AI Council
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
           <span><strong className="text-white">{totalOffersCount}</strong> vetted offers</span>

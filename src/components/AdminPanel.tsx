@@ -465,34 +465,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* Omni-AI Council Consensus Review */}
-                  {selectedPendingOffer.aiCouncil && (
-                    <div className="p-4 rounded-lg bg-[#070d18] border border-cyan-500/30 text-xs space-y-2">
-                      <div className="font-mono font-semibold text-cyan-300 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <Bot className="w-4 h-4 text-cyan-400" />
-                          Omni-AI Council Evaluation ({selectedPendingOffer.aiCouncil.consensusScore}% Consensus)
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300">
-                          {selectedPendingOffer.aiCouncil.unanimousApproval ? '5/5 Unanimous' : 'Consensus Approved'}
-                        </span>
-                      </div>
-                      <p className="text-zinc-300 font-sans text-xs">
-                        {selectedPendingOffer.aiCouncil.councilSummary}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono pt-1 text-zinc-400">
-                        <div className="p-1.5 rounded bg-black/40">
-                          <span className="text-blue-400 block font-semibold">DeepSeek Math:</span>
-                          <span className="text-zinc-300 text-[10px] truncate block">{selectedPendingOffer.aiCouncil.deepseekRoiEstimate}</span>
-                        </div>
-                        <div className="p-1.5 rounded bg-black/40">
-                          <span className="text-amber-400 block font-semibold">LLaMA Catch:</span>
-                          <span className="text-zinc-300 text-[10px] truncate block">Risk: {selectedPendingOffer.aiCouncil.llamaCatchRisk}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Honest Truth review */}
                   <div className="p-4 rounded-lg bg-[#07090e] border border-white/[0.06] text-xs space-y-2">
                     <div className="font-mono font-semibold text-zinc-300 flex items-center gap-2">

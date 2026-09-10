@@ -13,11 +13,7 @@ import {
   Sparkles,
   ArrowRight,
   HelpCircle,
-  Cpu,
-  Calculator,
-  FileSearch,
-  Scale,
-  Gauge
+  Cpu
 } from 'lucide-react';
 import { Offer } from '../types';
 import { CompanyLogo } from './CompanyLogo';
@@ -30,7 +26,6 @@ interface OfferCardProps {
 export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => {
   const [showHints, setShowHints] = useState(false);
   const [showTruth, setShowTruth] = useState(false);
-  const [showAiCouncil, setShowAiCouncil] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -48,7 +43,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const ai = offer.aiCouncil;
 
   return (
     <div 
@@ -147,78 +141,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         {/* Interactive Expanders: Omni-AI Council, Speedrun Hints & Honest Truth */}
         <div className="mt-4 space-y-2">
 
-          {/* Omni-AI Council Consensus Toggle */}
-          {ai && (
-            <div>
-              <button
-                onClick={() => setShowAiCouncil(!showAiCouncil)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
-              >
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <Cpu className="w-3.5 h-3.5 text-zinc-400" />
-                  AI review ({ai.consensusScore}/100)
-                </span>
-                <span className="flex items-center gap-1 text-[11px] text-zinc-400">
-                  <span className="text-cyan-400 hidden sm:inline">{ai.unanimousApproval ? '5/5 Unanimous' : 'Consensus Approved'}</span>
-                  {showAiCouncil ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </span>
-              </button>
-
-              {/* Omni-AI Council Expanded Panel */}
-              {showAiCouncil && (
-                <div className="mt-1.5 p-3.5 rounded-lg bg-[#070b12] border border-white/[0.08] text-xs space-y-2.5 animate-in fade-in duration-200">
-                  <div className="flex items-start justify-between gap-2 border-b border-white/[0.06] pb-2">
-                    <p className="text-zinc-200 text-xs font-sans leading-relaxed">
-                      {ai.councilSummary}
-                    </p>
-                  </div>
-
-                  {/* 5-AI Model Council Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
-                    <div className="p-2 rounded bg-[#0d121c] border border-white/[0.05]">
-                      <div className="flex items-center gap-1.5 text-blue-400 font-semibold mb-0.5">
-                        <Calculator className="w-3 h-3" />
-                        <span>DeepSeek R1 Math</span>
-                      </div>
-                      <p className="text-zinc-300 font-sans text-[11px]">{ai.deepseekRoiEstimate}</p>
-                    </div>
-
-                    <div className="p-2 rounded bg-[#0d121c] border border-white/[0.05]">
-                      <div className="flex items-center gap-1.5 text-amber-400 font-semibold mb-0.5">
-                        <FileSearch className="w-3 h-3" />
-                        <span>Meta LLaMA 3.3 Audit</span>
-                      </div>
-                      <p className="text-zinc-300 font-sans text-[11px]">
-                        Catch Risk: <strong className={ai.llamaCatchRisk === 'Low' ? 'text-emerald-400' : 'text-amber-400'}>{ai.llamaCatchRisk}</strong>
-                      </p>
-                    </div>
-
-                    <div className="p-2 rounded bg-[#0d121c] border border-white/[0.05]">
-                      <div className="flex items-center gap-1.5 text-purple-400 font-semibold mb-0.5">
-                        <Scale className="w-3 h-3" />
-                        <span>Mistral Compliance</span>
-                      </div>
-                      <p className="text-zinc-300 font-sans text-[11px]">{ai.mistralCompliance}</p>
-                    </div>
-
-                    <div className="p-2 rounded bg-[#0d121c] border border-white/[0.05]">
-                      <div className="flex items-center gap-1.5 text-emerald-400 font-semibold mb-0.5">
-                        <Gauge className="w-3 h-3" />
-                        <span>Qwen 2.5 Speedrun</span>
-                      </div>
-                      <p className="text-zinc-300 font-sans text-[11px]">{ai.qwenEfficiencyScore}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-[10px] font-mono text-zinc-500 pt-1 border-t border-white/[0.04] flex items-center justify-between">
-                    <span>Google Gemini 3.8: {ai.geminiLiveVerified}</span>
-                    <span className="text-cyan-400">Multi-Model Verified</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          
           {/* Speedrun Hints Toggle Button */}
           <button
             onClick={() => setShowHints(!showHints)}
