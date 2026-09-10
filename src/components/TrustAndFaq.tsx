@@ -10,7 +10,7 @@ export const TrustAndFaq: React.FC = () => {
           Transparent by design
         </div>
         <h2 className="mt-2 text-xl sm:text-2xl font-extrabold text-white">
-          How verified signup bonuses work
+          How signup bonuses work
         </h2>
         <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
           We organize publicly available referral and promotional offers so you can compare the reward, requirements, timing, and fine print before visiting the official merchant. We do not hold your money or complete applications for you.

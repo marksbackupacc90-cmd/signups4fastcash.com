@@ -4,17 +4,15 @@ import { INITIAL_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
-import { CashBotStatus } from './components/CashBotStatus';
 import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
-import { PushNotificationBanner } from './components/PushNotificationBanner';
 import { StaticExportModal } from './components/StaticExportModal';
 import { AICouncilModal } from './components/AICouncilModal';
 import { ZeroToHeroGuide } from './components/ZeroToHeroGuide';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
-import { Bell, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   // Navigation & View state
@@ -70,25 +68,10 @@ export default function App() {
   });
 
   // Subscribers state
-  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([
-    { id: 'sub-1', email: 'earlybirds@signups4fastcash.com', subscribedAt: '2026-09-01T12:00:00Z', verified: true, frequency: 'instant' },
-    { id: 'sub-2', email: 'investor.pro@outlook.com', subscribedAt: '2026-09-03T14:30:00Z', verified: true, frequency: 'daily' },
-    { id: 'sub-3', email: 'smartsaver2026@gmail.com', subscribedAt: '2026-09-05T09:15:00Z', verified: true, frequency: 'instant' },
-    { id: 'sub-4', email: 'crypto.hound@yahoo.com', subscribedAt: '2026-09-06T18:20:00Z', verified: true, frequency: 'weekly' },
-  ]);
+  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
 
   // Blast logs
-  const [blastLogs, setBlastLogs] = useState<EmailBlastLog[]>([
-    {
-      id: 'blast-1',
-      offerId: 'offer-sofi-banking',
-      offerTitle: 'SoFi Checking & Savings $25 - $300 Bonus',
-      sentAt: '2026-09-05T12:00:00Z',
-      recipientCount: 4,
-      subject: '🔥 HOT DROP: $25 to $300 Instant Cash Bonus Verified (SoFi)',
-      pushSent: true,
-    }
-  ]);
+  const [blastLogs, setBlastLogs] = useState<EmailBlastLog[]>([]);
 
   // UI Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,7 +133,6 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAICouncilOpen, setIsAICouncilOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [showPushBanner, setShowPushBanner] = useState(true);
 
   // CashBot state
   const [isCashBotScanning, setIsCashBotScanning] = useState(false);
@@ -242,7 +224,6 @@ export default function App() {
       setPushEnabled(true);
       showToast('🔔 In-app push notifications enabled for this session.');
     }
-    setShowPushBanner(false);
   };
 
   // Click tracking handler
@@ -496,26 +477,11 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#090b0e] text-[#ededed] font-sans antialiased selection:bg-[#00f2fe]/20 selection:text-[#00f2fe]">
       
-      {/* Push Notification Banner */}
-      {showPushBanner && !pushEnabled && (
-        <PushNotificationBanner
-          pushEnabled={pushEnabled}
-          onEnablePush={handleTogglePush}
-          onDismiss={() => setShowPushBanner(false)}
-        />
-      )}
-
       {/* Navigation */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        pendingCount={pendingOffers.length}
-        onOpenNewsletter={() => setIsNewsletterOpen(true)}
-        pushEnabled={pushEnabled}
-        onTogglePush={handleTogglePush}
-        onOpenExportModal={() => setIsExportOpen(true)}
         onOpenAICouncil={() => setIsAICouncilOpen(true)}
-        isAdminUnlocked={isAdminUnlocked}
       />
 
       {/* Main Content Area */}
@@ -535,32 +501,22 @@ export default function App() {
               totalOffersCount={liveOffers.length}
               totalCashPotential={totalCashPotential}
               onOpenAICouncil={() => setIsAICouncilOpen(true)}
-              onOpenGuide={() => setActiveTab('guide')}
             />
 
             {/* Container for CashBot Status & Offers List */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
               
-              {/* CashBot Live Scanner Widget */}
-              <CashBotStatus
-                onTriggerScan={handleTriggerScan}
-                isScanning={isCashBotScanning}
-                lastScannedTime={lastScannedTime}
-                pendingCount={pendingOffers.length}
-                isAdminUnlocked={isAdminUnlocked}
-              />
-
               {/* Offers Grid */}
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
-                      Verified Promotional Signups ({filteredOffers.length})
+                      Available Offers ({filteredOffers.length})
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   </div>
                   <span className="text-xs font-mono text-zinc-500 hidden sm:inline">
-                    Updated every hour by CashBot • Direct merchant payouts
+                    Requirements and availability can change on the merchant site
                   </span>
                 </div>
 
@@ -596,36 +552,17 @@ export default function App() {
                 )}
               </div>
 
-              {/* Newsletter Callout Section */}
-              <div className="rounded-2xl bg-gradient-to-b from-[#101624] to-[#0a0d14] border border-white/[0.1] p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="space-y-2 max-w-xl">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00f2fe]/10 border border-[#00f2fe]/20 text-xs font-mono text-[#00f2fe]">
-                    <Sparkles className="w-3 h-3" />
-                    Never Miss A Limited-Time Drop
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                    Get alerted the moment a $100+ bonus goes live.
-                  </h3>
-                  <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                    Some of the best bank promotions only run for 48 to 72 hours before hitting budget caps. Subscribe to our instant alerts and claim them before they expire.
-                  </p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-y border-white/[0.08] py-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Get new high-value offers by email</h3>
+                  <p className="text-xs text-zinc-500 mt-1">One useful alert at a time. No daily noise.</p>
                 </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                  <button
-                    onClick={() => setIsNewsletterOpen(true)}
-                    className="w-full sm:w-auto px-5 py-3 rounded-lg bg-[#00f2fe] hover:bg-[#38bdf8] text-black font-semibold font-mono text-xs transition-colors shadow-lg active:scale-[0.98]"
-                  >
-                    Subscribe to Instant Drops
-                  </button>
-                  <button
-                    onClick={handleTogglePush}
-                    className="w-full sm:w-auto px-4 py-3 rounded-lg bg-[#141824] hover:bg-[#18202d] border border-white/10 text-white font-mono text-xs transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Bell className="w-3.5 h-3.5" />
-                    <span>Push Alerts ({pushEnabled ? 'Active' : 'Enable'})</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIsNewsletterOpen(true)}
+                  className="px-3 py-2 rounded-lg bg-white text-black hover:bg-cyan-100 font-semibold text-xs transition-colors"
+                >
+                  Subscribe to alerts
+                </button>
               </div>
 
               <TrustAndFaq />
@@ -711,6 +648,9 @@ export default function App() {
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
         onOpenExportModal={() => setIsExportOpen(true)}
         onSelectGuide={() => setActiveTab('guide')}
+        onSelectAnalytics={() => setActiveTab('analytics')}
+        onTogglePush={handleTogglePush}
+        pushEnabled={pushEnabled}
         onSelectAdmin={() => {
           if (isAdminUnlocked) {
             setActiveTab('admin');

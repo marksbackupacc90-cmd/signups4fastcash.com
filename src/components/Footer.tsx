@@ -1,11 +1,14 @@
 import React from 'react';
-import { ShieldCheck, Zap, Lock, ExternalLink, Mail, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Zap, Lock, BarChart3, Bell } from 'lucide-react';
 
 interface FooterProps {
   onOpenNewsletter: () => void;
   onOpenExportModal: () => void;
   onSelectAdmin: () => void;
   onSelectGuide?: () => void;
+  onSelectAnalytics?: () => void;
+  onTogglePush?: () => void;
+  pushEnabled?: boolean;
   isAdminUnlocked?: boolean;
 }
 
@@ -14,6 +17,9 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenExportModal,
   onSelectAdmin,
   onSelectGuide,
+  onSelectAnalytics,
+  onTogglePush,
+  pushEnabled = false,
   isAdminUnlocked = false,
 }) => {
   return (
@@ -58,7 +64,7 @@ export const Footer: React.FC<FooterProps> = ({
             <ul className="space-y-1.5 text-zinc-400 font-sans">
               <li>
                 <a href="#offers" className="hover:text-white transition-colors">
-                  All Verified Signups
+                  All Available Offers
                 </a>
               </li>
               {onSelectGuide && (
@@ -74,6 +80,22 @@ export const Footer: React.FC<FooterProps> = ({
                   Email Drop Alerts
                 </button>
               </li>
+              {onSelectAnalytics && (
+                <li>
+                  <button onClick={onSelectAnalytics} className="hover:text-white transition-colors text-left flex items-center gap-1">
+                    <BarChart3 className="w-3 h-3" />
+                    Conversion Dashboard
+                  </button>
+                </li>
+              )}
+              {onTogglePush && (
+                <li>
+                  <button onClick={onTogglePush} className="hover:text-white transition-colors text-left flex items-center gap-1">
+                    <Bell className="w-3 h-3" />
+                    {pushEnabled ? 'Push Alerts On' : 'Enable Push Alerts'}
+                  </button>
+                </li>
+              )}
               <li>
                 <button onClick={onOpenExportModal} className="hover:text-white transition-colors text-left flex items-center gap-1">
                   <span>SSG Build Feed</span>

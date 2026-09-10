@@ -53,7 +53,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="group relative rounded-xl bg-[#0e121a] border border-white/[0.08] hover:border-white/20 transition-all duration-200 overflow-hidden shadow-lg hover:shadow-cyan-950/20 flex flex-col"
+      className="group relative rounded-lg bg-[#0e121a] border border-white/[0.07] hover:border-white/15 transition-colors duration-200 overflow-hidden flex flex-col"
     >
       {/* Top accent border line on hover */}
       <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#00f2fe]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -76,15 +76,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                   {offer.company}
                 </span>
                 {offer.featured && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-400/10 border border-amber-400/30 text-[10px] font-mono text-amber-300">
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-white/[0.06] text-[10px] font-mono text-zinc-300">
                     <Sparkles className="w-2.5 h-2.5" />
                     Top Pick
-                  </span>
-                )}
-                {ai && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono text-cyan-300">
-                    <Cpu className="w-2.5 h-2.5 text-cyan-400" />
-                    {ai.consensusScore}% 5-AI Consensus
                   </span>
                 )}
               </div>
@@ -96,7 +90,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
           {/* Cash Incentive Pill */}
           <div className="shrink-0 text-right">
-            <div className="inline-block px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-bold text-sm sm:text-base">
+            <div className="inline-block px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 font-mono font-bold text-sm sm:text-base">
               {offer.incentiveAmount}
             </div>
             <div className="text-[10px] font-mono text-zinc-500 mt-1">
@@ -106,7 +100,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Key Quick-Specs Badges (Mobile-friendly, responsive) */}
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-mono bg-[#141824]/60 border border-white/[0.04] p-2 rounded-lg">
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-mono bg-[#141824]/50 p-2 rounded-lg">
           <div>
             <span className="text-zinc-500 block text-[10px]">DEPOSIT REQ</span>
             <span className="text-zinc-200 font-medium truncate block">{offer.depositRequired}</span>
@@ -123,7 +117,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
         {/* Referral Code Box (if present) */}
         {offer.referralCode && (
-          <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-[#141824] border border-white/[0.06] text-xs font-mono">
+          <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-[#141824] text-xs font-mono">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-zinc-500 text-[11px]">PROMO CODE:</span>
               <span className="text-zinc-200 font-bold tracking-wider select-all truncate">
@@ -158,11 +152,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             <div>
               <button
                 onClick={() => setShowAiCouncil(!showAiCouncil)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-cyan-950/20 border border-cyan-500/25 hover:border-cyan-500/50 text-xs font-mono text-cyan-300 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-semibold">
-                  <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                  Omni-AI Council Verdict ({ai.consensusScore}/100)
+                  <Cpu className="w-3.5 h-3.5 text-zinc-400" />
+                  AI review ({ai.consensusScore}/100)
                 </span>
                 <span className="flex items-center gap-1 text-[11px] text-zinc-400">
                   <span className="text-cyan-400 hidden sm:inline">{ai.unanimousApproval ? '5/5 Unanimous' : 'Consensus Approved'}</span>
@@ -172,7 +166,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
               {/* Omni-AI Council Expanded Panel */}
               {showAiCouncil && (
-                <div className="mt-1.5 p-3.5 rounded-lg bg-[#070b12] border border-cyan-500/30 text-xs space-y-2.5 animate-in fade-in duration-200">
+                <div className="mt-1.5 p-3.5 rounded-lg bg-[#070b12] border border-white/[0.08] text-xs space-y-2.5 animate-in fade-in duration-200">
                   <div className="flex items-start justify-between gap-2 border-b border-white/[0.06] pb-2">
                     <p className="text-zinc-200 text-xs font-sans leading-relaxed">
                       {ai.councilSummary}
@@ -228,11 +222,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           {/* Speedrun Hints Toggle Button */}
           <button
             onClick={() => setShowHints(!showHints)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-blue-500/[0.05] border border-blue-500/20 hover:border-blue-500/40 text-xs font-mono text-[#38bdf8] transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
           >
             <span className="flex items-center gap-1.5 font-semibold">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              ⚡ Speedrun Hints ({offer.speedrunHints.length} Steps)
+              <Zap className="w-3.5 h-3.5 text-zinc-400" />
+              Easy steps ({offer.speedrunHints.length})
             </span>
             <span className="flex items-center gap-1 text-[11px] text-zinc-400">
               {showHints ? 'Hide Guide' : 'Show Easy Steps'}

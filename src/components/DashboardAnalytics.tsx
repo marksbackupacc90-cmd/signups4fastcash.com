@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
 import { 
   BarChart3, 
-  TrendingUp, 
-  Users, 
   DollarSign, 
   MousePointerClick, 
-  Award, 
-  ArrowUpRight,
-  Filter,
-  CheckCircle,
-  ExternalLink
+  CheckCircle
 } from 'lucide-react';
 import { Offer } from '../types';
 import { CompanyLogo } from './CompanyLogo';
@@ -30,14 +24,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   const totalConversions = offers.reduce((acc, curr) => acc + curr.conversionsCount, 0);
   const overallConversionRate = totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(1) : '0.0';
 
-  // Estimate community total cash: sum(conversions * average payout of each offer)
-  const totalCommunityCash = offers.reduce((acc, curr) => {
-    return acc + (curr.conversionsCount * curr.incentiveValue);
-  }, 0);
-
-  // Estimate owner affiliate earnings (e.g. avg $15 to $50 affiliate commission per signup)
-  const estimatedOwnerEarnings = Math.round(totalConversions * 32.5);
-
   // Sort offers by clicks / conversions
   const sortedOffers = [...offers].sort((a, b) => b.clicksCount - a.clicksCount);
 
@@ -49,14 +35,14 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Referral Conversion Dashboard
+              Activity Dashboard
             </h2>
             <span className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-xs font-mono text-[#38bdf8]">
-              Live Metrics
+              Tracked Activity
             </span>
           </div>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Real-time telemetry tracking affiliate link clicks, conversion rates, and community earnings.
+            Counts shown here come only from activity recorded by this site. Merchant conversions and payouts are not tracked.
           </p>
         </div>
 
@@ -104,9 +90,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             <span className="text-2xl sm:text-3xl font-mono font-bold text-white">
               {totalClicks.toLocaleString()}
             </span>
-            <span className="text-xs font-mono text-emerald-400 flex items-center">
-              +14.2% <TrendingUp className="w-3 h-3 ml-0.5" />
-            </span>
           </div>
           <div className="text-[11px] text-zinc-500 mt-1">
             Across {offers.length} active affiliate promos
@@ -116,7 +99,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
         {/* Total Conversions */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0e121a] border border-white/[0.08]">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-400">VERIFIED CONVERSIONS</span>
+            <span className="text-xs font-mono text-zinc-400">CONVERSIONS TRACKED</span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               <CheckCircle className="w-4 h-4" />
             </div>
@@ -124,9 +107,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-mono font-bold text-emerald-400">
               {totalConversions.toLocaleString()}
-            </span>
-            <span className="text-xs font-mono text-emerald-400">
-              avg. 18.2%
             </span>
           </div>
           <div className="text-[11px] text-zinc-500 mt-1">
@@ -137,7 +117,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
         {/* Conversion Rate */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0e121a] border border-white/[0.08]">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-400">GLOBAL CONV. RATE</span>
+            <span className="text-xs font-mono text-zinc-400">TRACKED CONV. RATE</span>
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
               <BarChart3 className="w-4 h-4" />
             </div>
@@ -146,33 +126,30 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             <span className="text-2xl sm:text-3xl font-mono font-bold text-purple-400">
               {overallConversionRate}%
             </span>
-            <span className="text-xs font-mono text-zinc-400">
-              industry avg ~7%
-            </span>
           </div>
           <div className="text-[11px] text-zinc-500 mt-1">
-            High intent due to Speedrun Hints
+            Based only on recorded clicks and conversions
           </div>
         </div>
 
-        {/* Community Cash Unlocked */}
+        {/* Merchant payouts are not observable from this site. */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0e121a] border border-white/[0.08]">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-400">COMMUNITY CASH WON</span>
+            <span className="text-xs font-mono text-zinc-400">MERCHANT PAYOUTS</span>
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-mono font-bold text-amber-400">
-              ${totalCommunityCash.toLocaleString()}
+              Not tracked
             </span>
             <span className="text-xs font-mono text-zinc-400">
-              Paid by Partners
+              Confirm with the merchant
             </span>
           </div>
           <div className="text-[11px] text-zinc-500 mt-1">
-            Owner est. rev: ~${estimatedOwnerEarnings.toLocaleString()}
+            We do not have access to merchant payout records.
           </div>
         </div>
 
@@ -181,8 +158,8 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
       {/* Conversion Funnel Breakdown */}
       <div className="p-5 rounded-xl bg-[#0e121a] border border-white/[0.08]">
         <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-          <span>Conversion Funnel Health</span>
-          <span className="text-zinc-500 font-normal text-xs">(Traffic to Completed Bonus)</span>
+          <span>Recorded Activity</span>
+          <span className="text-zinc-500 font-normal text-xs">(No merchant confirmation)</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -196,21 +173,21 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           </div>
 
           <div className="p-4 rounded-lg bg-[#141824] border border-white/[0.04]">
-            <div className="text-xs font-mono text-zinc-400">Stage 2: Speedrun Guide Views</div>
-            <div className="text-xl font-mono font-bold text-white mt-1">{Math.round(totalClicks * 0.64)}</div>
+            <div className="text-xs font-mono text-zinc-400">Stage 2: Guide views</div>
+            <div className="text-xl font-mono font-bold text-white mt-1">Not tracked</div>
             <div className="w-full bg-white/10 h-1.5 rounded-full mt-3 overflow-hidden">
-              <div className="bg-amber-400 h-full rounded-full w-[64%]"></div>
+              <div className="bg-white/20 h-full rounded-full w-0"></div>
             </div>
-            <div className="text-[10px] text-zinc-500 font-mono mt-2">64% opened step-by-step hints</div>
+            <div className="text-[10px] text-zinc-500 font-mono mt-2">No guide-view event is recorded</div>
           </div>
 
           <div className="p-4 rounded-lg bg-[#141824] border border-white/[0.04]">
-            <div className="text-xs font-mono text-zinc-400">Stage 3: Verified Bonus Claim</div>
-            <div className="text-xl font-mono font-bold text-emerald-400 mt-1">{totalConversions}</div>
+            <div className="text-xs font-mono text-zinc-400">Stage 3: Merchant conversion</div>
+            <div className="text-xl font-mono font-bold text-zinc-400 mt-1">Not tracked</div>
             <div className="w-full bg-white/10 h-1.5 rounded-full mt-3 overflow-hidden">
-              <div className="bg-emerald-400 h-full rounded-full w-[28%]"></div>
+              <div className="bg-white/20 h-full rounded-full w-0"></div>
             </div>
-            <div className="text-[10px] text-zinc-500 font-mono mt-2">{overallConversionRate}% final conversion rate</div>
+            <div className="text-[10px] text-zinc-500 font-mono mt-2">The merchant controls this information</div>
           </div>
         </div>
       </div>
@@ -235,7 +212,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <th className="pb-3 text-center">Clicks</th>
                 <th className="pb-3 text-center">Conversions</th>
                 <th className="pb-3 text-center">Conv. Rate</th>
-                <th className="pb-3 text-right pr-2">Est. Affiliate Value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -243,7 +219,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 const rate = offer.clicksCount > 0 
                   ? ((offer.conversionsCount / offer.clicksCount) * 100).toFixed(1) 
                   : '0.0';
-                const estValue = offer.conversionsCount * 35; // typical affiliate rev
                 return (
                   <tr key={offer.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3.5 pl-2">
@@ -274,9 +249,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       }`}>
                         {rate}%
                       </span>
-                    </td>
-                    <td className="py-3.5 text-right pr-2 text-zinc-200 font-bold">
-                      ${estValue.toLocaleString()}
                     </td>
                   </tr>
                 );

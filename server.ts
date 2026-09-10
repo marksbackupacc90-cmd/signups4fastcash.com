@@ -34,14 +34,10 @@ function getGenAI(): GoogleGenAI | null {
 // In-memory / server state for demo & persistence
 let liveOffersStore: any[] = [];
 let pendingOffersStore: any[] = [];
-let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string }[] = [
-  { id: 'sub-1', email: 'earlybirds@signups4fastcash.com', subscribedAt: new Date().toISOString(), frequency: 'instant' },
-  { id: 'sub-2', email: 'deals@investorhub.org', subscribedAt: new Date().toISOString(), frequency: 'daily' },
-  { id: 'sub-3', email: 'frugalfinances@gmail.com', subscribedAt: new Date().toISOString(), frequency: 'instant' },
-];
+let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string }[] = [];
 let analyticsStore = {
-  totalClicks: 2150,
-  totalConversions: 372,
+  totalClicks: 0,
+  totalConversions: 0,
 };
 
 async function initializeOfferStore() {
@@ -72,7 +68,12 @@ async function initializeOfferStore() {
     }
     liveOffersStore = INITIAL_OFFERS;
   } else {
-    liveOffersStore = existing.rows.map((row) => row.offer);
+    liveOffersStore = existing.rows.map((row) => ({
+      ...row.offer,
+      clicksCount: 0,
+      conversionsCount: 0,
+    }));
+    await saveLiveOffers();
   }
 }
 
@@ -174,7 +175,8 @@ app.post('/api/cashbot/scan', async (req, res) => {
 - Mistral Large (Banking & FDIC/FINRA regulatory compliance)
 - Qwen 2.5 (Algorithmic speedrun efficiency optimizer)
 
-Search and cross-verify 2 high-yield, newly active, or evergreen affiliate/referral bonuses from top fintech, brokerage, cashback, or app merchants (e.g. Discover Bank, Upgrade, Betterment, TradeStation, M1 Finance, Public.com, Upwork, Fetch, SoFi, Webull).
+Search broadly and return up to 5 distinct high-yield, newly active, or evergreen affiliate/referral bonuses. Check a diverse mix of public merchant pages, referral pages, affiliate networks, rewards apps, and current promotional announcements. Search across banking and fintech, credit cards, brokerage and investing, cashback and shopping, gig work and freelance apps, receipt and survey rewards, gaming and legal sportsbook offers, crypto, utilities, subscriptions, and creator or education tools. Consider merchants such as Discover, Upgrade, Betterment, TradeStation, M1 Finance, Public, Upwork, Fetch, SoFi, Webull, Capital One Shopping, Ibotta, Upside, DoorDash, Uber, Coinbase, Robinhood, and similar current programs rather than repeatedly returning the same brands.
+Prioritize offers with low or no upfront cost, direct cash or useful liquid rewards, clear eligibility, active terms, and a realistic path to payout. Exclude expired promotions, vague claims, unavailable geographic offers, duplicate companies, credit products with unclear approval odds, and offers that require gambling or depositing money unless the terms are explicit and the offer is legal in the user's market. Never invent a referral code or claim that a promotion is verified unless the source supports it.
 For each offer, return:
 1. company name and clean companySlug
 2. punchy offer title highlighting the exact incentive
@@ -203,7 +205,7 @@ For each offer, return:
    - councilSummary (a 1-2 sentence multi-model consensus endorsement)`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -265,7 +267,16 @@ For each offer, return:
       });
 
       const parsedOffers = JSON.parse(response.text?.trim() || '[]');
-      const formatted = parsedOffers.map((o: any, idx: number) => ({
+      const seenCompanies = new Set<string>();
+      const formatted = parsedOffers
+        .filter((o: any) => {
+          const companyKey = String(o.company || '').trim().toLowerCase();
+          if (!companyKey || seenCompanies.has(companyKey)) return false;
+          seenCompanies.add(companyKey);
+          return true;
+        })
+        .slice(0, 5)
+        .map((o: any, idx: number) => ({
         ...o,
         id: `cashbot-ai-${Date.now()}-${idx}`,
         officialMerchantUrl: o.officialMerchantUrl || `https://www.${o.companySlug || 'partner'}.com`,
@@ -276,7 +287,7 @@ For each offer, return:
         conversionsCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }));
+        }));
 
       return res.json({ success: true, source: 'omni-ai-council', findings: formatted });
     }
@@ -401,7 +412,7 @@ Target category: ${targetCategory || 'Any'}
 Provide a structured consensus response answering the user's specific scenario with recommendations, individual AI model voting breakdowns, and an actionable speedrun execution plan.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: systemInstruction,
         config: {
           responseMimeType: 'application/json',
