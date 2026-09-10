@@ -10,7 +10,7 @@ import { PUBLIC_OFFERS } from './src/data/initialOffers';
 dotenv.config({ path: '.env.local' });
 
 const app = express();
-const env = process.env as Record<string, string | undefined>;
+const env = process.env as unknown as Record<string, string | undefined>;
 const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
