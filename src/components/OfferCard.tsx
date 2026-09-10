@@ -27,6 +27,17 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const [showHints, setShowHints] = useState(false);
   const [showTruth, setShowTruth] = useState(false);
   const [copied, setCopied] = useState(false);
+  const updatedLabel = new Date(offer.updatedAt).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const reviewLabel = new Date(offer.verifiedAt || offer.updatedAt).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const isReviewed = offer.verificationStatus === 'reviewed';
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,6 +90,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               <h2 className="text-lg sm:text-xl font-bold text-white group-hover:text-[#38bdf8] transition-colors leading-snug mt-1">
                 {offer.title}
               </h2>
+              <span className="inline-flex mt-2 px-2 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-[10px] font-mono uppercase tracking-wide text-zinc-400">
+                {offer.category}
+              </span>
             </div>
           </div>
 
@@ -144,6 +158,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           {/* Speedrun Hints Toggle Button */}
           <button
             onClick={() => setShowHints(!showHints)}
+            aria-expanded={showHints}
             className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
           >
             <span className="flex items-center gap-1.5 font-semibold">
@@ -186,6 +201,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           {/* Honest Truth & No Bull Crap Toggle */}
           <button
             onClick={() => setShowTruth(!showTruth)}
+            aria-expanded={showTruth}
             className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-900/50 border border-white/[0.06] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
           >
             <span className="flex items-center gap-1.5 font-medium">
@@ -239,15 +255,23 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           <button
             onClick={handleClaim}
             id={`claim-offer-btn-${offer.id}`}
+            aria-label={`Claim ${offer.incentiveAmount} offer from ${offer.company}`}
             className="w-full py-2.5 px-4 rounded-lg bg-white text-black font-semibold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm group/btn active:scale-[0.99]"
           >
-            <span>Claim Offer on {offer.company}</span>
+            <span>Claim {offer.incentiveAmount} on {offer.company}</span>
             <ExternalLink className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
           </button>
           
           <div className="mt-2 text-center text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             <span>Direct Partner Link • Payout handled directly by {offer.company}</span>
+          </div>
+          <div className="mt-1 text-center text-[10px] text-zinc-600">
+            We may earn a referral commission if you use this link, at no extra cost to you.
+          </div>
+          <div className="mt-1 text-center text-[10px] text-zinc-600">
+            {isReviewed ? `Terms last reviewed ${reviewLabel}.` : `Catalog details updated ${updatedLabel}.`}
+            {' '}Confirm current terms on the merchant site.
           </div>
         </div>
 

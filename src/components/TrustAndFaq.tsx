@@ -15,6 +15,9 @@ export const TrustAndFaq: React.FC = () => {
         <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
           We organize publicly available referral and promotional offers so you can compare the reward, requirements, timing, and fine print before visiting the official merchant. We do not hold your money or complete applications for you.
         </p>
+        <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
+          ClearPerks is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. For corrections or outdated terms, contact the site operator through the email in the footer.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -42,7 +45,7 @@ export const TrustAndFaq: React.FC = () => {
           <p className="mt-2 text-xs text-zinc-400 leading-relaxed">No. The merchant controls eligibility and payout. We show the requirements we can verify, but you should read the official terms before applying.</p>
         </details>
         <details className="group rounded-lg border border-white/[0.08] bg-[#0e121a] px-4 py-3">
-          <summary className="cursor-pointer text-sm text-zinc-200">How does signups4fastcash.com make money?</summary>
+          <summary className="cursor-pointer text-sm text-zinc-200">How does ClearPerks make money?</summary>
           <p className="mt-2 text-xs text-zinc-400 leading-relaxed">Some links are referral or affiliate links. If you use one, the merchant may compensate us at no additional cost to you. This does not change the requirements set by the merchant.</p>
         </details>
         <details className="group rounded-lg border border-white/[0.08] bg-[#0e121a] px-4 py-3">

@@ -26,11 +26,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold tracking-tight text-base sm:text-lg text-white group-hover:text-[#38bdf8] transition-colors">
-                  signups<span className="text-[#00f2fe]">4</span>fastcash<span className="text-zinc-500 font-normal text-xs">.com</span>
+                  Clear<span className="text-[#00f2fe]">Perks</span>
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  SSG Speed
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  Verified terms shown
                 </span>
               </div>
             </div>
@@ -48,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            Verified Offers
+            Offers
           </button>
         </nav>
 

@@ -31,6 +31,9 @@ export interface Offer {
   officialMerchantUrl: string;
   referralCode?: string;
   referralUrl: string;
+  sourceUrl?: string;
+  verifiedAt?: string;
+  verificationStatus?: 'unverified' | 'reviewed';
   
   // "Logo for each company its for displayed next to the offer title"
   logoSvgKey?: string;

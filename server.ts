@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -16,6 +16,29 @@ const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 const adminPasscode = env.ADMIN_PASSCODE;
 const adminTokens = new Map<string, number>();
+const adminUnlockAttempts = new Map<string, { failures: number; windowStartedAt: number; blockedUntil: number }>();
+const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_UNLOCK_MAX_FAILURES = 5;
+const ADMIN_UNLOCK_BLOCK_MS = 15 * 60 * 1000;
+
+function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isPublishableOffer(offer: Record<string, unknown>) {
+  return (
+    isHttpUrl(offer.officialMerchantUrl) &&
+    isHttpUrl(offer.referralUrl) &&
+    offer.referralCode !== 'PENDING_ADMIN_CODE' &&
+    offer.status === 'live'
+  );
+}
 
 app.use(express.json());
 
@@ -48,6 +71,45 @@ async function initializeOfferStore() {
   if (!database) {
     liveOffersStore = PUBLIC_OFFERS;
     return;
+  }
+
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      subscribed_at TIMESTAMPTZ NOT NULL,
+      frequency TEXT NOT NULL
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS analytics_counters (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      total_clicks INTEGER NOT NULL DEFAULT 0,
+      total_conversions INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await database.query(
+    `INSERT INTO analytics_counters (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+  );
+  const [subscribers, analytics] = await Promise.all([
+    database.query<{ id: string; email: string; subscribed_at: Date; frequency: string }>(
+      'SELECT id, email, subscribed_at, frequency FROM newsletter_subscribers ORDER BY subscribed_at DESC',
+    ),
+    database.query<{ total_clicks: number; total_conversions: number }>(
+      'SELECT total_clicks, total_conversions FROM analytics_counters WHERE id = 1',
+    ),
+  ]);
+  subscribersStore = subscribers.rows.map((subscriber) => ({
+    id: subscriber.id,
+    email: subscriber.email,
+    subscribedAt: new Date(subscriber.subscribed_at).toISOString(),
+    frequency: subscriber.frequency,
+  }));
+  if (analytics.rows[0]) {
+    analyticsStore = {
+      totalClicks: analytics.rows[0].total_clicks,
+      totalConversions: analytics.rows[0].total_conversions,
+    };
   }
 
   await database.query(`
@@ -113,9 +175,33 @@ app.post('/api/admin/unlock', (req, res) => {
   if (!adminPasscode) {
     return res.status(503).json({ error: 'Admin access is not configured on this server.' });
   }
-  if (req.body?.passcode !== adminPasscode) {
+  const clientKey = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const attempt = adminUnlockAttempts.get(clientKey);
+  if (attempt?.blockedUntil > now) {
+    return res.status(429).json({ error: 'Too many admin unlock attempts. Try again later.' });
+  }
+  if (attempt && now - attempt.windowStartedAt >= ADMIN_UNLOCK_WINDOW_MS) {
+    adminUnlockAttempts.delete(clientKey);
+  }
+  const suppliedPasscode = typeof req.body?.passcode === 'string' ? req.body.passcode : '';
+  const expected = Buffer.from(adminPasscode);
+  const supplied = Buffer.from(suppliedPasscode);
+  const validPasscode = expected.length === supplied.length && timingSafeEqual(expected, supplied);
+  if (!validPasscode) {
+    const current = adminUnlockAttempts.get(clientKey);
+    const failures = (current?.failures || 0) + 1;
+    adminUnlockAttempts.set(clientKey, {
+      failures,
+      windowStartedAt: current?.windowStartedAt || now,
+      blockedUntil: failures >= ADMIN_UNLOCK_MAX_FAILURES ? now + ADMIN_UNLOCK_BLOCK_MS : 0,
+    });
+    if (failures >= ADMIN_UNLOCK_MAX_FAILURES) {
+      return res.status(429).json({ error: 'Too many admin unlock attempts. Try again later.' });
+    }
     return res.status(401).json({ error: 'Invalid admin passcode' });
   }
+  adminUnlockAttempts.delete(clientKey);
   const token = randomUUID();
   adminTokens.set(token, Date.now() + 8 * 60 * 60 * 1000);
   res.json({ token });
@@ -131,19 +217,34 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
   next();
 }
 
+function hasValidAdminToken(token: string | undefined) {
+  const expiresAt = token ? adminTokens.get(token) : undefined;
+  if (!expiresAt || expiresAt < Date.now()) {
+    if (token) adminTokens.delete(token);
+    return false;
+  }
+  return true;
+}
+
 app.put('/api/offers/:id', requireAdmin, async (req, res) => {
   const index = liveOffersStore.findIndex((offer) => offer.id === req.params.id);
   if (index === -1) {
     return res.status(404).json({ error: 'Offer not found' });
   }
 
-  liveOffersStore[index] = {
+  const updatedOffer = {
     ...liveOffersStore[index],
     ...req.body,
     id: liveOffersStore[index].id,
     status: 'live',
+    verificationStatus: 'reviewed',
+    verifiedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  if (!isPublishableOffer(updatedOffer)) {
+    return res.status(400).json({ error: 'A live offer needs valid HTTP(S) merchant and referral URLs and a referral code.' });
+  }
+  liveOffersStore[index] = updatedOffer;
 
   try {
     await saveLiveOffers();
@@ -163,6 +264,9 @@ app.post('/api/offers', requireAdmin, async (req, res) => {
     createdAt: req.body.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  if (!isPublishableOffer(offer)) {
+    return res.status(400).json({ error: 'A live offer needs valid HTTP(S) merchant and referral URLs and a referral code.' });
+  }
   liveOffersStore = [offer, ...liveOffersStore];
 
   try {
@@ -557,35 +661,91 @@ Provide a structured consensus response answering the user's specific scenario w
 // API: Track click & conversion telemetry
 app.post('/api/analytics/track', (req, res) => {
   const { offerId, type } = req.body;
+  if (typeof offerId !== 'string' || !['click', 'conversion'].includes(type)) {
+    return res.status(400).json({ error: 'A valid offerId and event type are required' });
+  }
+  const offer = liveOffersStore.find((candidate) => candidate.id === offerId);
+  if (!offer) {
+    return res.status(404).json({ error: 'Offer not found' });
+  }
   if (type === 'click') {
     analyticsStore.totalClicks += 1;
-  } else if (type === 'conversion') {
+    offer.clicksCount += 1;
+  } else {
     analyticsStore.totalConversions += 1;
+    offer.conversionsCount += 1;
   }
-  res.json({ success: true, stats: analyticsStore });
+  const persist = async () => {
+    if (!database || !['click', 'conversion'].includes(type)) return;
+    const column = type === 'click' ? 'total_clicks' : 'total_conversions';
+    const result = await database.query<{ total_clicks: number; total_conversions: number }>(
+      `UPDATE analytics_counters SET ${column} = ${column} + 1 WHERE id = 1
+       RETURNING total_clicks, total_conversions`,
+    );
+    if (result.rows[0]) {
+      analyticsStore = {
+        totalClicks: result.rows[0].total_clicks,
+        totalConversions: result.rows[0].total_conversions,
+      };
+    }
+    await saveLiveOffers();
+  };
+  persist()
+    .then(() => res.json({ success: true, stats: analyticsStore }))
+    .catch(() => res.status(500).json({ error: 'Could not record analytics' }));
 });
 
 // API: Newsletter subscription
-app.post('/api/newsletter/subscribe', (req, res) => {
+app.post('/api/newsletter/subscribe', async (req, res) => {
   const { email, frequency } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: 'Email required' });
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  if (!normalizedEmail || normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({ error: 'A valid email is required' });
   }
-  const existing = subscribersStore.find((s) => s.email.toLowerCase() === email.toLowerCase());
+  const subscriberFrequency = frequency === 'daily' || frequency === 'weekly' ? frequency : 'instant';
+  if (database) {
+    try {
+      await database.query(
+        `INSERT INTO newsletter_subscribers (id, email, subscribed_at, frequency)
+         VALUES ($1, $2, NOW(), $3) ON CONFLICT (email) DO NOTHING`,
+        [randomUUID(), normalizedEmail, subscriberFrequency],
+      );
+      const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers');
+      return res.json({ success: true, subscriberCount: Number(count.rows[0]?.count || 0) });
+    } catch {
+      return res.status(500).json({ error: 'Could not subscribe at this time' });
+    }
+  }
+  const existing = subscribersStore.find((s) => s.email === normalizedEmail);
   if (!existing) {
-    subscribersStore.push({
-      id: `sub-${Date.now()}`,
-      email,
-      subscribedAt: new Date().toISOString(),
-      frequency: frequency || 'instant',
-    });
+    subscribersStore.push({ id: `sub-${Date.now()}`, email: normalizedEmail, subscribedAt: new Date().toISOString(), frequency: subscriberFrequency });
   }
   res.json({ success: true, subscriberCount: subscribersStore.length });
 });
 
 // API: Newsletter subscriber count
-app.get('/api/newsletter/subscribers', (req, res) => {
-  res.json({ count: subscribersStore.length, subscribers: subscribersStore });
+app.get('/api/newsletter/subscribers', async (req, res) => {
+  if (!database) {
+    return res.json({ count: subscribersStore.length });
+  }
+  try {
+    const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers');
+    const response: { count: number; subscribers?: typeof subscribersStore } = { count: Number(count.rows[0]?.count || 0) };
+    if (hasValidAdminToken(req.header('x-admin-token'))) {
+      const subscribers = await database.query<{ id: string; email: string; subscribed_at: Date; frequency: string }>(
+        'SELECT id, email, subscribed_at, frequency FROM newsletter_subscribers ORDER BY subscribed_at DESC',
+      );
+      response.subscribers = subscribers.rows.map((subscriber) => ({
+        id: subscriber.id,
+        email: subscriber.email,
+        subscribedAt: new Date(subscriber.subscribed_at).toISOString(),
+        frequency: subscriber.frequency,
+      }));
+    }
+    return res.json(response);
+  } catch {
+    return res.status(500).json({ error: 'Could not load subscribers' });
+  }
 });
 
 // Start server with Vite middleware integration

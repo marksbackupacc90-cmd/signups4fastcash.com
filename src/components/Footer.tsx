@@ -1,11 +1,9 @@
 import React from 'react';
-import { ShieldCheck, Zap, Lock, BarChart3, Bell } from 'lucide-react';
+import { ShieldCheck, Lock, Bell } from 'lucide-react';
 
 interface FooterProps {
   onOpenNewsletter: () => void;
-  onOpenExportModal: () => void;
   onSelectAdmin: () => void;
-  onSelectAnalytics?: () => void;
   onTogglePush?: () => void;
   pushEnabled?: boolean;
   onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
@@ -14,9 +12,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   onOpenNewsletter,
-  onOpenExportModal,
   onSelectAdmin,
-  onSelectAnalytics,
   onTogglePush,
   pushEnabled = false,
     onOpenLegal,
@@ -36,22 +32,21 @@ export const Footer: React.FC<FooterProps> = ({
                 4*
               </div>
               <span className="font-mono font-bold text-white text-base">
-                signups<span className="text-[#00f2fe]">4</span>fastcash<span className="text-zinc-500 font-normal text-xs">.com</span>
+                Clear<span className="text-[#00f2fe]">Perks</span>
               </span>
             </div>
             
             <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
-              A transparent referral bonus comparison site. We summarize publicly available promotions, show the requirements and fine print, and send you to the official merchant to apply.
+              ClearPerks is a transparent rewards comparison site. We summarize publicly available promotions, show the requirements and fine print, and send you to the official merchant to apply.
+            </p>
+            <p className="text-zinc-500 text-xs leading-relaxed max-w-md">
+              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href="mailto:support@signups4fastcash.com">support@signups4fastcash.com</a>. Please do not send passwords, bank details, or government ID by email.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
               <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Non-Custodial: $0 User Fees
-              </span>
-              <span className="inline-flex items-center gap-1 text-[#00f2fe] bg-[#00f2fe]/10 px-2 py-0.5 rounded border border-[#00f2fe]/20">
-                <Zap className="w-3.5 h-3.5" />
-                Edge SSG Performance
               </span>
             </div>
           </div>
@@ -72,14 +67,6 @@ export const Footer: React.FC<FooterProps> = ({
                   Email Drop Alerts
                 </button>
               </li>
-              {onSelectAnalytics && (
-                <li>
-                  <button onClick={onSelectAnalytics} className="hover:text-white transition-colors text-left flex items-center gap-1">
-                    <BarChart3 className="w-3 h-3" />
-                    Conversion Dashboard
-                  </button>
-                </li>
-              )}
               {onTogglePush && (
                 <li>
                   <button onClick={onTogglePush} className="hover:text-white transition-colors text-left flex items-center gap-1">
@@ -88,12 +75,6 @@ export const Footer: React.FC<FooterProps> = ({
                   </button>
                 </li>
               )}
-              <li>
-                <button onClick={onOpenExportModal} className="hover:text-white transition-colors text-left flex items-center gap-1">
-                  <span>SSG Build Feed</span>
-                  <Zap className="w-3 h-3 text-[#00f2fe]" />
-                </button>
-              </li>
               {isAdminUnlocked && (
                 <li>
                   <button onClick={onSelectAdmin} className="hover:text-amber-300 transition-colors text-left flex items-center gap-1 text-zinc-500">
@@ -127,11 +108,9 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Bottom copyright & disclaimer */}
         <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-zinc-500">
           <div>
-            &copy; {new Date().getFullYear()} signups4fastcash.com — All rights reserved.
+            &copy; {new Date().getFullYear()} ClearPerks — All rights reserved.
           </div>
           <div className="flex items-center gap-4">
-            <span>Powered by CashBot Autonomous Engine</span>
-            <span>•</span>
             <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How offers work</a>
           </div>
         </div>

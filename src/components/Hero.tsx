@@ -10,7 +10,6 @@ interface HeroProps {
   sortBy: 'highest' | 'fastest' | 'easiest';
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
   totalOffersCount: number;
-  totalCashPotential: number;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -29,7 +28,6 @@ export const Hero: React.FC<HeroProps> = ({
   sortBy,
   setSortBy,
   totalOffersCount,
-  totalCashPotential,
 }) => {
   return (
     <section className="relative pt-12 pb-8 border-b border-white/[0.08] overflow-hidden">
@@ -39,7 +37,7 @@ export const Hero: React.FC<HeroProps> = ({
         
         <div className="flex items-center gap-2 mb-5 text-xs font-mono text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Offers with clear terms and direct merchant payouts
+          Rewards and cashback with clear terms
         </div>
 
         {/* Main Headline */}
@@ -48,12 +46,15 @@ export const Hero: React.FC<HeroProps> = ({
             Find the offers worth your time.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
-            Compare real referral bonuses with the deposit, payout speed, and fine print visible up front. No hype, no payment handling.
+            Compare legitimate rewards, cashback programs, and signup incentives with requirements, payout timing, and fine print visible up front.
+          </p>
+          <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
+            We may earn a referral commission when you use some links. Merchant eligibility, rewards, fees, and payout timing can change, so review the official terms before signing up.
           </p>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
-          <span><strong className="text-white">{totalOffersCount}</strong> vetted offers</span>
-          <span><strong className="text-emerald-400">${totalCashPotential}+</strong> potential rewards</span>
+          <span><strong className="text-white">{totalOffersCount}</strong> listed offers</span>
+          <span><strong className="text-emerald-400">Terms shown</strong> before you click</span>
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
 

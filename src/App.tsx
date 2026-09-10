@@ -4,10 +4,8 @@ import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
-import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
-import { StaticExportModal } from './components/StaticExportModal';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal } from './components/LegalModal';
@@ -138,13 +136,9 @@ export default function App() {
 
   // Modals & Push
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
 
-  // CashBot state
-  const [isCashBotScanning, setIsCashBotScanning] = useState(false);
-  const [lastScannedTime, setLastScannedTime] = useState('Just now');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Persist offers to localStorage
@@ -208,7 +202,7 @@ export default function App() {
             if (permission === 'granted') {
               setPushEnabled(true);
               showToast('🔔 Push notifications enabled! Alerts will sound on high-yield drops.');
-              safeShowNotification('signups4fastcash.com Alerts Active', {
+              safeShowNotification('ClearPerks Alerts Active', {
                 body: 'You are now connected to CashBot instant verified referral drops!',
                 icon: '/favicon.ico',
               });
@@ -252,74 +246,6 @@ export default function App() {
     }
   };
 
-  // CashBot Scan trigger (calls backend Gemini API or fallback curated scanner)
-  const handleTriggerScan = async () => {
-    setIsCashBotScanning(true);
-    try {
-      const res = await fetch('/api/cashbot/scan', { method: 'POST' });
-      const data = await res.json();
-      if (data.findings && data.findings.length > 0) {
-        setPendingOffers((prev) => {
-          // Avoid duplicate IDs
-          const existingIds = new Set(prev.map((p) => p.company));
-          const fresh = data.findings.filter((f: Offer) => !existingIds.has(f.company));
-          return [...fresh, ...prev];
-        });
-        showToast(
-          isAdminUnlocked
-            ? `🤖 CashBot found ${data.findings.length} new referral offers! Check the Admin Panel.`
-            : `🤖 CashBot found ${data.findings.length} new referral offers in verification pipeline!`
-        );
-      } else {
-        showToast('🤖 CashBot scanned 14 networks: All current offers are up-to-date.');
-      }
-    } catch (e) {
-      // Fallback local discovery
-      const mockDiscovery: Offer = {
-        id: `cashbot-local-${Date.now()}`,
-        company: 'Upgrade Premier Checking',
-        companySlug: 'upgrade',
-        title: '$200 Cash Welcome Bonus on Everyday Debit Purchases',
-        category: 'fintech',
-        incentiveAmount: '$200 Cash Bonus',
-        incentiveValue: 200,
-        payoutSpeed: 'Within 60 days',
-        difficulty: 'Fast (5 min)',
-        depositRequired: '$1,000 direct deposit or 3 debit transactions',
-        officialMerchantUrl: 'https://www.upgrade.com',
-        referralCode: 'UPGRADE200',
-        referralUrl: 'https://upgrade.com/r/UPGRADE200',
-        honestTruth: {
-          summary: 'Scraped by CashBot: Open Rewards Checking account and complete 3 debit transactions.',
-          theCatch: 'Requires opening deposit and maintaining active debit usage.',
-          minimumHoldTime: 'None once credited.',
-          idVerificationRequired: true,
-          hiddenFeesWarning: '$0 monthly account fee.',
-          trustScore: 97,
-        },
-        speedrunHints: [
-          { step: 1, instruction: 'Apply online for Rewards Checking.', proTip: 'Instant debit card issued.' },
-          { step: 2, instruction: 'Make 3 $1 debit card purchases (e.g. reload Amazon gift card $1 x 3).', proTip: 'Takes 2 minutes.' },
-          { step: 3, instruction: 'Bonus ($200) deposits directly to your balance.', proTip: 'Transfer to primary bank.' },
-        ],
-        status: 'pending',
-        clicksCount: 0,
-        conversionsCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setPendingOffers((prev) => [mockDiscovery, ...prev]);
-      showToast(
-        isAdminUnlocked
-          ? '🤖 CashBot detected new promo from Upgrade ($200 Bonus) awaiting admin review.'
-          : '🤖 CashBot detected new promo from Upgrade ($200 Bonus) added to verification pipeline.'
-      );
-    } finally {
-      setIsCashBotScanning(false);
-      setLastScannedTime('Just now');
-    }
-  };
-
   // Admin approves offer & optionally sends email blast + push
   const handleApproveOffer = (
     offerId: string,
@@ -351,7 +277,7 @@ export default function App() {
         offerTitle: `${approvedOffer.company} - ${approvedOffer.title}`,
         sentAt: new Date().toISOString(),
         recipientCount: subscribers.length,
-        subject: `🔥 NEW VERIFIED BONUS: ${approvedOffer.incentiveAmount} on ${approvedOffer.company}`,
+        subject: `New offer listed: ${approvedOffer.incentiveAmount} on ${approvedOffer.company}`,
         pushSent: pushEnabled,
       };
       setBlastLogs((prev) => [newBlast, ...prev]);
@@ -362,7 +288,7 @@ export default function App() {
           icon: '/favicon.ico',
         });
       }
-      showToast(`🚀 Approved! Blast email sent to ${subscribers.length} subscribers & published live.`);
+      showToast(`Offer published. Email delivery still requires a connected provider.`);
     } else {
       showToast(`✅ Approved & published ${approvedOffer.company} with your referral link.`);
     }
@@ -376,14 +302,21 @@ export default function App() {
   };
 
   const handleUpdateLiveOffer = async (offerId: string, updates: Partial<Offer>) => {
+    const previousOffers = liveOffers;
     setLiveOffers((prev) =>
       prev.map((o) => (o.id === offerId ? { ...o, ...updates, updatedAt: new Date().toISOString() } : o))
     );
-    await fetch(`/api/offers/${offerId}`, {
+    const response = await fetch(`/api/offers/${offerId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
       body: JSON.stringify(updates),
-    }).catch(() => {});
+    }).catch(() => null);
+    if (!response?.ok) {
+      setLiveOffers(previousOffers);
+      const message = response ? await response.json().catch(() => null) : null;
+      showToast(message?.error || 'Could not save the offer. Check the referral URL and try again.');
+      return;
+    }
     showToast('Updated live referral parameters.');
   };
 
@@ -405,12 +338,18 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setLiveOffers((prev) => [fullOffer, ...prev]);
-    await fetch('/api/offers', {
+    const response = await fetch('/api/offers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
       body: JSON.stringify(fullOffer),
-    }).catch(() => {});
-    showToast(`Published ${fullOffer.company} to signups4fastcash.com!`);
+    }).catch(() => null);
+    if (!response?.ok) {
+      setLiveOffers((prev) => prev.filter((offer) => offer.id !== fullOffer.id));
+      const message = response ? await response.json().catch(() => null) : null;
+      showToast(message?.error || 'Could not publish the offer. Check the merchant and referral URLs.');
+      return;
+    }
+    showToast(`Published ${fullOffer.company} to ClearPerks!`);
   };
 
   const handleSubscribeNewsletter = async (email: string, frequency: 'instant' | 'daily' | 'weekly') => {
@@ -480,8 +419,6 @@ export default function App() {
       return 0;
     });
 
-  const totalCashPotential = liveOffers.reduce((acc, curr) => acc + curr.incentiveValue, 0);
-
   return (
     <div className="min-h-screen flex flex-col bg-[#090b0e] text-[#ededed] font-sans antialiased selection:bg-[#00f2fe]/20 selection:text-[#00f2fe]">
       
@@ -506,7 +443,6 @@ export default function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
-              totalCashPotential={totalCashPotential}
             />
 
             {/* Container for CashBot Status & Offers List */}
@@ -546,7 +482,7 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="max-w-4xl mx-auto space-y-5">
                     {filteredOffers.map((offer) => (
                       <OfferCard
                         key={offer.id}
@@ -577,17 +513,7 @@ export default function App() {
           </div>
         )}
 
-        {/* View 2: Conversion Analytics Dashboard */}
-        {activeTab === 'analytics' && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <DashboardAnalytics
-              offers={liveOffers}
-              totalSubscribers={subscribers.length}
-            />
-          </div>
-        )}
-
-        {/* View 3: Admin Panel */}
+        {/* Admin Panel */}
         {activeTab === 'admin' && isAdminUnlocked && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <AdminPanel
@@ -615,13 +541,6 @@ export default function App() {
         subscriberCount={subscribers.length}
       />
 
-      <StaticExportModal
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
-        offers={liveOffers}
-      />
-
-
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 p-4 rounded-xl bg-[#10141d] border border-[#00f2fe]/40 text-white text-xs font-mono shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-3 duration-200">
@@ -635,8 +554,6 @@ export default function App() {
       {/* Footer */}
       <Footer
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
-        onOpenExportModal={() => setIsExportOpen(true)}
-        onSelectAnalytics={() => setActiveTab('analytics')}
         onTogglePush={handleTogglePush}
         pushEnabled={pushEnabled}
         onOpenLegal={setLegalSection}
