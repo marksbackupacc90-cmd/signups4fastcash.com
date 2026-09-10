@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="brand-logo-btn"
           >
             <div className="w-8 h-8 rounded-md bg-[#10141d] border border-white/10 flex items-center justify-center text-[#38bdf8] group-hover:border-[#38bdf8]/40 transition-colors shadow-sm">
-              <span className="font-mono font-bold text-sm text-[#00f2fe]">$</span>
+              <span className="font-black text-sm text-[#00f2fe]">4*</span>
             </div>
             <div>
               <div className="flex items-center gap-2">

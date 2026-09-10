@@ -21,6 +21,36 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
 
   const normalized = (slug || companyName).toLowerCase();
 
+  const logoSlug = normalized.includes('capital')
+    ? 'capitalone'
+    : normalized.includes('topcashback')
+      ? 'topcashback'
+      : normalized.replace(/[^a-z0-9]/g, '');
+
+  const initials = companyName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase();
+
+  const [imageFailed, setImageFailed] = React.useState(false);
+
+  if (!imageFailed) {
+    return (
+      <div className={`${sizeClasses} ${className} rounded-lg bg-white flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden select-none`}>
+        <img
+          src={`https://cdn.simpleicons.org/${logoSlug}`}
+          alt={`${companyName} logo`}
+          className="w-full h-full object-contain"
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+        />
+      </div>
+    );
+  }
+
   // SoFi logo
   if (normalized.includes('sofi')) {
     return (
@@ -163,15 +193,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     );
   }
 
-  // Clean fallback with initials
-  const initials = companyName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0])
-    .join('')
-    .toUpperCase();
-
+  // Fallback when a provider logo is unavailable.
   return (
     <div className={`${sizeClasses} ${className} rounded-lg bg-[#1a1f2c] border border-white/10 flex items-center justify-center text-[#38bdf8] font-mono font-bold shrink-0 select-none`}>
       {initials || '$'}

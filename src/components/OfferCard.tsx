@@ -66,7 +66,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             />
             <div className="min-w-0">
               <div className="flex items-center flex-wrap gap-2">
-                <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold truncate">
+                <span className="text-sm font-mono uppercase tracking-wider text-zinc-300 font-semibold truncate">
                   {offer.company}
                 </span>
                 {offer.featured && (
@@ -76,7 +76,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white group-hover:text-[#38bdf8] transition-colors leading-snug mt-0.5">
+              <h2 className="text-lg sm:text-xl font-bold text-white group-hover:text-[#38bdf8] transition-colors leading-snug mt-1">
                 {offer.title}
               </h2>
             </div>
