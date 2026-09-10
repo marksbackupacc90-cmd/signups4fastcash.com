@@ -163,6 +163,15 @@ export default function App() {
   }, [liveOffers]);
 
   useEffect(() => {
+    fetch('/api/offers')
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load offers'))))
+      .then((data: { offers: Offer[] }) => setLiveOffers(data.offers))
+      .catch(() => {
+        // Keep the local catalog available when the API is offline.
+      });
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('signups4fastcash_pending', JSON.stringify(pendingOffers));
   }, [pendingOffers]);
 
@@ -377,19 +386,25 @@ export default function App() {
     showToast('Removed offer from CashBot pending queue.');
   };
 
-  const handleUpdateLiveOffer = (offerId: string, updates: Partial<Offer>) => {
+  const handleUpdateLiveOffer = async (offerId: string, updates: Partial<Offer>) => {
     setLiveOffers((prev) =>
       prev.map((o) => (o.id === offerId ? { ...o, ...updates, updatedAt: new Date().toISOString() } : o))
     );
+    await fetch(`/api/offers/${offerId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(() => {});
     showToast('Updated live referral parameters.');
   };
 
-  const handleDeleteLiveOffer = (offerId: string) => {
+  const handleDeleteLiveOffer = async (offerId: string) => {
     setLiveOffers((prev) => prev.filter((o) => o.id !== offerId));
+    await fetch(`/api/offers/${offerId}`, { method: 'DELETE' }).catch(() => {});
     showToast('Offer removed from live site.');
   };
 
-  const handleCreateCustomOffer = (
+  const handleCreateCustomOffer = async (
     newOfferData: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>
   ) => {
     const fullOffer: Offer = {
@@ -401,6 +416,11 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setLiveOffers((prev) => [fullOffer, ...prev]);
+    await fetch('/api/offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fullOffer),
+    }).catch(() => {});
     showToast(`Published ${fullOffer.company} to signups4fastcash.com!`);
   };
 

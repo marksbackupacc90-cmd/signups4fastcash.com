@@ -16,3 +16,11 @@ services:
         value: https://signups4fastcash.com
       - key: GEMINI_API_KEY
         sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: signups4fastcash-db
+          property: connectionString
+
+databases:
+  - name: signups4fastcash-db
+    plan: free

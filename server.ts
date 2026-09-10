@@ -3,11 +3,15 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { Pool } from 'pg';
+import { INITIAL_OFFERS } from './src/data/initialOffers';
 
 dotenv.config({ path: '.env.local' });
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const databaseUrl = process.env.DATABASE_URL;
+const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 
 app.use(express.json());
 
@@ -40,9 +44,121 @@ let analyticsStore = {
   totalConversions: 372,
 };
 
+async function initializeOfferStore() {
+  if (!database) {
+    liveOffersStore = INITIAL_OFFERS;
+    return;
+  }
+
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offers (
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      offer JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  const existing = await database.query<{ offer: any }>(
+    "SELECT offer FROM offers WHERE status = 'live' ORDER BY updated_at DESC",
+  );
+
+  if (existing.rowCount === 0) {
+    for (const offer of INITIAL_OFFERS) {
+      await database.query(
+        `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
+        [offer.id, offer.status, offer, offer.updatedAt],
+      );
+    }
+    liveOffersStore = INITIAL_OFFERS;
+  } else {
+    liveOffersStore = existing.rows.map((row) => row.offer);
+  }
+}
+
+async function saveLiveOffers() {
+  if (!database) return;
+
+  await database.query('BEGIN');
+  try {
+    await database.query("DELETE FROM offers WHERE status = 'live'");
+    for (const offer of liveOffersStore) {
+      await database.query(
+        `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, 'live', $2, $3)`,
+        [offer.id, offer, offer.updatedAt || new Date().toISOString()],
+      );
+    }
+    await database.query('COMMIT');
+  } catch (error) {
+    await database.query('ROLLBACK');
+    throw error;
+  }
+}
+
 // API: Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', database: database ? 'connected' : 'memory', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/offers', (req, res) => {
+  res.json({ offers: liveOffersStore });
+});
+
+app.put('/api/offers/:id', async (req, res) => {
+  const index = liveOffersStore.findIndex((offer) => offer.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Offer not found' });
+  }
+
+  liveOffersStore[index] = {
+    ...liveOffersStore[index],
+    ...req.body,
+    id: liveOffersStore[index].id,
+    status: 'live',
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    await saveLiveOffers();
+    res.json({ offer: liveOffersStore[index] });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not save offer' });
+  }
+});
+
+app.post('/api/offers', async (req, res) => {
+  const offer = {
+    ...req.body,
+    id: req.body.id || `custom-${Date.now()}`,
+    status: 'live',
+    clicksCount: req.body.clicksCount || 0,
+    conversionsCount: req.body.conversionsCount || 0,
+    createdAt: req.body.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  liveOffersStore = [offer, ...liveOffersStore];
+
+  try {
+    await saveLiveOffers();
+    res.status(201).json({ offer });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not save offer' });
+  }
+});
+
+app.delete('/api/offers/:id', async (req, res) => {
+  const previousCount = liveOffersStore.length;
+  liveOffersStore = liveOffersStore.filter((offer) => offer.id !== req.params.id);
+  if (liveOffersStore.length === previousCount) {
+    return res.status(404).json({ error: 'Offer not found' });
+  }
+
+  try {
+    await saveLiveOffers();
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Could not delete offer' });
+  }
 });
 
 // API: Trigger Omni-AI Multi-Model scan
@@ -87,7 +203,7 @@ For each offer, return:
    - councilSummary (a 1-2 sentence multi-model consensus endorsement)`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -285,7 +401,7 @@ Target category: ${targetCategory || 'Any'}
 Provide a structured consensus response answering the user's specific scenario with recommendations, individual AI model voting breakdowns, and an actionable speedrun execution plan.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: systemInstruction,
         config: {
           responseMimeType: 'application/json',
@@ -456,4 +572,9 @@ async function startServer() {
   });
 }
 
-startServer();
+initializeOfferStore()
+  .then(startServer)
+  .catch((error) => {
+    console.error('Failed to initialize offer store:', error);
+    process.exit(1);
+  });

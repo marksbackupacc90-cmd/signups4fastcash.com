@@ -83,6 +83,7 @@ export const AICouncilModal: React.FC<AICouncilModalProps> = ({
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CouncilResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [activeModelTab, setActiveModelTab] = useState<'all' | 'deepseek' | 'llama' | 'mistral' | 'qwen' | 'gemini'>('all');
 
   if (!isOpen) return null;
@@ -93,6 +94,7 @@ export const AICouncilModal: React.FC<AICouncilModalProps> = ({
 
     setLoading(true);
     setResult(null);
+    setError(null);
 
     try {
       const res = await fetch('/api/ai-council/match', {
@@ -101,12 +103,14 @@ export const AICouncilModal: React.FC<AICouncilModalProps> = ({
         body: JSON.stringify({ prompt: textToRun })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data.result);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.result) {
+        throw new Error(data.error || 'The AI Council could not return a response.');
       }
+      setResult(data.result);
     } catch (err) {
       console.error('Failed to query Omni-AI Council:', err);
+      setError(err instanceof Error ? err.message : 'The AI Council could not return a response.');
     } finally {
       setLoading(false);
     }
@@ -212,6 +216,20 @@ export const AICouncilModal: React.FC<AICouncilModalProps> = ({
           </div>
 
           {/* Council Synthesis Output */}
+          {error && !loading && (
+            <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/30 text-sm text-red-200 flex items-start justify-between gap-3">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="text-red-300 hover:text-white shrink-0"
+                aria-label="Dismiss AI Council error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {loading && (
             <div className="p-8 rounded-xl bg-[#0e131e] border border-cyan-500/20 text-center space-y-4">
               <div className="inline-flex p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 animate-spin">
@@ -378,7 +396,7 @@ export const AICouncilModal: React.FC<AICouncilModalProps> = ({
                               onSelectOffer(match.id);
                               onClose();
                             } else {
-                              onClose();
+                              setError(`${rec.company} is not currently available in the live offer catalog.`);
                             }
                           }}
                           className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-black font-semibold text-xs shrink-0 flex items-center gap-1 transition-colors"
