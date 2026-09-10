@@ -5,7 +5,6 @@ interface FooterProps {
   onOpenNewsletter: () => void;
   onOpenExportModal: () => void;
   onSelectAdmin: () => void;
-  onSelectGuide?: () => void;
   onSelectAnalytics?: () => void;
   onTogglePush?: () => void;
   pushEnabled?: boolean;
@@ -17,7 +16,6 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenNewsletter,
   onOpenExportModal,
   onSelectAdmin,
-  onSelectGuide,
   onSelectAnalytics,
   onTogglePush,
   pushEnabled = false,
@@ -69,14 +67,6 @@ export const Footer: React.FC<FooterProps> = ({
                   All Available Offers
                 </a>
               </li>
-              {onSelectGuide && (
-                <li>
-                  <button onClick={onSelectGuide} className="hover:text-emerald-300 text-emerald-400/90 transition-colors text-left flex items-center gap-1 font-mono text-[11px]">
-                    <span className="text-emerald-400">✦</span>
-                    <span>$0 to $1,000 Blueprint</span>
-                  </button>
-                </li>
-              )}
               <li>
                 <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
                   Email Drop Alerts
@@ -98,13 +88,6 @@ export const Footer: React.FC<FooterProps> = ({
                   </button>
                 </li>
               )}
-              {onOpenLegal && (
-                <>
-                  <li><button onClick={() => onOpenLegal('privacy')} className="hover:text-white transition-colors text-left">Privacy Policy</button></li>
-                  <li><button onClick={() => onOpenLegal('terms')} className="hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button></li>
-                  <li><button onClick={() => onOpenLegal('affiliate')} className="hover:text-white transition-colors text-left">Affiliate Disclosure</button></li>
-                </>
-              )}
               <li>
                 <button onClick={onOpenExportModal} className="hover:text-white transition-colors text-left flex items-center gap-1">
                   <span>SSG Build Feed</span>
@@ -122,11 +105,18 @@ export const Footer: React.FC<FooterProps> = ({
             </ul>
           </div>
 
-          {/* Col 3: Honest Disclosure */}
+          {/* Col 3: Legal & Disclosure */}
           <div className="space-y-2">
             <div className="font-mono font-semibold text-white uppercase text-xs tracking-wider">
-              Truth in Advertising
+              Legal &amp; Disclosure
             </div>
+            {onOpenLegal && (
+              <div className="space-y-1.5 text-zinc-300">
+                <button onClick={() => onOpenLegal('privacy')} className="block hover:text-white transition-colors text-left">Privacy Policy</button>
+                <button onClick={() => onOpenLegal('terms')} className="block hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button>
+                <button onClick={() => onOpenLegal('affiliate')} className="block hover:text-white transition-colors text-left">Affiliate Disclosure</button>
+              </div>
+            )}
             <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
               <strong>Affiliate Disclosure:</strong> Some links may compensate us at no additional cost to you. Offers are controlled by their merchants; eligibility, terms, taxes, fees, and payout timing can change. We do not provide financial, tax, legal, or investment advice.
             </p>

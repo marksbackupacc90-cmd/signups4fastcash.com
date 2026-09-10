@@ -1,9 +1,8 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'offers' | 'guide' | 'analytics' | 'admin';
-  setActiveTab: (tab: 'offers' | 'guide' | 'analytics' | 'admin') => void;
+  activeTab: 'offers' | 'analytics' | 'admin';
+  setActiveTab: (tab: 'offers' | 'analytics' | 'admin') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,23 +50,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Verified Offers
           </button>
-          
-          <button
-            id="nav-guide-tab"
-            onClick={() => setActiveTab('guide')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-              activeTab === 'guide'
-                ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 shadow-sm'
-                : 'text-zinc-400 hover:text-emerald-300 hover:bg-emerald-500/10'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>$0 to $1,000 Blueprint</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
-              $0 START
-            </span>
-          </button>
-
         </nav>
 
         {/* Action Controls */}

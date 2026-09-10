@@ -8,7 +8,6 @@ import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
 import { StaticExportModal } from './components/StaticExportModal';
-import { ZeroToHeroGuide } from './components/ZeroToHeroGuide';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal } from './components/LegalModal';
@@ -16,7 +15,7 @@ import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   // Navigation & View state
-  const [activeTab, setActiveTab] = useState<'offers' | 'guide' | 'analytics' | 'admin'>('offers');
+  const [activeTab, setActiveTab] = useState<'offers' | 'analytics' | 'admin'>('offers');
   
   // Storage & Offers state
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
@@ -578,18 +577,7 @@ export default function App() {
           </div>
         )}
 
-        {/* View 2: Zero to Hero Guide */}
-        {activeTab === 'guide' && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <ZeroToHeroGuide
-              liveOffers={liveOffers}
-              onClaimClick={handleClaimClick}
-              onNavigateToOffers={() => setActiveTab('offers')}
-            />
-          </div>
-        )}
-
-        {/* View 3: Conversion Analytics Dashboard */}
+        {/* View 2: Conversion Analytics Dashboard */}
         {activeTab === 'analytics' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <DashboardAnalytics
@@ -599,7 +587,7 @@ export default function App() {
           </div>
         )}
 
-        {/* View 4: Admin Panel */}
+        {/* View 3: Admin Panel */}
         {activeTab === 'admin' && isAdminUnlocked && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <AdminPanel
@@ -648,7 +636,6 @@ export default function App() {
       <Footer
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
         onOpenExportModal={() => setIsExportOpen(true)}
-        onSelectGuide={() => setActiveTab('guide')}
         onSelectAnalytics={() => setActiveTab('analytics')}
         onTogglePush={handleTogglePush}
         pushEnabled={pushEnabled}
