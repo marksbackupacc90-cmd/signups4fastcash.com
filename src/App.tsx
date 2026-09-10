@@ -202,7 +202,7 @@ export default function App() {
             if (permission === 'granted') {
               setPushEnabled(true);
               showToast('🔔 Push notifications enabled! Alerts will sound on high-yield drops.');
-              safeShowNotification('ClearPerks Alerts Active', {
+              safeShowNotification('signups4fastcash.com Alerts Active', {
                 body: 'You are now connected to CashBot instant verified referral drops!',
                 icon: '/favicon.ico',
               });
@@ -349,7 +349,7 @@ export default function App() {
       showToast(message?.error || 'Could not publish the offer. Check the merchant and referral URLs.');
       return;
     }
-    showToast(`Published ${fullOffer.company} to ClearPerks!`);
+    showToast(`Published ${fullOffer.company} to signups4fastcash.com!`);
   };
 
   const handleSubscribeNewsletter = async (email: string, frequency: 'instant' | 'daily' | 'weekly') => {
