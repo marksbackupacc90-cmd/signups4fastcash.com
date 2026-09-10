@@ -1,7 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 
 export const SurveyRewardsPanel: React.FC = () => (
+  <SurveyPanelContent />
+);
+
+const SurveyPanelContent: React.FC = () => {
+  const [surveyUrl, setSurveyUrl] = useState<string | null>(null);
+  const [surveyUnavailable, setSurveyUnavailable] = useState(false);
+
+  useEffect(() => {
+    const storageKey = 'signups4fastcash_survey_user_id';
+    const existing = localStorage.getItem(storageKey);
+    const userId = existing || `web-${crypto.randomUUID()}`;
+    if (!existing) localStorage.setItem(storageKey, userId);
+    fetch(`/api/cpx/survey-url?user_id=${encodeURIComponent(userId)}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          setSurveyUnavailable(true);
+          return;
+        }
+        const data = await response.json() as { enabled?: boolean; url?: string };
+        if (data.enabled && data.url) setSurveyUrl(data.url);
+        else setSurveyUnavailable(true);
+      })
+      .catch(() => setSurveyUnavailable(true));
+  }, []);
+
+  return (
   <section className="rounded-xl border border-cyan-400/20 bg-[#0e121a] p-5 sm:p-7">
     <div className="flex items-start gap-3">
       <div className="mt-0.5 rounded-lg bg-cyan-400/10 p-2 text-cyan-300">
@@ -11,8 +37,8 @@ export const SurveyRewardsPanel: React.FC = () => (
         <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Surveys &amp; Rewards</p>
         <h2 className="mt-1 text-xl font-bold text-white">Earn only through approved survey partners</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-          We are preparing a survey wall with CPX Research and other approved providers. It is not live yet,
-          so we are not promising survey availability, earnings, or instant payouts.
+          Surveys are provided by CPX Research. Availability, eligibility, completion decisions, rewards,
+          and payout timing are controlled by the provider. We do not promise earnings or instant payouts.
         </p>
       </div>
     </div>
@@ -35,5 +61,20 @@ export const SurveyRewardsPanel: React.FC = () => (
       Review how offers work
       <ExternalLink className="h-3.5 w-3.5" />
     </a>
+    {surveyUrl ? (
+      <iframe
+        title="CPX Research surveys"
+        src={surveyUrl}
+        className="mt-6 min-h-[1200px] w-full rounded-lg border border-white/[0.08] bg-white"
+        loading="lazy"
+      />
+    ) : (
+      <div className="mt-6 rounded-lg border border-amber-400/20 bg-amber-400/5 p-4 text-xs leading-relaxed text-amber-200">
+        {surveyUnavailable
+          ? 'The survey wall is not configured yet. Please check back after the provider integration is enabled.'
+          : 'Checking survey availability…'}
+      </div>
+    )}
   </section>
-);
+  );
+};

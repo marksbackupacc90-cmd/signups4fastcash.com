@@ -182,6 +182,28 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: database ? 'connected' : 'memory', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/cpx/survey-url', (req, res) => {
+  const userId = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
+  if (!cpxSecureHash) {
+    return res.status(503).json({ enabled: false, error: 'Survey provider is not configured yet.' });
+  }
+  if (!/^[a-zA-Z0-9_-]{8,128}$/.test(userId)) {
+    return res.status(400).json({ error: 'A valid anonymous user ID is required.' });
+  }
+  const secureHash = createHash('md5').update(`${userId}${cpxSecureHash}`).digest('hex');
+  const params = new URLSearchParams({
+    app_id: cpxAppId,
+    ext_user_id: userId,
+    secure_hash: secureHash,
+    subid_1: 'signups4fastcash',
+    subid_2: 'web',
+  });
+  res.json({
+    enabled: true,
+    url: `https://offers.cpx-research.com/index.php?${params.toString()}`,
+  });
+});
+
 // CPX Research postback. Rewards are recorded only after the provider signature
 // is validated; withdrawals are intentionally not enabled by this endpoint.
 app.get('/api/cpx/postback', async (req, res) => {

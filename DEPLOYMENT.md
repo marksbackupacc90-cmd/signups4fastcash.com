@@ -16,6 +16,8 @@ Set these in the hosting panel:
 - `CPX_APP_ID` — CPX app ID, currently `36089`
 - `CPX_SECURE_HASH` — private CPX postback secret; set this in Render and never commit it
 
+Once `CPX_SECURE_HASH` is configured, the Surveys & Rewards category generates a signed CPX iframe URL for each anonymous browser session. Without this secret, the site intentionally shows a configuration message instead of a broken survey wall.
+
 ## Render setup
 1. Push this repo to GitHub.
 2. In Render, choose New > Web Service.
