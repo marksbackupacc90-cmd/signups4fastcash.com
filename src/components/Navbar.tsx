@@ -4,6 +4,8 @@ interface NavbarProps {
   activeTab: 'offers' | 'games' | 'analytics' | 'admin';
   setActiveTab: (tab: 'offers' | 'games' | 'analytics' | 'admin') => void;
   onSelectSurveys: () => void;
+  onInstallApp: () => void;
+  installAvailable: boolean;
   rewardPoints: number;
   onCashOut: () => void;
 }
@@ -12,6 +14,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onSelectSurveys,
+  onInstallApp,
+  installAvailable,
   rewardPoints,
   onCashOut,
 }) => {
@@ -73,6 +77,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             Games
+          </button>
+          <button
+            id="nav-install-app"
+            onClick={onInstallApp}
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+              installAvailable
+                ? 'text-cyan-300 hover:text-white hover:bg-cyan-400/10'
+                : 'text-zinc-500 hover:text-white hover:bg-white/[0.04]'
+            }`}
+            title={installAvailable ? 'Install signups4fastcash as an app' : 'View app installation instructions'}
+          >
+            Install App
           </button>
         </nav>
 

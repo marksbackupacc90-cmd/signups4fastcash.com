@@ -160,6 +160,17 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
   }, []);
 
+  const handleInstallApp = async () => {
+    if (!installPrompt) {
+      showToast('On desktop, use the browser install icon. On Android, choose Install app from Chrome’s menu. Google Play publishing requires a separate Android release.');
+      return;
+    }
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === 'accepted') showToast('App installation started.');
+    setInstallPrompt(null);
+  };
+
   // Persist offers to localStorage
   useEffect(() => {
     localStorage.setItem('signups4fastcash_offers', JSON.stringify(liveOffers));
@@ -467,6 +478,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onSelectSurveys={handleSelectSurveys}
+        onInstallApp={handleInstallApp}
+        installAvailable={Boolean(installPrompt)}
         rewardPoints={rewardPoints}
         onCashOut={() => setCashOutOpen(true)}
       />
