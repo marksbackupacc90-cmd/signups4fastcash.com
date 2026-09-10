@@ -32,7 +32,7 @@ export const Footer: React.FC<FooterProps> = ({
                 4*
               </div>
               <span className="font-mono font-bold text-white text-base">
-                Clear<span className="text-[#00f2fe]">Perks</span>
+                signups4<span className="text-[#00f2fe]">fastcash.com</span>
               </span>
             </div>
             

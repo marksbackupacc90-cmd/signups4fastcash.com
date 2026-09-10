@@ -10,6 +10,7 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal } from './components/LegalModal';
 import { CheckCircle2 } from 'lucide-react';
+import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 
 export default function App() {
   // Navigation & View state
@@ -450,6 +451,7 @@ export default function App() {
               
               {/* Offers Grid */}
               <div>
+                {selectedCategory === 'surveys' && <SurveyRewardsPanel />}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
@@ -462,7 +464,7 @@ export default function App() {
                   </span>
                 </div>
 
-                {filteredOffers.length === 0 ? (
+                {filteredOffers.length === 0 && selectedCategory !== 'surveys' ? (
                   <div className="p-12 text-center rounded-xl bg-[#0e121a] border border-white/[0.08]">
                     <div className="w-10 h-10 rounded-lg bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto mb-3">
                       $
