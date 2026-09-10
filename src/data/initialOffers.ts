@@ -652,6 +652,12 @@ export const INITIAL_OFFERS: Offer[] = [
   }
 ];
 
+// Keep gambling and sweepstakes promotions out of the public catalog until their
+// jurisdiction, eligibility, and payout terms have been independently reviewed.
+export const PUBLIC_OFFERS = INITIAL_OFFERS.filter(
+  (offer) => !['offer-stake-us', 'offer-acebet'].includes(offer.id),
+);
+
 export const INITIAL_PENDING_OFFERS: Offer[] = [
   {
     id: 'cashbot-find-coinbase',

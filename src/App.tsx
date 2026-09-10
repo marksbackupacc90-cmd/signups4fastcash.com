@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog } from './types';
-import { INITIAL_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
+import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
@@ -26,7 +26,7 @@ export default function App() {
         const parsed: Offer[] = JSON.parse(saved);
         // Ensure new initial offers (Stake, Freecash, Capital One, AceBet) are included
         const existingIds = new Set(parsed.map((o) => o.id));
-        const missing = INITIAL_OFFERS.filter((o) => !existingIds.has(o.id));
+        const missing = PUBLIC_OFFERS.filter((o) => !existingIds.has(o.id));
         
         // Ensure user's updated referral codes & links are applied to existing offers
         const synced = parsed.map((o) => {
@@ -52,7 +52,7 @@ export default function App() {
         console.error('Failed to parse saved offers', e);
       }
     }
-    return INITIAL_OFFERS;
+    return PUBLIC_OFFERS;
   });
 
   const [pendingOffers, setPendingOffers] = useState<Offer[]>(() => {

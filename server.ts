@@ -5,15 +5,16 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Pool } from 'pg';
-import { INITIAL_OFFERS } from './src/data/initialOffers';
+import { PUBLIC_OFFERS } from './src/data/initialOffers';
 
 dotenv.config({ path: '.env.local' });
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const databaseUrl = process.env.DATABASE_URL;
+const env = process.env as Record<string, string | undefined>;
+const PORT = Number(env.PORT || 3000);
+const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
-const adminPasscode = process.env.ADMIN_PASSCODE;
+const adminPasscode = env.ADMIN_PASSCODE;
 const adminTokens = new Map<string, number>();
 
 app.use(express.json());
@@ -21,9 +22,9 @@ app.use(express.json());
 // Initialize Gemini client server-side safely
 let genAI: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
-  if (!genAI && process.env.GEMINI_API_KEY) {
+  if (!genAI && env.GEMINI_API_KEY) {
     genAI = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: env.GEMINI_API_KEY,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -45,7 +46,7 @@ let analyticsStore = {
 
 async function initializeOfferStore() {
   if (!database) {
-    liveOffersStore = INITIAL_OFFERS;
+    liveOffersStore = PUBLIC_OFFERS;
     return;
   }
 
@@ -63,15 +64,15 @@ async function initializeOfferStore() {
   );
 
   if (existing.rowCount === 0) {
-    for (const offer of INITIAL_OFFERS) {
+    for (const offer of PUBLIC_OFFERS) {
       await database.query(
         `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
         [offer.id, offer.status, offer, offer.updatedAt],
       );
     }
-    liveOffersStore = INITIAL_OFFERS;
+    liveOffersStore = PUBLIC_OFFERS;
   } else {
-    liveOffersStore = existing.rows.map((row) => ({
+    liveOffersStore = existing.rows.filter((row) => !['offer-stake-us', 'offer-acebet'].includes(row.offer.id)).map((row) => ({
       ...row.offer,
       clicksCount: 0,
       conversionsCount: 0,
@@ -589,7 +590,7 @@ app.get('/api/newsletter/subscribers', (req, res) => {
 
 // Start server with Vite middleware integration
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
