@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -12,6 +13,8 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const databaseUrl = process.env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
+const adminPasscode = process.env.ADMIN_PASSCODE;
+const adminTokens = new Map<string, number>();
 
 app.use(express.json());
 
@@ -105,7 +108,29 @@ app.get('/api/offers', (req, res) => {
   res.json({ offers: liveOffersStore });
 });
 
-app.put('/api/offers/:id', async (req, res) => {
+app.post('/api/admin/unlock', (req, res) => {
+  if (!adminPasscode) {
+    return res.status(503).json({ error: 'Admin access is not configured on this server.' });
+  }
+  if (req.body?.passcode !== adminPasscode) {
+    return res.status(401).json({ error: 'Invalid admin passcode' });
+  }
+  const token = randomUUID();
+  adminTokens.set(token, Date.now() + 8 * 60 * 60 * 1000);
+  res.json({ token });
+});
+
+function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const token = req.header('x-admin-token');
+  const expiresAt = token ? adminTokens.get(token) : undefined;
+  if (!expiresAt || expiresAt < Date.now()) {
+    if (token) adminTokens.delete(token);
+    return res.status(401).json({ error: 'Admin authentication required' });
+  }
+  next();
+}
+
+app.put('/api/offers/:id', requireAdmin, async (req, res) => {
   const index = liveOffersStore.findIndex((offer) => offer.id === req.params.id);
   if (index === -1) {
     return res.status(404).json({ error: 'Offer not found' });
@@ -127,7 +152,7 @@ app.put('/api/offers/:id', async (req, res) => {
   }
 });
 
-app.post('/api/offers', async (req, res) => {
+app.post('/api/offers', requireAdmin, async (req, res) => {
   const offer = {
     ...req.body,
     id: req.body.id || `custom-${Date.now()}`,
@@ -147,7 +172,7 @@ app.post('/api/offers', async (req, res) => {
   }
 });
 
-app.delete('/api/offers/:id', async (req, res) => {
+app.delete('/api/offers/:id', requireAdmin, async (req, res) => {
   const previousCount = liveOffersStore.length;
   liveOffersStore = liveOffersStore.filter((offer) => offer.id !== req.params.id);
   if (liveOffersStore.length === previousCount) {

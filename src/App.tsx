@@ -11,6 +11,7 @@ import { StaticExportModal } from './components/StaticExportModal';
 import { ZeroToHeroGuide } from './components/ZeroToHeroGuide';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
+import { LegalModal } from './components/LegalModal';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -97,29 +98,38 @@ export default function App() {
     }
   }, [activeTab, isAdminUnlocked]);
 
-  // Handle search input with secret passkey unlock check
-  const handleSearchChange = (query: string) => {
+  // Admin access uses a server-configured passcode; no credential is embedded in the client.
+  const handleSearchChange = async (query: string) => {
     const sanitized = query.replace(/\s+/g, '');
-    if (sanitized.includes('207207207207207')) {
-      setIsAdminUnlocked(true);
-      try {
-        localStorage.setItem('signups4fastcash_admin_unlocked', 'true');
-      } catch (e) {
-        // ignore
+    if (sanitized.length >= 12) {
+      const response = await fetch('/api/admin/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode: sanitized }),
+      }).catch(() => null);
+      if (response?.ok) {
+        const data = await response.json() as { token: string };
+        setIsAdminUnlocked(true);
+        localStorage.setItem('signups4fastcash_admin_token', data.token);
+        setSearchQuery('');
+        setActiveTab('admin');
+        showToast('Admin access enabled for this browser session.');
+        return;
       }
-      setSearchQuery('');
-      setActiveTab('admin');
-      showToast('🔓 Secret passkey accepted! Admin Panel unlocked.');
-      return;
     }
     setSearchQuery(query);
+  };
+
+  const getAdminHeaders = () => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    return token ? { 'x-admin-token': token } : {};
   };
 
   // Allow admin owner to re-lock and conceal admin controls
   const handleLockAdmin = () => {
     setIsAdminUnlocked(false);
     try {
-      localStorage.removeItem('signups4fastcash_admin_unlocked');
+      localStorage.removeItem('signups4fastcash_admin_token');
     } catch (e) {
       // ignore
     }
@@ -131,6 +141,7 @@ export default function App() {
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
 
   // CashBot state
   const [isCashBotScanning, setIsCashBotScanning] = useState(false);
@@ -371,7 +382,7 @@ export default function App() {
     );
     await fetch(`/api/offers/${offerId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
       body: JSON.stringify(updates),
     }).catch(() => {});
     showToast('Updated live referral parameters.');
@@ -379,7 +390,7 @@ export default function App() {
 
   const handleDeleteLiveOffer = async (offerId: string) => {
     setLiveOffers((prev) => prev.filter((o) => o.id !== offerId));
-    await fetch(`/api/offers/${offerId}`, { method: 'DELETE' }).catch(() => {});
+    await fetch(`/api/offers/${offerId}`, { method: 'DELETE', headers: getAdminHeaders() }).catch(() => {});
     showToast('Offer removed from live site.');
   };
 
@@ -397,7 +408,7 @@ export default function App() {
     setLiveOffers((prev) => [fullOffer, ...prev]);
     await fetch('/api/offers', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
       body: JSON.stringify(fullOffer),
     }).catch(() => {});
     showToast(`Published ${fullOffer.company} to signups4fastcash.com!`);
@@ -641,6 +652,7 @@ export default function App() {
         onSelectAnalytics={() => setActiveTab('analytics')}
         onTogglePush={handleTogglePush}
         pushEnabled={pushEnabled}
+        onOpenLegal={setLegalSection}
         onSelectAdmin={() => {
           if (isAdminUnlocked) {
             setActiveTab('admin');
@@ -648,6 +660,8 @@ export default function App() {
         }}
         isAdminUnlocked={isAdminUnlocked}
       />
+
+      <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
 
     </div>
   );

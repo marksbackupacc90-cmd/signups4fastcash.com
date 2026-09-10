@@ -51,7 +51,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
             </div>
             <h3 className="text-lg font-bold text-white">You're On The VIP List!</h3>
             <p className="text-xs text-zinc-400 max-w-xs mx-auto">
-              Whenever CashBot uncovers an urgent, high-value referral promo, you'll be among the first to know.
+              We'll send alerts for new offers that are added to the catalog. Always confirm the merchant's current terms.
             </p>
           </div>
         ) : (
@@ -63,13 +63,13 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
               <div>
                 <h3 className="text-base font-bold text-white">Instant Earning Alerts</h3>
                 <span className="text-[11px] font-mono text-zinc-400">
-                  Join {subscriberCount.toLocaleString()} savvy signers
+                  {subscriberCount > 0 ? `${subscriberCount.toLocaleString()} subscribers` : 'No subscriber count published'}
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-zinc-300 leading-relaxed">
-              Banks and fintechs regularly drop surprise $50–$300 referral matches that only last 48 hours. Get notified immediately when verified by CashBot.
+              Receive email alerts when new offers are added. We do not publish unverified subscriber or payout numbers.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3 pt-1">
@@ -132,7 +132,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                 type="submit"
                 className="w-full py-2.5 rounded-lg bg-[#00f2fe] hover:bg-[#38bdf8] text-black font-semibold text-xs font-mono transition-all shadow-[0_0_20px_rgba(0,242,254,0.2)] active:scale-[0.99] mt-2"
               >
-                Subscribe to Drops (100% Free)
+                Subscribe to alerts
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono text-zinc-500 pt-1">

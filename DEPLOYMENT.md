@@ -12,6 +12,7 @@ Set these in the hosting panel:
 - `APP_URL` — `https://signups4fastcash.com`
 - `NODE_ENV=production`
 - `DATABASE_URL` — PostgreSQL connection string for persistent Admin Panel edits
+- `ADMIN_PASSCODE` — private passcode used to unlock the Admin Panel; set this only in Render and `.env.local`
 
 ## Render setup
 1. Push this repo to GitHub.

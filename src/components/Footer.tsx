@@ -9,6 +9,7 @@ interface FooterProps {
   onSelectAnalytics?: () => void;
   onTogglePush?: () => void;
   pushEnabled?: boolean;
+  onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
   isAdminUnlocked?: boolean;
 }
 
@@ -20,6 +21,7 @@ export const Footer: React.FC<FooterProps> = ({
   onSelectAnalytics,
   onTogglePush,
   pushEnabled = false,
+    onOpenLegal,
   isAdminUnlocked = false,
 }) => {
   return (
@@ -96,6 +98,13 @@ export const Footer: React.FC<FooterProps> = ({
                   </button>
                 </li>
               )}
+              {onOpenLegal && (
+                <>
+                  <li><button onClick={() => onOpenLegal('privacy')} className="hover:text-white transition-colors text-left">Privacy Policy</button></li>
+                  <li><button onClick={() => onOpenLegal('terms')} className="hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button></li>
+                  <li><button onClick={() => onOpenLegal('affiliate')} className="hover:text-white transition-colors text-left">Affiliate Disclosure</button></li>
+                </>
+              )}
               <li>
                 <button onClick={onOpenExportModal} className="hover:text-white transition-colors text-left flex items-center gap-1">
                   <span>SSG Build Feed</span>
@@ -133,7 +142,7 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="flex items-center gap-4">
             <span>Powered by CashBot Autonomous Engine</span>
             <span>•</span>
-            <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How verification works</a>
+            <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How offers work</a>
           </div>
         </div>
 

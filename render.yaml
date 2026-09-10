@@ -20,6 +20,8 @@ services:
         fromDatabase:
           name: signups4fastcash-db
           property: connectionString
+      - key: ADMIN_PASSCODE
+        sync: false
 
 databases:
   - name: signups4fastcash-db
