@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -15,7 +15,10 @@ const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 const adminPasscode = env.ADMIN_PASSCODE;
+const cpxAppId = env.CPX_APP_ID || '36089';
+const cpxSecureHash = env.CPX_SECURE_HASH;
 const adminTokens = new Map<string, number>();
+const cpxTransactions = new Set<string>();
 const adminUnlockAttempts = new Map<string, { failures: number; windowStartedAt: number; blockedUntil: number }>();
 const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_UNLOCK_MAX_FAILURES = 5;
@@ -72,6 +75,18 @@ async function initializeOfferStore() {
     liveOffersStore = PUBLIC_OFFERS;
     return;
   }
+
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS cpx_transactions (
+      transaction_id TEXT PRIMARY KEY,
+      status INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      amount_local NUMERIC,
+      amount_usd NUMERIC,
+      offer_id TEXT,
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 
   await database.query(`
     CREATE TABLE IF NOT EXISTS newsletter_subscribers (
@@ -165,6 +180,67 @@ async function saveLiveOffers() {
 // API: Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: database ? 'connected' : 'memory', timestamp: new Date().toISOString() });
+});
+
+// CPX Research postback. Rewards are recorded only after the provider signature
+// is validated; withdrawals are intentionally not enabled by this endpoint.
+app.get('/api/cpx/postback', async (req, res) => {
+  if (!cpxSecureHash) {
+    return res.status(503).send('CPX postback is not configured');
+  }
+  const {
+    status,
+    trans_id: transactionId,
+    user_id: userId,
+    amount_local: amountLocal,
+    amount_usd: amountUsd,
+    offer_id: offerId,
+    hash,
+  } = req.query;
+  if (
+    typeof status !== 'string' ||
+    !/^[12]$/.test(status) ||
+    typeof transactionId !== 'string' ||
+    !transactionId ||
+    typeof userId !== 'string' ||
+    !userId ||
+    typeof hash !== 'string' ||
+    !/^[a-f0-9]{32}$/i.test(hash)
+  ) {
+    return res.status(400).send('Invalid CPX postback');
+  }
+  const expectedHash = createHash('md5').update(`${transactionId}${cpxSecureHash}`).digest('hex');
+  const expectedBuffer = Buffer.from(expectedHash, 'utf8');
+  const suppliedBuffer = Buffer.from(hash.toLowerCase(), 'utf8');
+  if (
+    expectedBuffer.length !== suppliedBuffer.length ||
+    !timingSafeEqual(expectedBuffer, suppliedBuffer)
+  ) {
+    return res.status(401).send('Invalid CPX signature');
+  }
+  if (database) {
+    try {
+      await database.query(
+        `INSERT INTO cpx_transactions
+          (transaction_id, status, user_id, amount_local, amount_usd, offer_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (transaction_id) DO NOTHING`,
+        [
+          transactionId,
+          Number(status),
+          userId.slice(0, 255),
+          typeof amountLocal === 'string' ? Number(amountLocal) || 0 : 0,
+          typeof amountUsd === 'string' ? Number(amountUsd) || 0 : 0,
+          typeof offerId === 'string' ? offerId.slice(0, 255) : null,
+        ],
+      );
+    } catch {
+      return res.status(500).send('Could not record CPX postback');
+    }
+  } else {
+    cpxTransactions.add(transactionId);
+  }
+  res.status(200).send('OK');
 });
 
 app.get('/api/offers', (req, res) => {

@@ -13,6 +13,8 @@ Set these in the hosting panel:
 - `NODE_ENV=production`
 - `DATABASE_URL` — PostgreSQL connection string for persistent Admin Panel edits
 - `ADMIN_PASSCODE` — private passcode used to unlock the Admin Panel; set this only in Render and `.env.local`
+- `CPX_APP_ID` — CPX app ID, currently `36089`
+- `CPX_SECURE_HASH` — private CPX postback secret; set this in Render and never commit it
 
 ## Render setup
 1. Push this repo to GitHub.
