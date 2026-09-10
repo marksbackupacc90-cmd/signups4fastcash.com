@@ -129,7 +129,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Manual create offer form state
   const [newCompany, setNewCompany] = useState('');
   const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState<'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto'>('fintech');
+  const [newCategory, setNewCategory] = useState<'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto' | 'surveys'>('fintech');
   const [newIncentive, setNewIncentive] = useState('$50 Cash Bonus');
   const [newIncentiveVal, setNewIncentiveVal] = useState(50);
   const [newPayoutSpeed, setNewPayoutSpeed] = useState('Instant');
@@ -867,6 +867,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <option value="fintech">Banking & Fintech</option>
                 <option value="brokerage">Brokerage & Stocks</option>
                 <option value="cashback">Cashback & Shopping</option>
+                <option value="surveys">Surveys & Rewards</option>
                 <option value="crypto">Crypto & Web3</option>
                 <option value="apps">Apps & Services</option>
               </select>

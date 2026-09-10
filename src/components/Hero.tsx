@@ -17,6 +17,7 @@ const CATEGORIES: { id: string; label: string }[] = [
   { id: 'fintech', label: 'Banking & Fintech' },
   { id: 'brokerage', label: 'Free Stocks & Brokerages' },
   { id: 'cashback', label: 'Cashback & Rebates' },
+  { id: 'surveys', label: 'Surveys & Rewards' },
   { id: 'crypto', label: 'Crypto & Web3' },
 ];
 
@@ -46,7 +47,7 @@ export const Hero: React.FC<HeroProps> = ({
             Find the offers worth your time.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
-            Compare legitimate rewards, cashback programs, and signup incentives with requirements, payout timing, and fine print visible up front.
+            Compare legitimate rewards, cashback programs, survey opportunities, and signup incentives with requirements, payout timing, and fine print visible up front.
           </p>
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
             We may earn a referral commission when you use some links. Merchant eligibility, rewards, fees, and payout timing can change, so review the official terms before signing up.
