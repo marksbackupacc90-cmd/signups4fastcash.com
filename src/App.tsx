@@ -390,6 +390,15 @@ export default function App() {
     }, 150);
   };
 
+  const handleSelectSurveys = () => {
+    setActiveTab('offers');
+    setSelectedCategory('surveys');
+    setSearchQuery('');
+    setTimeout(() => {
+      document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  };
+
   // Filter and Sort Logic
   const filteredOffers = liveOffers
     .filter((offer) => {
@@ -427,6 +436,7 @@ export default function App() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onSelectSurveys={handleSelectSurveys}
       />
 
       {/* Main Content Area */}
@@ -564,6 +574,7 @@ export default function App() {
             setActiveTab('admin');
           }
         }}
+        onSelectSurveys={handleSelectSurveys}
         isAdminUnlocked={isAdminUnlocked}
       />
 

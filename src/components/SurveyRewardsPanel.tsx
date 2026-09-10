@@ -65,7 +65,7 @@ const SurveyPanelContent: React.FC = () => {
       <iframe
         title="CPX Research surveys"
         src={surveyUrl}
-        className="mt-6 min-h-[1200px] w-full rounded-lg border border-white/[0.08] bg-white"
+        className="mt-6 h-[680px] w-full rounded-lg border border-white/[0.08] bg-white sm:h-[760px] lg:h-[820px]"
         loading="lazy"
       />
     ) : (

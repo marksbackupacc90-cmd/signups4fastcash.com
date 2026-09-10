@@ -3,11 +3,13 @@ import React from 'react';
 interface NavbarProps {
   activeTab: 'offers' | 'analytics' | 'admin';
   setActiveTab: (tab: 'offers' | 'analytics' | 'admin') => void;
+  onSelectSurveys: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
+  onSelectSurveys,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#090b0e]/90 backdrop-blur-md">
@@ -49,6 +51,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             Offers
+          </button>
+          <button
+            id="nav-surveys-tab"
+            onClick={onSelectSurveys}
+            className="px-3.5 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-all"
+          >
+            Surveys
           </button>
         </nav>
 

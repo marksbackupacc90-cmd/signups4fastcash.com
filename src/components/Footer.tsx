@@ -4,6 +4,7 @@ import { ShieldCheck, Lock, Bell } from 'lucide-react';
 interface FooterProps {
   onOpenNewsletter: () => void;
   onSelectAdmin: () => void;
+  onSelectSurveys: () => void;
   onTogglePush?: () => void;
   pushEnabled?: boolean;
   onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
@@ -13,6 +14,7 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({
   onOpenNewsletter,
   onSelectAdmin,
+  onSelectSurveys,
   onTogglePush,
   pushEnabled = false,
     onOpenLegal,
@@ -61,6 +63,11 @@ export const Footer: React.FC<FooterProps> = ({
                 <a href="#offers" className="hover:text-white transition-colors">
                   All Available Offers
                 </a>
+              </li>
+              <li>
+                <button onClick={onSelectSurveys} className="hover:text-cyan-300 transition-colors text-left">
+                  Surveys &amp; Rewards
+                </button>
               </li>
               <li>
                 <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
