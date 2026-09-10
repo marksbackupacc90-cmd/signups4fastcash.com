@@ -13,6 +13,11 @@ import { CheckCircle2 } from 'lucide-react';
 import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { GamesPanel } from './components/GamesPanel';
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 export default function App() {
   // Navigation & View state
   const [activeTab, setActiveTab] = useState<'offers' | 'games' | 'analytics' | 'admin'>('offers');
@@ -144,6 +149,16 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [rewardPoints, setRewardPoints] = useState(0);
   const [cashOutOpen, setCashOutOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+  }, []);
 
   // Persist offers to localStorage
   useEffect(() => {
@@ -455,6 +470,18 @@ export default function App() {
         rewardPoints={rewardPoints}
         onCashOut={() => setCashOutOpen(true)}
       />
+
+      {installPrompt && (
+        <button
+          onClick={async () => {
+            await installPrompt.prompt();
+            setInstallPrompt(null);
+          }}
+          className="fixed bottom-5 left-5 z-40 rounded-lg border border-cyan-400/30 bg-[#10141d] px-3 py-2 text-xs font-semibold text-cyan-200 shadow-xl hover:bg-cyan-400/10"
+        >
+          Install the app
+        </button>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1">

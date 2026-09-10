@@ -8,7 +8,11 @@ const cardValue = (card: number) => Math.min(card, 10);
 const drawCard = () => Math.floor(Math.random() * 13) + 1;
 
 export const GamesPanel: React.FC = () => {
-  const [credits, setCredits] = useState(STARTING_CREDITS);
+  const [credits, setCredits] = useState(() => {
+    const saved = localStorage.getItem('signups4fastcash_demo_credits');
+    const parsed = saved ? Number(saved) : STARTING_CREDITS;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : STARTING_CREDITS;
+  });
   const [game, setGame] = useState<Game>('keno');
   const [message, setMessage] = useState('Pick a game and play with demo credits.');
   const [kenoPick, setKenoPick] = useState<number[]>([]);
@@ -20,6 +24,10 @@ export const GamesPanel: React.FC = () => {
   const [playerCards, setPlayerCards] = useState<number[]>([]);
   const [dealerCards, setDealerCards] = useState<number[]>([]);
   const [blackjackDone, setBlackjackDone] = useState(false);
+
+  React.useEffect(() => {
+    localStorage.setItem('signups4fastcash_demo_credits', String(credits));
+  }, [credits]);
 
   const mineSet = useMemo(() => new Set(mines), [mines]);
   const playerTotal = playerCards.reduce((sum, card) => sum + cardValue(card), 0);
