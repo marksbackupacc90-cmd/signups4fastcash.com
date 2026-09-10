@@ -19,6 +19,9 @@ const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const adminTokens = new Map<string, number>();
 const cpxTransactions = new Set<string>();
+const cpxBalances = new Map<string, number>();
+const SURVEY_POINTS_PER_DOLLAR = 100;
+const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
 const adminUnlockAttempts = new Map<string, { failures: number; windowStartedAt: number; blockedUntil: number }>();
 const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_UNLOCK_MAX_FAILURES = 5;
@@ -85,6 +88,13 @@ async function initializeOfferStore() {
       amount_usd NUMERIC,
       offer_id TEXT,
       received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS survey_reward_balances (
+      user_id TEXT PRIMARY KEY,
+      points INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 
@@ -198,6 +208,36 @@ app.get('/api/cpx/survey-url', (req, res) => {
     subid_1: 'signups4fastcash',
     subid_2: 'web',
   });
+
+  app.get('/api/cpx/balance', async (req, res) => {
+    const userId = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
+    if (!/^[a-zA-Z0-9_-]{8,128}$/.test(userId)) {
+      return res.status(400).json({ error: 'A valid anonymous user ID is required.' });
+    }
+    if (database) {
+      const result = await database.query<{ points: number }>(
+        'SELECT points FROM survey_reward_balances WHERE user_id = $1',
+        [userId],
+      );
+      return res.json({
+        points: result.rows[0]?.points || 0,
+        dollars: (result.rows[0]?.points || 0) / SURVEY_POINTS_PER_DOLLAR,
+        pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
+        minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
+        payoutMethod: 'PayPal',
+        payoutRequestsEnabled: false,
+      });
+    }
+    const points = cpxBalances.get(userId) || 0;
+    res.json({
+      points,
+      dollars: points / SURVEY_POINTS_PER_DOLLAR,
+      pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
+      minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
+      payoutMethod: 'PayPal',
+      payoutRequestsEnabled: false,
+    });
+  });
   res.json({
     enabled: true,
     url: `https://offers.cpx-research.com/index.php?${params.toString()}`,
@@ -240,13 +280,23 @@ app.get('/api/cpx/postback', async (req, res) => {
   ) {
     return res.status(401).send('Invalid CPX signature');
   }
+  const rewardPoints = Math.max(0, Math.round((typeof amountUsd === 'string' ? Number(amountUsd) : 0) * SURVEY_POINTS_PER_DOLLAR));
   if (database) {
     try {
+      await database.query('BEGIN');
+      const existing = await database.query<{ status: number; amount_usd: number }>(
+        'SELECT status, amount_usd FROM cpx_transactions WHERE transaction_id = $1 FOR UPDATE',
+        [transactionId],
+      );
+      if (existing.rows[0]?.status === Number(status)) {
+        await database.query('ROLLBACK');
+        return res.status(200).send('OK');
+      }
       await database.query(
         `INSERT INTO cpx_transactions
           (transaction_id, status, user_id, amount_local, amount_usd, offer_id)
          VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (transaction_id) DO NOTHING`,
+         ON CONFLICT (transaction_id) DO UPDATE SET status = EXCLUDED.status`,
         [
           transactionId,
           Number(status),
@@ -256,11 +306,28 @@ app.get('/api/cpx/postback', async (req, res) => {
           typeof offerId === 'string' ? offerId.slice(0, 255) : null,
         ],
       );
+      const previousPoints = existing.rows[0]
+        ? Math.max(0, Math.round(Number(existing.rows[0].amount_usd || 0) * SURVEY_POINTS_PER_DOLLAR))
+        : 0;
+      const delta = Number(status) === 1 ? rewardPoints - previousPoints : -previousPoints;
+      await database.query(
+        `INSERT INTO survey_reward_balances (user_id, points)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET
+           points = GREATEST(0, survey_reward_balances.points + $2),
+           updated_at = NOW()`,
+        [userId.slice(0, 255), delta],
+      );
+      await database.query('COMMIT');
     } catch {
+      await database.query('ROLLBACK').catch(() => undefined);
       return res.status(500).send('Could not record CPX postback');
     }
   } else {
     cpxTransactions.add(transactionId);
+    const previousPoints = 0;
+    const delta = Number(status) === 1 ? rewardPoints : -previousPoints;
+    cpxBalances.set(userId, Math.max(0, (cpxBalances.get(userId) || 0) + delta));
   }
   res.status(200).send('OK');
 });

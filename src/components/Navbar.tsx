@@ -4,12 +4,16 @@ interface NavbarProps {
   activeTab: 'offers' | 'analytics' | 'admin';
   setActiveTab: (tab: 'offers' | 'analytics' | 'admin') => void;
   onSelectSurveys: () => void;
+  rewardPoints: number;
+  onCashOut: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onSelectSurveys,
+  rewardPoints,
+  onCashOut,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#090b0e]/90 backdrop-blur-md">
@@ -63,7 +67,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
-          
+          <div className="hidden sm:block text-right">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Balance</div>
+            <div className="text-xs font-mono font-bold text-emerald-300">
+              {rewardPoints.toLocaleString()} pts · ${(rewardPoints / 100).toFixed(2)}
+            </div>
+          </div>
+          <button
+            id="nav-cashout-btn"
+            onClick={onCashOut}
+            className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-400/20"
+          >
+            Cash Out
+          </button>
         </div>
 
       </div>

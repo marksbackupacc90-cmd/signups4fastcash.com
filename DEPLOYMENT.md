@@ -18,6 +18,8 @@ Set these in the hosting panel:
 
 Once `CPX_SECURE_HASH` is configured, the Surveys & Rewards category generates a signed CPX iframe URL for each anonymous browser session. Without this secret, the site intentionally shows a configuration message instead of a broken survey wall.
 
+Survey accounting currently records provider callbacks at 100 points per $1 and displays a $5 PayPal minimum. Automatic PayPal transfers and user cash-out requests remain disabled until authenticated user accounts, fraud/reversal review, and PayPal payout credentials are configured.
+
 ## Render setup
 1. Push this repo to GitHub.
 2. In Render, choose New > Web Service.

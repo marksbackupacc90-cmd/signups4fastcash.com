@@ -141,6 +141,8 @@ export default function App() {
   const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [rewardPoints, setRewardPoints] = useState(0);
+  const [cashOutOpen, setCashOutOpen] = useState(false);
 
   // Persist offers to localStorage
   useEffect(() => {
@@ -155,6 +157,18 @@ export default function App() {
         // Keep the local catalog available when the API is offline.
       });
   }, []);
+
+  useEffect(() => {
+    const storageKey = 'signups4fastcash_survey_user_id';
+    const userId = localStorage.getItem(storageKey);
+    if (!userId) return;
+    fetch(`/api/cpx/balance?user_id=${encodeURIComponent(userId)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { points?: number } | null) => {
+        if (data?.points !== undefined) setRewardPoints(data.points);
+      })
+      .catch(() => undefined);
+  }, [selectedCategory]);
 
   useEffect(() => {
     localStorage.setItem('signups4fastcash_pending', JSON.stringify(pendingOffers));
@@ -437,6 +451,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onSelectSurveys={handleSelectSurveys}
+        rewardPoints={rewardPoints}
+        onCashOut={() => setCashOutOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -579,6 +595,30 @@ export default function App() {
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
+
+      {cashOutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl border border-white/10 bg-[#10141d] p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-mono uppercase tracking-wider text-emerald-300">PayPal cash out</p>
+                <h2 className="mt-1 text-lg font-bold text-white">Cash-out setup is coming next</h2>
+              </div>
+              <button onClick={() => setCashOutOpen(false)} className="text-zinc-400 hover:text-white" aria-label="Close cash-out dialog">×</button>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-zinc-400">
+              Your balance is tracked at 100 points per $1. The current minimum is $5 (500 points).
+              Cash-out requests will require a verified account, a verified PayPal email, and fraud/reversal review.
+            </p>
+            <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-relaxed text-amber-200">
+              Google login and phone verification are not enabled yet. Do not enter a PayPal email or phone number until authenticated accounts and payout processing are live.
+            </div>
+            <button onClick={() => setCashOutOpen(false)} className="mt-5 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200">
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

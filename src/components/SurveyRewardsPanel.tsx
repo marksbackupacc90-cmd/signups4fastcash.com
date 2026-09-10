@@ -8,12 +8,19 @@ export const SurveyRewardsPanel: React.FC = () => (
 const SurveyPanelContent: React.FC = () => {
   const [surveyUrl, setSurveyUrl] = useState<string | null>(null);
   const [surveyUnavailable, setSurveyUnavailable] = useState(false);
+  const [points, setPoints] = useState(0);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_survey_user_id';
     const existing = localStorage.getItem(storageKey);
     const userId = existing || `web-${crypto.randomUUID()}`;
     if (!existing) localStorage.setItem(storageKey, userId);
+    fetch(`/api/cpx/balance?user_id=${encodeURIComponent(userId)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { points?: number } | null) => {
+        if (data?.points !== undefined) setPoints(data.points);
+      })
+      .catch(() => undefined);
     fetch(`/api/cpx/survey-url?user_id=${encodeURIComponent(userId)}`)
       .then(async (response) => {
         if (!response.ok) {
@@ -53,6 +60,11 @@ const SurveyPanelContent: React.FC = () => {
           <p className="mt-1 text-xs leading-relaxed text-zinc-500">{text}</p>
         </div>
       ))}
+    </div>
+    <div className="mt-5 rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-4">
+      <p className="text-xs font-mono uppercase tracking-wider text-emerald-300">Your survey rewards</p>
+      <p className="mt-1 text-lg font-bold text-white">{points.toLocaleString()} points <span className="text-sm font-normal text-zinc-400">(${(points / 100).toFixed(2)})</span></p>
+      <p className="mt-1 text-xs text-zinc-400">100 points = $1. PayPal cash-out minimum: $5.00. Payout requests are not enabled until account verification and payout processing are completed.</p>
     </div>
     <a
       href="#trust"
