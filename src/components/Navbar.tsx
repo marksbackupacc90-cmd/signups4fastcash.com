@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface NavbarProps {
-  activeTab: 'offers' | 'analytics' | 'admin';
-  setActiveTab: (tab: 'offers' | 'analytics' | 'admin') => void;
+  activeTab: 'offers' | 'games' | 'analytics' | 'admin';
+  setActiveTab: (tab: 'offers' | 'games' | 'analytics' | 'admin') => void;
   onSelectSurveys: () => void;
   rewardPoints: number;
   onCashOut: () => void;
@@ -62,6 +62,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="px-3.5 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-all"
           >
             Surveys
+          </button>
+          <button
+            id="nav-games-tab"
+            onClick={() => setActiveTab('games')}
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+              activeTab === 'games'
+                ? 'bg-violet-400 text-black shadow-sm font-semibold'
+                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            Games
           </button>
         </nav>
 

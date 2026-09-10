@@ -5,6 +5,7 @@ interface FooterProps {
   onOpenNewsletter: () => void;
   onSelectAdmin: () => void;
   onSelectSurveys: () => void;
+  onSelectGames?: () => void;
   onTogglePush?: () => void;
   pushEnabled?: boolean;
   onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
@@ -15,6 +16,7 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenNewsletter,
   onSelectAdmin,
   onSelectSurveys,
+  onSelectGames,
   onTogglePush,
   pushEnabled = false,
     onOpenLegal,
@@ -69,6 +71,13 @@ export const Footer: React.FC<FooterProps> = ({
                   Surveys &amp; Rewards
                 </button>
               </li>
+              {onSelectGames && (
+                <li>
+                  <button onClick={onSelectGames} className="hover:text-violet-300 transition-colors text-left">
+                    Entertainment Games
+                  </button>
+                </li>
+              )}
               <li>
                 <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
                   Email Drop Alerts

@@ -11,10 +11,11 @@ import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal } from './components/LegalModal';
 import { CheckCircle2 } from 'lucide-react';
 import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
+import { GamesPanel } from './components/GamesPanel';
 
 export default function App() {
   // Navigation & View state
-  const [activeTab, setActiveTab] = useState<'offers' | 'analytics' | 'admin'>('offers');
+  const [activeTab, setActiveTab] = useState<'offers' | 'games' | 'analytics' | 'admin'>('offers');
   
   // Storage & Offers state
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
@@ -520,6 +521,7 @@ export default function App() {
                     ))}
                   </div>
                 )}
+
               </div>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-y border-white/[0.08] py-5">
@@ -540,6 +542,8 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {activeTab === 'games' && <GamesPanel />}
 
         {/* Admin Panel */}
         {activeTab === 'admin' && isAdminUnlocked && (
@@ -591,6 +595,10 @@ export default function App() {
           }
         }}
         onSelectSurveys={handleSelectSurveys}
+        onSelectGames={() => {
+          setActiveTab('games');
+          setTimeout(() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+        }}
         isAdminUnlocked={isAdminUnlocked}
       />
 
