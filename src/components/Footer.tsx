@@ -41,10 +41,10 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             
             <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
-              signups4fastcash.com is a transparent rewards comparison site. We summarize publicly available promotions, show the requirements and fine print, and send you to the official merchant to apply.
+              signups4fastcash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.
             </p>
             <p className="text-zinc-500 text-xs leading-relaxed max-w-md">
-              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href="mailto:support@signups4fastcash.com">support@signups4fastcash.com</a>. Please do not send passwords, bank details, or government ID by email.
+              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href="mailto:support@signups4fastcash.com">support@signups4fastcash.com</a>. Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">

@@ -1,11 +1,46 @@
-import React, { useMemo, useState } from 'react';
-import { Gamepad2, RotateCcw, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Gauge, History, Info, RotateCcw, ShieldCheck, Sparkles, Volume2, VolumeX, Zap } from 'lucide-react';
 
-type Game = 'keno' | 'plinko' | 'cases' | 'mines' | 'blackjack';
+type SymbolId = 'crown' | 'gem' | 'moon' | 'star' | 'bolt' | 'seven' | 'wild';
+type Cell = { id: SymbolId; icon: string; label: string; tone: string };
+
 const STARTING_CREDITS = 1000;
+const BETS = [5, 10, 25, 50, 100];
+const REEL_COUNT = 5;
+const ROW_COUNT = 4;
 
-const cardValue = (card: number) => Math.min(card, 10);
-const drawCard = () => Math.floor(Math.random() * 13) + 1;
+const SYMBOLS: Record<SymbolId, Cell> = {
+  crown: { id: 'crown', icon: '♛', label: 'Crown', tone: 'text-amber-200' },
+  gem: { id: 'gem', icon: '◆', label: 'Gem', tone: 'text-fuchsia-300' },
+  moon: { id: 'moon', icon: '☾', label: 'Moon', tone: 'text-cyan-200' },
+  star: { id: 'star', icon: '✦', label: 'Star', tone: 'text-violet-200' },
+  bolt: { id: 'bolt', icon: 'ϟ', label: 'Bolt', tone: 'text-yellow-200' },
+  seven: { id: 'seven', icon: '7', label: 'Seven', tone: 'text-rose-300' },
+  wild: { id: 'wild', icon: 'W', label: 'Wild', tone: 'text-white' },
+};
+
+const SYMBOL_IDS: SymbolId[] = ['crown', 'gem', 'moon', 'star', 'bolt', 'seven', 'wild'];
+const PAYOUTS: Record<SymbolId, number> = { crown: 8, gem: 12, moon: 18, star: 26, bolt: 40, seven: 75, wild: 150 };
+const PAYLINES = [
+  [0, 0, 0, 0, 0],
+  [1, 1, 1, 1, 1],
+  [2, 2, 2, 2, 2],
+  [3, 3, 3, 3, 3],
+];
+
+const randomCell = (): Cell => SYMBOLS[SYMBOL_IDS[Math.floor(Math.random() * SYMBOL_IDS.length)]];
+const makeGrid = (): Cell[][] => Array.from({ length: REEL_COUNT }, () => Array.from({ length: ROW_COUNT }, randomCell));
+
+const getWin = (grid: Cell[][], bet: number) => {
+  const wins = PAYLINES.map((line, lineIndex) => {
+    const cells = line.map((row, reel) => grid[reel][row]);
+    const first = cells[0].id === 'wild' ? cells.find((cell) => cell.id !== 'wild')?.id ?? 'wild' : cells[0].id;
+    const matches = cells.filter((cell) => cell.id === first || cell.id === 'wild').length;
+    return matches >= 3 ? { line: lineIndex, symbol: first, amount: Math.round(bet * (PAYOUTS[first] / 10) * (matches / 3)) } : null;
+  }).filter(Boolean) as { line: number; symbol: SymbolId; amount: number }[];
+  const wilds = grid.flat().filter((cell) => cell.id === 'wild').length;
+  return { wins, total: wins.reduce((sum, win) => sum + win.amount, 0), wilds };
+};
 
 export const GamesPanel: React.FC = () => {
   const [credits, setCredits] = useState(() => {
@@ -13,208 +48,160 @@ export const GamesPanel: React.FC = () => {
     const parsed = saved ? Number(saved) : STARTING_CREDITS;
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : STARTING_CREDITS;
   });
-  const [game, setGame] = useState<Game>('keno');
-  const [message, setMessage] = useState('Pick a game and play with demo credits.');
-  const [kenoPick, setKenoPick] = useState<number[]>([]);
-  const [kenoResult, setKenoResult] = useState<number[]>([]);
-  const [plinkoResult, setPlinkoResult] = useState<number | null>(null);
-  const [caseResult, setCaseResult] = useState<string | null>(null);
-  const [mines, setMines] = useState<number[]>([]);
-  const [revealedMines, setRevealedMines] = useState<number[]>([]);
-  const [playerCards, setPlayerCards] = useState<number[]>([]);
-  const [dealerCards, setDealerCards] = useState<number[]>([]);
-  const [blackjackDone, setBlackjackDone] = useState(false);
+  const [bet, setBet] = useState(10);
+  const [grid, setGrid] = useState<Cell[][]>(() => makeGrid());
+  const [spinning, setSpinning] = useState(false);
+  const [turbo, setTurbo] = useState(false);
+  const [sound, setSound] = useState(true);
+  const [message, setMessage] = useState('Set your bet, then spin the reels.');
+  const [lastWin, setLastWin] = useState(0);
+  const [history, setHistory] = useState<number[]>([]);
+  const [activeLines, setActiveLines] = useState<number[]>([]);
+  const [freeSpins, setFreeSpins] = useState(0);
 
-  React.useEffect(() => {
+  useEffect(() => {
     localStorage.setItem('signups4fastcash_demo_credits', String(credits));
   }, [credits]);
 
-  const mineSet = useMemo(() => new Set(mines), [mines]);
-  const playerTotal = playerCards.reduce((sum, card) => sum + cardValue(card), 0);
-  const dealerTotal = dealerCards.reduce((sum, card) => sum + cardValue(card), 0);
-
-  const spend = (amount: number) => {
-    if (credits < amount) {
-      setMessage('You need more demo credits. Reset the demo balance to keep playing.');
-      return false;
-    }
-    setCredits((value) => value - amount);
-    return true;
-  };
+  const currentMultiplier = useMemo(() => (lastWin > 0 ? lastWin / bet : 0), [lastWin, bet]);
 
   const reset = () => {
     setCredits(STARTING_CREDITS);
+    setGrid(makeGrid());
+    setHistory([]);
+    setLastWin(0);
+    setActiveLines([]);
+    setFreeSpins(0);
     setMessage('Demo balance reset. These credits have no cash value.');
-    setKenoPick([]);
-    setKenoResult([]);
-    setPlinkoResult(null);
-    setCaseResult(null);
-    setRevealedMines([]);
-    setPlayerCards([]);
-    setDealerCards([]);
-    setBlackjackDone(false);
   };
 
-  const playKeno = () => {
-    if (!spend(10)) return;
-    const result = Array.from({ length: 5 }, () => Math.floor(Math.random() * 20) + 1);
-    const matches = kenoPick.filter((number) => result.includes(number));
-    setKenoResult(result);
-    if (matches.length >= 3) {
-      const reward = matches.length * 15;
-      setCredits((value) => value + reward);
-      setMessage(`${matches.length} matches — you received ${reward} demo credits.`);
-    } else setMessage(`${matches.length} matches. Try another demo round.`);
-  };
-
-  const playPlinko = () => {
-    if (!spend(10)) return;
-    const result = [0, 5, 10, 20, 50][Math.floor(Math.random() * 5)];
-    setPlinkoResult(result);
-    setCredits((value) => value + result);
-    setMessage(`The demo ball landed on ${result} credits.`);
-  };
-
-  const openCase = () => {
-    if (!spend(15)) return;
-    const result = ['Common', 'Uncommon', 'Rare', 'Epic'][Math.floor(Math.random() * 4)];
-    const rewards: Record<string, number> = { Common: 5, Uncommon: 20, Rare: 60, Epic: 150 };
-    setCaseResult(result);
-    setCredits((value) => value + rewards[result]);
-    setMessage(`${result} case result — ${rewards[result]} demo credits returned.`);
-  };
-
-  const startMines = () => {
-    if (!spend(10)) return;
-    const positions = [...Array(25).keys()].sort(() => Math.random() - 0.5).slice(0, 5);
-    setMines(positions);
-    setRevealedMines([]);
-    setMessage('Choose a tile. Demo mines reset when you start a new round.');
-  };
-
-  const revealMine = (position: number) => {
-    if (!mines.length || revealedMines.includes(position)) return;
-    setRevealedMines((value) => [...value, position]);
-    if (mineSet.has(position)) setMessage('Demo mine! Start a new round to play again.');
-    else {
-      setCredits((value) => value + 5);
-      setMessage('Safe tile — 5 demo credits added.');
+  const spin = () => {
+    if (spinning) return;
+    const isFreeSpin = freeSpins > 0;
+    if (!isFreeSpin && credits < bet) {
+      setMessage('Not enough demo credits. Reset the demo balance to keep playing.');
+      return;
     }
+    if (isFreeSpin) setFreeSpins((value) => value - 1);
+    else setCredits((value) => value - bet);
+    setLastWin(0);
+    setActiveLines([]);
+    setSpinning(true);
+    setMessage('The Mirage is spinning...');
+    window.setTimeout(() => {
+      const nextGrid = makeGrid();
+      const result = getWin(nextGrid, bet);
+      setGrid(nextGrid);
+      setCredits((value) => value + result.total);
+      if (result.wilds > 0) {
+        setFreeSpins((value) => value + result.wilds);
+      }
+      setLastWin(result.total);
+      setActiveLines(result.wins.map((win) => win.line));
+      setHistory((value) => [result.total, ...value].slice(0, 5));
+      setSpinning(false);
+      if (result.wilds > 0) {
+        setMessage(`${result.wilds} wild${result.wilds === 1 ? '' : 's'} found — ${result.wilds} free spin${result.wilds === 1 ? '' : 's'} added.`);
+      } else if (isFreeSpin) {
+        setMessage(result.total ? `Free spin hit — ${result.total.toLocaleString()} demo credits landed.` : 'The wild chain ended. Spin again to start a new feature.');
+      } else {
+        setMessage(result.total ? `Beautiful hit — ${result.total.toLocaleString()} demo credits landed.` : 'No line hit this time. The next spin is yours.');
+      }
+    }, turbo ? 500 : 1200);
   };
-
-  const startBlackjack = () => {
-    if (!spend(10)) return;
-    setPlayerCards([drawCard(), drawCard()]);
-    setDealerCards([drawCard(), drawCard()]);
-    setBlackjackDone(false);
-    setMessage('Hit for another card or stand to finish the demo hand.');
-  };
-
-  const finishBlackjack = (cards = playerCards) => {
-    if (!cards.length || blackjackDone) return;
-    const total = cards.reduce((sum, card) => sum + cardValue(card), 0);
-    const dealer = dealerTotal;
-    setBlackjackDone(true);
-    if (total <= 21 && (total > dealer || dealer > 21)) {
-      setCredits((value) => value + 20);
-      setMessage('You won the demo hand and received 20 demo credits.');
-    } else if (total === dealer && total <= 21) {
-      setCredits((value) => value + 10);
-      setMessage('Demo push — your 10-credit entry was returned.');
-    } else setMessage('Dealer wins this demo hand.');
-  };
-
-  const games: { id: Game; label: string }[] = [
-    { id: 'keno', label: 'Keno' },
-    { id: 'plinko', label: 'Plinko' },
-    { id: 'cases', label: 'Cases' },
-    { id: 'mines', label: 'Mines' },
-    { id: 'blackjack', label: 'Blackjack' },
-  ];
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" id="games">
-      <div className="rounded-xl border border-violet-400/20 bg-[#0e121a] p-5 sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-violet-400/10 p-2 text-violet-300"><Gamepad2 className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs font-mono uppercase tracking-wider text-violet-300">Entertainment zone</p>
-              <h1 className="mt-1 text-xl font-bold text-white">Play with demo credits</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                Keno, Plinko, Cases, Mines, and Blackjack are available for entertainment only.
-                Demo credits are not money, cannot be purchased, and can never be exchanged for survey points or cash.
-              </p>
+    <section className="relative overflow-hidden px-4 py-8 sm:px-6 lg:px-8" id="games">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(124,58,237,0.2),transparent_42%)]" />
+      <div className="relative mx-auto max-w-7xl">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-fuchsia-300">
+              <Sparkles className="h-3.5 w-3.5" /> After-hours arcade
             </div>
+            <h1 className="max-w-2xl text-3xl font-black tracking-tight text-white sm:text-5xl">
+              Neon <span className="bg-gradient-to-r from-fuchsia-300 via-violet-300 to-cyan-300 bg-clip-text text-transparent">Mirage</span>
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">A five-reel, three-row demo slot with cascading light, wild symbols, and three hand-tuned paylines.</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-3 py-2 text-right">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Demo credits</div>
-              <div className="font-mono font-bold text-violet-200">{credits.toLocaleString()}</div>
+            <div className="rounded-2xl border border-violet-300/20 bg-violet-300/[0.08] px-4 py-2.5 text-right shadow-[0_0_30px_rgba(139,92,246,0.1)]">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-200/60">Demo credits</div>
+              <div className="mt-0.5 text-xl font-black tabular-nums text-violet-100">{credits.toLocaleString()}</div>
             </div>
-            <button onClick={reset} className="rounded-lg border border-white/10 p-2 text-zinc-400 hover:text-white" title="Reset demo credits">
+            <button onClick={reset} className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition hover:border-white/20 hover:text-white" title="Reset demo credits">
               <RotateCcw className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          {games.map((item) => (
-            <button key={item.id} onClick={() => setGame(item.id)} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${game === item.id ? 'bg-violet-400 text-black' : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'}`}>
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="rounded-[2rem] border border-violet-300/20 bg-[#11101d]/90 p-3 shadow-[0_25px_100px_rgba(76,29,149,0.22)] sm:p-5">
+            <div className="flex items-center justify-between px-2 pb-4">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> Live demo</div>
+              <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500"><span>RTP 96.4%</span><span className="hidden text-emerald-300 sm:inline">Fair play mode</span></div>
+            </div>
 
-        <div className="mt-6 rounded-lg border border-white/[0.08] bg-black/10 p-4">
-          {game === 'keno' && (
-            <div>
-              <h2 className="font-semibold text-white">Keno</h2>
-              <p className="mt-1 text-xs text-zinc-500">Choose up to 5 numbers. Demo round cost: 10 credits.</p>
-              <div className="mt-4 grid max-w-md grid-cols-10 gap-1.5">
-                {Array.from({ length: 20 }, (_, index) => index + 1).map((number) => (
-                  <button key={number} onClick={() => setKenoPick((value) => value.includes(number) ? value.filter((item) => item !== number) : value.length < 5 ? [...value, number] : value)} className={`rounded p-2 text-xs ${kenoPick.includes(number) ? 'bg-cyan-400 text-black' : 'bg-white/5 text-zinc-300 hover:bg-white/10'}`}>
-                    {number}
-                  </button>
+            <div className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#080711] p-2 shadow-inner shadow-black/80 sm:p-4">
+              <div className="absolute inset-x-0 top-1/2 z-10 h-20 -translate-y-1/2 border-y border-fuchsia-300/30 bg-gradient-to-r from-fuchsia-400/[0.04] via-violet-300/[0.1] to-fuchsia-400/[0.04] pointer-events-none" />
+              <div className="relative grid grid-cols-5 gap-1.5 sm:gap-3">
+                {grid.map((reel, reelIndex) => (
+                  <div key={reelIndex} className={`grid gap-1.5 sm:gap-3 ${spinning ? 'slot-reel-spinning' : ''}`} style={{ animationDelay: `${reelIndex * 90}ms` }}>
+                    {reel.map((cell, rowIndex) => (
+                      <div key={`${reelIndex}-${rowIndex}`} className={`relative flex aspect-[0.82] items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.08] to-white/[0.015] ${activeLines.includes(rowIndex) ? 'border-fuchsia-300/70 shadow-[0_0_22px_rgba(232,121,249,0.35)]' : ''}`}>
+                        <span className={`slot-symbol select-none text-4xl font-black drop-shadow-[0_0_16px_currentColor] sm:text-6xl ${cell.tone} ${cell.id === 'wild' ? 'italic' : ''}`}>{cell.icon}</span>
+                        {cell.id === 'wild' && <span className="absolute bottom-1 text-[8px] font-bold uppercase tracking-[0.2em] text-white/60">Wild</span>}
+                      </div>
+                    ))}
+                  </div>
                 ))}
               </div>
-              <button onClick={playKeno} disabled={kenoPick.length === 0} className="mt-4 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40">Play Keno</button>
-              {kenoResult.length > 0 && <p className="mt-3 text-xs text-cyan-300">Draw: {kenoResult.join(' · ')}</p>}
-            </div>
-          )}
-          {game === 'plinko' && <GameAction title="Plinko" description="Drop a demo ball through the board. Demo round cost: 10 credits." action="Drop ball" onClick={playPlinko} result={plinkoResult === null ? null : `Landed on ${plinkoResult} demo credits.`} />}
-          {game === 'cases' && <GameAction title="Cases" description="Open a random demo case. Demo case cost: 15 credits." action="Open case" onClick={openCase} result={caseResult ? `Case rarity: ${caseResult}` : null} />}
-          {game === 'mines' && (
-            <div>
-              <h2 className="font-semibold text-white">Mines</h2>
-              <p className="mt-1 text-xs text-zinc-500">Start a demo round, then reveal tiles. Safe reveals add 5 demo credits.</p>
-              <button onClick={startMines} className="mt-4 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black">New Mines Round</button>
-              <div className="mt-4 grid max-w-sm grid-cols-5 gap-1.5">
-                {Array.from({ length: 25 }, (_, position) => <button key={position} onClick={() => revealMine(position)} className={`aspect-square rounded text-xs ${revealedMines.includes(position) ? (mineSet.has(position) ? 'bg-rose-500/70 text-white' : 'bg-emerald-500/50 text-white') : 'bg-white/5 text-zinc-500 hover:bg-white/10'}`}>{revealedMines.includes(position) ? (mineSet.has(position) ? '!' : '✓') : '?'}</button>)}
+              <div className="pointer-events-none absolute left-0 right-0 top-1/2 z-20 flex -translate-y-1/2 justify-between">
+                <span className="h-0 w-0 border-y-[9px] border-l-0 border-r-[13px] border-y-transparent border-r-fuchsia-300 drop-shadow-[0_0_8px_#f0abfc]" />
+                <span className="h-0 w-0 border-y-[9px] border-r-0 border-l-[13px] border-y-transparent border-l-fuchsia-300 drop-shadow-[0_0_8px_#f0abfc]" />
               </div>
             </div>
-          )}
-          {game === 'blackjack' && (
-            <div>
-              <h2 className="font-semibold text-white">Blackjack</h2>
-              <p className="mt-1 text-xs text-zinc-500">Demo hand entry: 10 credits. Cards use simplified values for casual play.</p>
-              <div className="mt-4 flex flex-wrap gap-6 text-sm text-zinc-300"><span>You: {playerCards.length ? playerCards.map(cardValue).join(' · ') : '—'} {playerCards.length ? `(${playerTotal})` : ''}</span><span>Dealer: {dealerCards.length ? dealerCards.map(cardValue).join(' · ') : '—'} {dealerCards.length ? `(${dealerTotal})` : ''}</span></div>
-              <div className="mt-4 flex gap-2"><button onClick={startBlackjack} className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black">New hand</button><button onClick={() => { const next = [...playerCards, drawCard()]; setPlayerCards(next); if (next.reduce((sum, card) => sum + cardValue(card), 0) > 21) finishBlackjack(next); }} disabled={!playerCards.length || blackjackDone} className="rounded-lg bg-white/10 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">Hit</button><button onClick={() => finishBlackjack()} disabled={!playerCards.length || blackjackDone} className="rounded-lg bg-violet-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Stand</button></div>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Bet</span>
+                <div className="flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+                  {BETS.map((value) => <button key={value} onClick={() => setBet(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${bet === value ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'}`}>{value}</button>)}
+                </div>
+                {freeSpins > 0 && <span className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-200">{freeSpins} free spin{freeSpins === 1 ? '' : 's'}</span>}
+              </div>
+              <button onClick={spin} disabled={spinning} className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-fuchsia-400 via-violet-400 to-cyan-300 px-8 py-3 text-sm font-black text-black shadow-[0_0_25px_rgba(217,70,239,0.3)] transition hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(217,70,239,0.5)] disabled:cursor-not-allowed disabled:opacity-50">
+                <Zap className="h-4 w-4 fill-current" /> {spinning ? 'Spinning...' : 'Spin the Mirage'}
+              </button>
             </div>
-          )}
-          <p className="mt-4 text-xs text-zinc-500">{message}</p>
+            <div className="mt-3 flex min-h-6 items-center justify-center gap-2 text-center text-xs text-zinc-400">
+              {lastWin > 0 && <span className="font-bold text-emerald-300">+{lastWin.toLocaleString()} · {currentMultiplier.toFixed(1)}x</span>}
+              <span>{message}</span>
+            </div>
+          </div>
+
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-[#11101d]/80 p-4">
+              <div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-bold text-white"><Gauge className="h-4 w-4 text-cyan-300" /> Console</h2><button onClick={() => setSound((value) => !value)} className="text-zinc-500 hover:text-white">{sound ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button></div>
+              <button onClick={() => setTurbo((value) => !value)} className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${turbo ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-200' : 'border-white/10 bg-white/[0.03] text-zinc-400'}`}><span>Turbo reels</span><span className="text-[10px] uppercase tracking-widest">{turbo ? 'On' : 'Off'}</span></button>
+              <div className="mt-4 flex items-center justify-between text-xs text-zinc-500"><span>Bet per spin</span><span className="font-bold text-white">{bet} credits</span></div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-fuchsia-400 to-cyan-300" style={{ width: `${Math.min(100, (bet / 100) * 100)}%` }} /></div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#11101d]/80 p-4">
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white"><History className="h-4 w-4 text-violet-300" /> Recent hits</h2>
+              {history.length ? <div className="space-y-2">{history.map((win, index) => <div key={`${win}-${index}`} className="flex items-center justify-between rounded-lg bg-white/[0.04] px-3 py-2 text-xs"><span className="text-zinc-500">Spin {history.length - index}</span><span className={win ? 'font-bold text-emerald-300' : 'text-zinc-500'}>{win ? `+${win}` : '—'}</span></div>)}</div> : <p className="text-xs leading-relaxed text-zinc-500">Your last five spin results will appear here.</p>}
+            </div>
+          </aside>
         </div>
-        <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-relaxed text-amber-200"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />Demo credits are separate from your survey balance. No wagering, deposits, cash prizes, or conversion to PayPal are available.</div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1.1fr]">
+          <div className="rounded-2xl border border-white/10 bg-[#11101d]/70 p-4">
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-400">Paylines</h2>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-zinc-500 sm:grid-cols-4"><span className="rounded-lg border border-fuchsia-300/20 bg-fuchsia-300/5 p-2 text-center text-fuchsia-200">Row 1<br />x3+</span><span className="rounded-lg border border-violet-300/20 bg-violet-300/5 p-2 text-center text-violet-200">Row 2<br />x3+</span><span className="rounded-lg border border-cyan-300/20 bg-cyan-300/5 p-2 text-center text-cyan-200">Row 3<br />x3+</span><span className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-2 text-center text-amber-200">Row 4<br />x3+</span></div>
+          </div>
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-300/15 bg-amber-300/[0.04] p-4 text-xs leading-relaxed text-amber-100/70"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" /><span><strong className="text-amber-100">Demo mode only.</strong> Wilds trigger free spins, and every wild in the chain adds another free spin. Credits have no cash value, cannot be purchased, and never connect to survey points or payouts.</span><Info className="mt-0.5 ml-auto h-4 w-4 shrink-0 text-amber-200/70" /></div>
+        </div>
       </div>
     </section>
   );
 };
-
-const GameAction: React.FC<{ title: string; description: string; action: string; onClick: () => void; result: string | null }> = ({ title, description, action, onClick, result }) => (
-  <div>
-    <h2 className="font-semibold text-white">{title}</h2>
-    <p className="mt-1 text-xs text-zinc-500">{description}</p>
-    <button onClick={onClick} className="mt-4 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black">{action}</button>
-    {result && <p className="mt-3 text-xs text-violet-300">{result}</p>}
-  </div>
-);

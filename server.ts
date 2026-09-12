@@ -192,6 +192,88 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: database ? 'connected' : 'memory', timestamp: new Date().toISOString() });
 });
 
+app.post('/api/life-admin/analyze', async (req, res) => {
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+  if (!text || text.length > 12000) {
+    return res.status(400).json({ error: 'Paste a document or message up to 12,000 characters.' });
+  }
+  const ai = getGenAI();
+  if (!ai) {
+    return res.status(503).json({ error: 'AI analysis is not configured. Add GEMINI_API_KEY to enable ClearDay.' });
+  }
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: `You are ClearDay, a careful life-admin assistant. Analyze the user's pasted bill, notice, email, or letter.
+Never give legal, medical, tax, or financial advice. Do not invent dates or amounts. If information is missing, say "Not stated".
+Return practical next steps, deadlines, money impact, and a polite draft reply. The user must approve any action.
+
+USER CONTENT:
+${text}`,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING },
+            urgency: { type: Type.STRING, enum: ['low', 'medium', 'high'] },
+            actionItems: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  action: { type: Type.STRING },
+                  deadline: { type: Type.STRING },
+                  reason: { type: Type.STRING },
+                },
+                required: ['action', 'deadline', 'reason'],
+              },
+            },
+            moneyImpact: { type: Type.STRING },
+            replyDraft: { type: Type.STRING },
+          },
+          required: ['summary', 'urgency', 'actionItems', 'moneyImpact', 'replyDraft'],
+        },
+      },
+    });
+    const result = JSON.parse(response.text || '{}');
+    return res.json({ result });
+  } catch (error) {
+    console.error('ClearDay analysis failed:', error);
+    return res.status(500).json({ error: 'Could not analyze that content. Please try again.' });
+  }
+});
+
+app.get('/api/cpx/balance', async (req, res) => {
+  const userId = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
+  if (!/^[a-zA-Z0-9_-]{8,128}$/.test(userId)) {
+    return res.status(400).json({ error: 'A valid anonymous user ID is required.' });
+  }
+  if (database) {
+    const result = await database.query<{ points: number }>(
+      'SELECT points FROM survey_reward_balances WHERE user_id = $1',
+      [userId],
+    );
+    return res.json({
+      points: result.rows[0]?.points || 0,
+      dollars: (result.rows[0]?.points || 0) / SURVEY_POINTS_PER_DOLLAR,
+      pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
+      minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
+      payoutMethod: 'PayPal',
+      payoutRequestsEnabled: false,
+    });
+  }
+  const points = cpxBalances.get(userId) || 0;
+  res.json({
+    points,
+    dollars: points / SURVEY_POINTS_PER_DOLLAR,
+    pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
+    minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
+    payoutMethod: 'PayPal',
+    payoutRequestsEnabled: false,
+  });
+});
+
 app.get('/api/cpx/survey-url', (req, res) => {
   const userId = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
   if (!cpxSecureHash) {
@@ -209,35 +291,6 @@ app.get('/api/cpx/survey-url', (req, res) => {
     subid_2: 'web',
   });
 
-  app.get('/api/cpx/balance', async (req, res) => {
-    const userId = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
-    if (!/^[a-zA-Z0-9_-]{8,128}$/.test(userId)) {
-      return res.status(400).json({ error: 'A valid anonymous user ID is required.' });
-    }
-    if (database) {
-      const result = await database.query<{ points: number }>(
-        'SELECT points FROM survey_reward_balances WHERE user_id = $1',
-        [userId],
-      );
-      return res.json({
-        points: result.rows[0]?.points || 0,
-        dollars: (result.rows[0]?.points || 0) / SURVEY_POINTS_PER_DOLLAR,
-        pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
-        minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
-        payoutMethod: 'PayPal',
-        payoutRequestsEnabled: false,
-      });
-    }
-    const points = cpxBalances.get(userId) || 0;
-    res.json({
-      points,
-      dollars: points / SURVEY_POINTS_PER_DOLLAR,
-      pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
-      minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
-      payoutMethod: 'PayPal',
-      payoutRequestsEnabled: false,
-    });
-  });
   res.json({
     enabled: true,
     url: `https://offers.cpx-research.com/index.php?${params.toString()}`,

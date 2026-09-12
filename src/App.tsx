@@ -12,10 +12,25 @@ import { LegalModal } from './components/LegalModal';
 import { CheckCircle2 } from 'lucide-react';
 import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { GamesPanel } from './components/GamesPanel';
+import { MissionControl } from './components/MissionControl';
+import { ClearDay } from './components/ClearDay';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
+function payoutSortValue(payoutSpeed: string) {
+  if (/instant|immediate/i.test(payoutSpeed)) return 0;
+  const hours = payoutSpeed.match(/(\d+)(?:\s*-\s*\d+)?\s*hours?/i);
+  if (hours) return Number(hours[1]);
+  const days = payoutSpeed.match(/(\d+)(?:\s*-\s*\d+)?\s*business days?/i);
+  return days ? Number(days[1]) * 24 : Number.MAX_SAFE_INTEGER;
+}
+
+function depositSortValue(depositRequired: string) {
+  const amount = depositRequired.match(/\$(\d+(?:\.\d+)?)/);
+  return amount ? Number(amount[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 export default function App() {
@@ -462,16 +477,16 @@ export default function App() {
         return b.incentiveValue - a.incentiveValue;
       }
       if (sortBy === 'fastest') {
-        return a.difficulty.localeCompare(b.difficulty);
+        return payoutSortValue(a.payoutSpeed) - payoutSortValue(b.payoutSpeed);
       }
       if (sortBy === 'easiest') {
-        return a.depositRequired.localeCompare(b.depositRequired);
+        return depositSortValue(a.depositRequired) - depositSortValue(b.depositRequired);
       }
       return 0;
     });
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090b0e] text-[#ededed] font-sans antialiased selection:bg-[#00f2fe]/20 selection:text-[#00f2fe]">
+    <div className="retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black">
       
       {/* Navigation */}
       <Navbar
@@ -515,6 +530,11 @@ export default function App() {
 
             {/* Container for CashBot Status & Offers List */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
+              <ClearDay />
+              <MissionControl
+                offers={liveOffers}
+                onSelectOffer={handleSelectOfferFromCouncil}
+              />
               
               {/* Offers Grid */}
               <div>

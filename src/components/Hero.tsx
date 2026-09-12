@@ -31,10 +31,16 @@ export const Hero: React.FC<HeroProps> = ({
   totalOffersCount,
 }) => {
   return (
-    <section className="relative pt-12 pb-8 border-b border-white/[0.08] overflow-hidden">
+    <section className="relative pt-8 pb-8 overflow-hidden">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_70%_0%,rgba(0,242,254,0.08),transparent_38%)]" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="retro-window">
+          <div className="retro-titlebar flex items-center justify-between text-xs">
+            <span>Welcome to signups4fastcash.com</span>
+            <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
+          </div>
+          <div className="p-4 sm:p-6">
         
         <div className="flex items-center gap-2 mb-5 text-xs font-mono text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -47,10 +53,10 @@ export const Hero: React.FC<HeroProps> = ({
             Find the offers worth your time.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
-            Compare legitimate rewards, cashback programs, survey opportunities, and signup incentives with requirements, payout timing, and fine print visible up front.
+            Compare rewards, cashback offers, and signup incentives with the actual requirements, payout timing, and fine print visible before you click through.
           </p>
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
-            We may earn a referral commission when you use some links. Merchant eligibility, rewards, fees, and payout timing can change, so review the official terms before signing up.
+            This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
@@ -138,15 +144,17 @@ export const Hero: React.FC<HeroProps> = ({
               key={cat.id}
               id={`filter-category-${cat.id}`}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+              className={`retro-button px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-[#00f2fe]/10 border border-[#00f2fe]/40 text-[#00f2fe] font-semibold shadow-sm'
-                  : 'bg-[#10141d] border border-white/[0.06] text-zinc-400 hover:text-zinc-200 hover:border-white/15'
+                  ? 'bg-blue-800 text-white font-semibold'
+                  : 'text-black'
               }`}
             >
               {cat.label}
             </button>
           ))}
+        </div>
+          </div>
         </div>
 
       </div>

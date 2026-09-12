@@ -58,10 +58,12 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="group relative rounded-lg bg-[#0e121a] border border-white/[0.07] hover:border-white/15 transition-colors duration-200 overflow-hidden flex flex-col"
+      className="retro-window group relative transition-colors duration-200 overflow-hidden flex flex-col"
     >
-      {/* Top accent border line on hover */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#00f2fe]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div className="retro-titlebar flex items-center justify-between text-xs">
+        <span>{offer.company} - offer details</span>
+        <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
+      </div>
 
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
         

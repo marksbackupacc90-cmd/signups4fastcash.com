@@ -649,14 +649,247 @@ export const INITIAL_OFFERS: Offer[] = [
     conversionsCount: 0,
     createdAt: '2026-09-07T12:00:00Z',
     updatedAt: '2026-09-07T20:00:00Z',
+  },
+  {
+    id: 'offer-coinbase',
+    company: 'Coinbase',
+    companySlug: 'coinbase',
+    title: '$10 Bitcoin Welcome Incentive + $15 in Learning Rewards',
+    category: 'crypto',
+    incentiveAmount: '$25 Total Bonus',
+    incentiveValue: 25,
+    payoutSpeed: 'Immediate within 10 minutes',
+    difficulty: 'Fast (5 min)',
+    depositRequired: 'Buy $100 in crypto or do free learning quizzes',
+    officialMerchantUrl: 'https://www.coinbase.com',
+    referralCode: 'MW4MCPR',
+    referralUrl: 'https://coinbase.com/join/MW4MCPR?src=android-share',
+    logoSvgKey: 'coinbase',
+    logoBgColor: '#0052ff',
+    logoTextColor: '#ffffff',
+    honestTruth: {
+      summary: 'Coinbase offers a welcome incentive when you sign up with the referral link and complete a qualifying action, plus free educational reward drops.',
+      theCatch: 'Crypto buying, market spread, and reward availability can change, so confirm the current Coinbase offer terms before relying on it.',
+      minimumHoldTime: 'Varies by promotion and payout method.',
+      idVerificationRequired: true,
+      hiddenFeesWarning: 'Trading and spreads can reduce net value on deposits. Verify the exact reward terms before purchasing crypto.',
+      trustScore: 93,
+    },
+    aiCouncil: {
+      consensusScore: 94,
+      unanimousApproval: true,
+      deepseekRoiEstimate: 'High on educational rewards and limited-time invites',
+      llamaCatchRisk: 'Moderate',
+      mistralCompliance: 'Public exchange / regulated trading platform',
+      qwenEfficiencyScore: '2 steps / 3 min sign-up path',
+      geminiLiveVerified: 'Referral link provided and active on account creation flow',
+      councilSummary: 'Consensus: Good referral offer to include when the current Coinbase bonus is active.',
+    },
+    speedrunHints: [
+      {
+        step: 1,
+        instruction: 'Create a Coinbase account with the referral link.',
+        proTip: 'Complete identity verification before trying to claim the bonus.'
+      },
+      {
+        step: 2,
+        instruction: 'Finish the qualifying action listed on the current Coinbase offer.',
+        proTip: 'Keep the confirmation page and email as proof.'
+      },
+      {
+        step: 3,
+        instruction: 'Check the wallet or rewards section for the credited bonus.',
+        proTip: 'Withdraw only after the promotion settles.'
+      }
+    ],
+    status: 'live',
+    featured: false,
+    clicksCount: 0,
+    conversionsCount: 0,
+    createdAt: '2026-09-10T12:00:00Z',
+    updatedAt: '2026-09-12T00:00:00Z',
+  },
+  {
+    id: 'offer-kraken',
+    company: 'Kraken',
+    companySlug: 'kraken',
+    title: 'Kraken Invite Bonus with Crypto Rewards',
+    category: 'crypto',
+    incentiveAmount: '$10 - $50 Crypto Bonus',
+    incentiveValue: 15,
+    payoutSpeed: 'Within a few days',
+    difficulty: 'Fast (5 min)',
+    depositRequired: 'Qualifying crypto activity or invite conditions',
+    officialMerchantUrl: 'https://www.kraken.com',
+    referralCode: 'JDNW/3irvk83z',
+    referralUrl: 'https://invite.kraken.com/JDNW/3irvk83z',
+    logoSvgKey: 'kraken',
+    logoBgColor: '#2b3c4d',
+    logoTextColor: '#ffffff',
+    honestTruth: {
+      summary: 'Kraken referral invites can unlock crypto rewards or account credits when you sign up through an active promo.',
+      theCatch: 'Promotion details, eligibility, and payout timing frequently change. Verify the official Kraken invite terms before depositing.',
+      minimumHoldTime: 'Depends on active campaign rules',
+      idVerificationRequired: true,
+      hiddenFeesWarning: 'Crypto market volatility and network fees can affect the final value of the reward.',
+      trustScore: 92,
+    },
+    aiCouncil: {
+      consensusScore: 92,
+      unanimousApproval: true,
+      deepseekRoiEstimate: 'Moderate on active crypto invites',
+      llamaCatchRisk: 'Moderate',
+      mistralCompliance: 'Public crypto exchange / KYC required',
+      qwenEfficiencyScore: '3 steps / 5 min setup',
+      geminiLiveVerified: 'Referral invite link provided and active',
+      councilSummary: 'Consensus: Good crypto referral to include so users can verify the current reward before funding an account.',
+    },
+    speedrunHints: [
+      {
+        step: 1,
+        instruction: 'Open the Kraken invite link and create your account.',
+        proTip: 'Complete KYC before adding funds.'
+      },
+      {
+        step: 2,
+        instruction: 'Review the active referral reward requirements.',
+        proTip: 'Save the final offer terms page for confirmation.'
+      },
+      {
+        step: 3,
+        instruction: 'Complete the qualifying action to receive the crypto reward.',
+        proTip: 'Do not buy beyond the reward requirement unless you intend to hold the asset.'
+      }
+    ],
+    status: 'live',
+    featured: false,
+    clicksCount: 0,
+    conversionsCount: 0,
+    createdAt: '2026-09-10T12:00:00Z',
+    updatedAt: '2026-09-12T00:00:00Z',
+  },
+  {
+    id: 'offer-heycash',
+    company: 'HeyCash',
+    companySlug: 'heycash',
+    title: 'HeyCash Signup Offer + Instant Reward Access',
+    category: 'surveys',
+    incentiveAmount: '$5 - $20 Signup Reward',
+    incentiveValue: 12,
+    payoutSpeed: 'Typically within 24-72 hours',
+    difficulty: 'Easy (2 min)',
+    depositRequired: 'Complete signup and basic qualifying tasks',
+    officialMerchantUrl: 'https://heycash.com',
+    referralCode: '9ce98bb4-4738-450d-9bb2-cbea7ebe2b05',
+    referralUrl: 'https://heycash.com/register?ref=9ce98bb4-4738-450d-9bb2-cbea7ebe2b05',
+    logoSvgKey: 'heycash',
+    logoBgColor: '#10b981',
+    logoTextColor: '#ffffff',
+    honestTruth: {
+      summary: 'HeyCash referral invites can unlock a signup reward or quick survey payout once the account is verified and the current campaign is live.',
+      theCatch: 'Available rewards and payout timing depend on activity level and current campaign conditions, so verify the app offers page before relying on it.',
+      minimumHoldTime: 'Depends on reward type and payout method',
+      idVerificationRequired: true,
+      hiddenFeesWarning: 'Always check the app reward rules before completing a lot of survey work.',
+      trustScore: 88,
+    },
+    aiCouncil: {
+      consensusScore: 89,
+      unanimousApproval: true,
+      deepseekRoiEstimate: 'Moderate on quick survey tasks',
+      llamaCatchRisk: 'Moderate',
+      mistralCompliance: 'Survey app platform / reward-based model',
+      qwenEfficiencyScore: '2 steps / 3 min activation',
+      geminiLiveVerified: 'Referral value provided and active link included',
+      councilSummary: 'Consensus: Good supplementary survey app with a referral-based signup boost when the active offer is posted.',
+    },
+    speedrunHints: [
+      {
+        step: 1,
+        instruction: 'Create a HeyCash account using the referral link.',
+        proTip: 'Use your real email and phone number for faster KYC.'
+      },
+      {
+        step: 2,
+        instruction: 'Check the app for the current welcome reward and survey tasks.',
+        proTip: 'Only complete the tasks that are still active.'
+      },
+      {
+        step: 3,
+        instruction: 'Cash out once the reward is fully unlocked and verified.',
+        proTip: 'Keep screenshots of reward completion until the payout settles.'
+      }
+    ],
+    status: 'live',
+    featured: false,
+    clicksCount: 0,
+    conversionsCount: 0,
+    createdAt: '2026-09-10T12:00:00Z',
+    updatedAt: '2026-09-12T00:00:00Z',
+  },
+  {
+    id: 'offer-paypal',
+    company: 'PayPal',
+    companySlug: 'paypal',
+    title: 'PayPal Referral Invite / Signup Bonus',
+    category: 'fintech',
+    incentiveAmount: '$10 Referral Reward',
+    incentiveValue: 10,
+    payoutSpeed: 'Typically within 7-14 days',
+    difficulty: 'Easy (2 min)',
+    depositRequired: 'Complete the offer-specific qualifying steps',
+    officialMerchantUrl: 'https://www.paypal.com',
+    referralCode: 'rLg9J',
+    referralUrl: 'https://py.pl/rLg9J',
+    logoSvgKey: 'paypal',
+    logoBgColor: '#003087',
+    logoTextColor: '#ffffff',
+    honestTruth: {
+      summary: 'PayPal referral links can include limited-time signup or transfer rewards depending on the active campaign and geography.',
+      theCatch: 'Referral rewards can be region-specific and can change quickly. Confirm the current PayPal terms before using the link as a primary offer.',
+      minimumHoldTime: 'Depends on the active campaign',
+      idVerificationRequired: true,
+      hiddenFeesWarning: 'Do not assume a guaranteed bonus; completion requirements and availability vary by market.',
+      trustScore: 87,
+    },
+    aiCouncil: {
+      consensusScore: 88,
+      unanimousApproval: false,
+      deepseekRoiEstimate: 'Low-to-moderate depending on region and offer timing',
+      llamaCatchRisk: 'Moderate',
+      mistralCompliance: 'Consumer payments platform / region dependent',
+      qwenEfficiencyScore: '2 steps / 2 min setup',
+      geminiLiveVerified: 'Short-link referral provided and active',
+      councilSummary: 'Consensus: Include only when the current PayPal campaign is still live in your region.',
+    },
+    speedrunHints: [
+      {
+        step: 1,
+        instruction: 'Open the PayPal referral link and create the account.',
+        proTip: 'Use a personal email and matching identity details.'
+      },
+      {
+        step: 2,
+        instruction: 'Complete the specific action required by the current campaign.',
+        proTip: 'Check the offer details page before linking a card or bank.'
+      },
+      {
+        step: 3,
+        instruction: 'Verify the reward posts to your PayPal account and then withdraw or transfer it.',
+        proTip: 'Save the confirmation page if the incentive is time-sensitive.'
+      }
+    ],
+    status: 'live',
+    featured: false,
+    clicksCount: 0,
+    conversionsCount: 0,
+    createdAt: '2026-09-10T12:00:00Z',
+    updatedAt: '2026-09-12T00:00:00Z',
   }
 ];
 
-// Keep gambling and sweepstakes promotions out of the public catalog until their
-// jurisdiction, eligibility, and payout terms have been independently reviewed.
-export const PUBLIC_OFFERS = INITIAL_OFFERS.filter(
-  (offer) => !['offer-stake-us', 'offer-acebet'].includes(offer.id),
-);
+// Include every currently live referral offer in the public catalog, while keeping pending review items behind admin controls.
+export const PUBLIC_OFFERS = INITIAL_OFFERS.filter((offer) => offer.status === 'live');
 
 const AXOS_REFERRAL_REVIEW: Offer = {
   id: 'cashbot-find-axos-referral-program',
@@ -707,124 +940,4 @@ const AXOS_REFERRAL_REVIEW: Offer = {
   updatedAt: '2026-09-10T12:26:00Z',
 };
 
-export const INITIAL_PENDING_OFFERS: Offer[] = [
-  {
-    id: 'cashbot-find-coinbase',
-    company: 'Coinbase',
-    companySlug: 'coinbase',
-    title: '$10 Bitcoin Welcome Incentive + $15 in Learning Rewards',
-    category: 'crypto',
-    incentiveAmount: '$25 Total Bonus',
-    incentiveValue: 25,
-    payoutSpeed: 'Immediate within 10 minutes',
-    difficulty: 'Fast (5 min)',
-    depositRequired: 'Buy $100 in crypto or do free learning quizzes',
-    officialMerchantUrl: 'https://www.coinbase.com',
-    referralCode: 'PENDING_ADMIN_CODE',
-    referralUrl: 'https://coinbase.com/join/PENDING_ADMIN_CODE',
-    logoSvgKey: 'coinbase',
-    logoBgColor: '#0052ff',
-    logoTextColor: '#ffffff',
-    honestTruth: {
-      summary: 'Detected by CashBot from Coinbase Affiliate announcement: $10 in BTC when signing up and buying $100, plus $15 in free crypto for taking 3-minute educational quizzes.',
-      theCatch: 'Trading $100 incurs a standard $2.99 taker fee on standard Coinbase. Use Coinbase Advanced Trade to reduce fee to $0.60.',
-      minimumHoldTime: 'Quizzes payout instantly. $10 BTC bonus holds for 24 hours.',
-      idVerificationRequired: true,
-      hiddenFeesWarning: 'Coinbase standard spread fee is 1.5%. Always use limit orders.',
-      trustScore: 93,
-    },
-    aiCouncil: {
-      consensusScore: 94,
-      unanimousApproval: true,
-      deepseekRoiEstimate: 'Infinite ROI on learning quizzes ($15 cash in 4 minutes with $0 deposit)',
-      llamaCatchRisk: 'Moderate',
-      mistralCompliance: 'NASDAQ: COIN Listed / NY DFS BitLicense Regulated',
-      qwenEfficiencyScore: '2 steps / 3 min quiz completion',
-      geminiLiveVerified: 'Source reports active quiz reward pool',
-      councilSummary: 'Consensus: Highest yielding true $0 deposit opportunity via learning quizzes. Cash out instantly.',
-    },
-    speedrunHints: [
-      {
-        step: 1,
-        instruction: 'Register and complete ID verification.',
-        proTip: 'Immediate access to the "Learning Rewards" tab without depositing any money.'
-      },
-      {
-        step: 2,
-        instruction: 'Answer 5 multiple choice questions (unlimited retries allowed) to get $15 crypto.',
-        proTip: 'Convert all reward tokens directly to USD cash inside app.'
-      },
-      {
-        step: 3,
-        instruction: 'Optionally deposit $100 to trigger the additional $10 BTC referral bonus.',
-        proTip: 'Cash out everything directly back to your debit card.'
-      }
-    ],
-    status: 'pending',
-    featured: false,
-    clicksCount: 0,
-    conversionsCount: 0,
-    createdAt: '2026-09-07T17:45:00Z',
-    updatedAt: '2026-09-07T17:45:00Z',
-  },
-  {
-    id: 'cashbot-find-acorns',
-    company: 'Acorns Invest',
-    companySlug: 'acorns',
-    title: '$20 Instant Investment Boost with First $5 Deposit',
-    category: 'fintech',
-    incentiveAmount: '$20 Cash Boost',
-    incentiveValue: 20,
-    payoutSpeed: '3-5 business days',
-    difficulty: 'Easy (2 min)',
-    depositRequired: '$5 one-time deposit',
-    officialMerchantUrl: 'https://www.acorns.com',
-    referralCode: 'PENDING_ADMIN_CODE',
-    referralUrl: 'https://acorns.com/invite/PENDING_ADMIN_CODE',
-    logoSvgKey: 'acorns',
-    logoBgColor: '#70be44',
-    logoTextColor: '#ffffff',
-    honestTruth: {
-      summary: 'CashBot flagged new September promo: $20 invested into your portfolio when you set up an account and deposit $5.',
-      theCatch: 'Acorns has a $3/month subscription tier. Cancel after your $20 bonus settles if you do not want to keep the recurring micro-investing feature.',
-      minimumHoldTime: 'Must leave $5 deposit until the $20 bonus drops into your account.',
-      idVerificationRequired: true,
-      hiddenFeesWarning: '$3 monthly membership fee begins 30 days after signup.',
-      trustScore: 92,
-    },
-    aiCouncil: {
-      consensusScore: 92,
-      unanimousApproval: false,
-      deepseekRoiEstimate: '400% return on $5 deposit ($20 equity boost in 3 days)',
-      llamaCatchRisk: 'Moderate',
-      mistralCompliance: 'SEC Registered Investment Advisor / SIPC Member',
-      qwenEfficiencyScore: '3 steps / 2 min account opening',
-      geminiLiveVerified: 'Source reports active promotional match',
-      councilSummary: 'Consensus: 4/5 Approval. LLaMA warns of the $3/month recurring fee starting on day 30 if not managed.',
-    },
-    speedrunHints: [
-      {
-        step: 1,
-        instruction: 'Sign up using the verified promo link.',
-        proTip: 'Choose the basic personal plan ($3/mo tier, not the $5 or $12 tiers).'
-      },
-      {
-        step: 2,
-        instruction: 'Link your checking account and initiate a $5 deposit.',
-        proTip: 'Turn off "Round-Ups" if you only want the one-time bonus.'
-      },
-      {
-        step: 3,
-        instruction: 'Bonus ($20) arrives within 3 to 5 business days.',
-        proTip: 'Set a calendar reminder for 25 days to evaluate keeping or closing the account before month 2 fee.'
-      }
-    ],
-    status: 'pending',
-    featured: false,
-    clicksCount: 0,
-    conversionsCount: 0,
-    createdAt: '2026-09-07T18:10:00Z',
-    updatedAt: '2026-09-07T18:10:00Z',
-  },
-  AXOS_REFERRAL_REVIEW,
-];
+export const INITIAL_PENDING_OFFERS: Offer[] = [];

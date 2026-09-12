@@ -20,25 +20,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   onCashOut,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#090b0e]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveTab('offers')}
-            className="flex items-center gap-2.5 text-left group focus:outline-none"
+            className="retro-button flex items-center gap-2.5 text-left group focus:outline-none"
             id="brand-logo-btn"
           >
-            <div className="w-8 h-8 rounded-md bg-[#10141d] border border-white/10 flex items-center justify-center text-[#38bdf8] group-hover:border-[#38bdf8]/40 transition-colors shadow-sm">
-              <span className="font-black text-sm text-[#00f2fe]">4*</span>
+            <div className="w-9 h-9 rounded-xl border border-cyan-300/40 bg-gradient-to-br from-cyan-300 to-violet-400 flex items-center justify-center text-slate-950 shadow-[0_0_24px_rgba(56,189,248,.35)]">
+              <span className="font-black text-sm">4<span className="text-violet-900">*</span></span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold tracking-tight text-base sm:text-lg text-white group-hover:text-[#38bdf8] transition-colors">
-                  signups4<span className="text-[#00f2fe]">fastcash.com</span>
+                <span className="font-mono font-bold tracking-tight text-base sm:text-lg text-black">
+                  signups4<span className="text-cyan-300">fastcash.com</span>
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono text-emerald-400">
+                <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-300/20 text-[11px] font-mono text-emerald-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   Verified terms shown
                 </span>
@@ -48,14 +48,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Center / Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 p-1 rounded-lg bg-[#10141d] border border-white/[0.06]">
+        <nav className="hidden md:flex items-center gap-1 p-1 border-2 border-gray-600 border-t-white border-l-white">
           <button
             id="nav-offers-tab"
             onClick={() => setActiveTab('offers')}
-            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+            className={`retro-button px-3.5 py-1.5 text-xs font-medium transition-all ${
               activeTab === 'offers'
-                ? 'bg-white/10 text-white shadow-sm font-semibold'
-                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-blue-800 text-white font-semibold'
+                : 'text-black'
             }`}
           >
             Offers
@@ -63,17 +63,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-surveys-tab"
             onClick={onSelectSurveys}
-            className="px-3.5 py-1.5 text-xs font-medium rounded-md text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-all"
+            className="retro-button px-3.5 py-1.5 text-xs font-medium transition-all"
           >
             Surveys
           </button>
           <button
             id="nav-games-tab"
             onClick={() => setActiveTab('games')}
-            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+            className={`retro-button px-3.5 py-1.5 text-xs font-medium transition-all ${
               activeTab === 'games'
-                ? 'bg-violet-400 text-black shadow-sm font-semibold'
-                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                ? 'bg-blue-800 text-white font-semibold'
+                : 'text-black'
             }`}
           >
             Games
@@ -81,10 +81,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-install-app"
             onClick={onInstallApp}
-            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+            className={`retro-button px-3.5 py-1.5 text-xs font-medium transition-all ${
               installAvailable
-                ? 'text-cyan-300 hover:text-white hover:bg-cyan-400/10'
-                : 'text-zinc-500 hover:text-white hover:bg-white/[0.04]'
+                ? 'text-blue-800'
+                : 'text-black'
             }`}
             title={installAvailable ? 'Install signups4fastcash as an app' : 'View app installation instructions'}
           >
@@ -96,14 +96,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden sm:block text-right">
             <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Balance</div>
-            <div className="text-xs font-mono font-bold text-emerald-300">
+            <div className="text-xs font-mono font-bold text-green-800">
               {rewardPoints.toLocaleString()} pts · ${(rewardPoints / 100).toFixed(2)}
             </div>
           </div>
           <button
             id="nav-cashout-btn"
             onClick={onCashOut}
-            className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-400/20"
+            className="retro-button px-2.5 py-1.5 text-xs font-semibold"
           >
             Cash Out
           </button>
