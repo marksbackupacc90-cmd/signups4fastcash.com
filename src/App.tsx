@@ -91,6 +91,24 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
+    const storageKey = 'signups4fastcash_visitor_id';
+    let visitorId = localStorage.getItem(storageKey);
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      localStorage.setItem(storageKey, visitorId);
+    }
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('utm_source')
+      ? `${params.get('utm_source')}:${params.get('utm_medium') || 'unknown'}`
+      : document.referrer ? new URL(document.referrer).hostname : 'direct';
+    void fetch('/api/analytics/pageview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
+    });
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.removeItem('signups4fastcash_admin_unlocked');
     } catch {

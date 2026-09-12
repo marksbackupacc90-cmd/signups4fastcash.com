@@ -77,6 +77,11 @@ let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
 };
+let visitorAnalyticsStore = {
+  totalPageViews: 0,
+  uniqueVisitors: new Set<string>(),
+  sources: new Map<string, number>(),
+};
 
 async function initializeOfferStore() {
   if (!database) {
@@ -118,6 +123,15 @@ async function initializeOfferStore() {
       total_conversions INTEGER NOT NULL DEFAULT 0
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS visitor_events (
+      id TEXT PRIMARY KEY,
+      visitor_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      path TEXT NOT NULL,
+      viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
   await database.query(
     `INSERT INTO analytics_counters (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
   );
@@ -129,6 +143,19 @@ async function initializeOfferStore() {
       'SELECT total_clicks, total_conversions FROM analytics_counters WHERE id = 1',
     ),
   ]);
+  const visitorRows = await database.query<{ visitor_id: string; source: string; total: string }>(
+    `SELECT visitor_id, source, COUNT(*)::text AS total
+     FROM visitor_events GROUP BY visitor_id, source`,
+  );
+  const sourceTotals = new Map<string, number>();
+  visitorRows.rows.forEach((row) => {
+    sourceTotals.set(row.source, (sourceTotals.get(row.source) || 0) + Number(row.total));
+  });
+  visitorAnalyticsStore = {
+    totalPageViews: visitorRows.rows.reduce((sum, row) => sum + Number(row.total), 0),
+    uniqueVisitors: new Set(visitorRows.rows.map((row) => row.visitor_id)),
+    sources: sourceTotals,
+  };
   subscribersStore = subscribers.rows.map((subscriber) => ({
     id: subscriber.id,
     email: subscriber.email,
@@ -990,6 +1017,45 @@ app.post('/api/analytics/track', (req, res) => {
   persist()
     .then(() => res.json({ success: true, stats: analyticsStore }))
     .catch(() => res.status(500).json({ error: 'Could not record analytics' }));
+});
+
+app.post('/api/analytics/pageview', async (req, res) => {
+  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.trim() : '';
+  const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '/';
+  const source = typeof req.body?.source === 'string' && req.body.source.trim()
+    ? req.body.source.trim().slice(0, 100)
+    : 'direct';
+  if (!visitorId || visitorId.length > 100) {
+    return res.status(400).json({ error: 'A visitor identifier is required.' });
+  }
+
+  visitorAnalyticsStore.totalPageViews += 1;
+  visitorAnalyticsStore.uniqueVisitors.add(visitorId);
+  visitorAnalyticsStore.sources.set(source, (visitorAnalyticsStore.sources.get(source) || 0) + 1);
+
+  if (database) {
+    try {
+      await database.query(
+        `INSERT INTO visitor_events (id, visitor_id, source, path) VALUES ($1, $2, $3, $4)`,
+        [randomUUID(), visitorId, source, path],
+      );
+    } catch (error) {
+      console.error('Could not persist visitor event:', error);
+      return res.status(500).json({ error: 'Could not record page view.' });
+    }
+  }
+  return res.json({ success: true });
+});
+
+app.get('/api/admin/analytics/visitors', requireAdmin, (_req, res) => {
+  const sources = [...visitorAnalyticsStore.sources.entries()]
+    .map(([source, pageViews]) => ({ source, pageViews }))
+    .sort((a, b) => b.pageViews - a.pageViews);
+  return res.json({
+    totalPageViews: visitorAnalyticsStore.totalPageViews,
+    uniqueVisitors: visitorAnalyticsStore.uniqueVisitors.size,
+    sources,
+  });
 });
 
 // API: Newsletter subscription

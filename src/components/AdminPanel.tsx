@@ -53,6 +53,12 @@ interface OutreachResult {
   disclosure: string;
 }
 
+interface VisitorAnalytics {
+  totalPageViews: number;
+  uniqueVisitors: number;
+  sources: { source: string; pageViews: number }[];
+}
+
 export interface UserReferralPreset {
   company: string;
   code: string;
@@ -124,6 +130,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
   const [outreachLoading, setOutreachLoading] = useState(false);
   const [outreachError, setOutreachError] = useState<string | null>(null);
+  const [visitorAnalytics, setVisitorAnalytics] = useState<VisitorAnalytics | null>(null);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -161,6 +168,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   ]);
 
   const selectedPendingOffer = pendingOffers.find((o) => o.id === selectedPendingId);
+
+  useEffect(() => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    fetch('/api/admin/analytics/visitors', {
+      headers: token ? { 'x-admin-token': token } : {},
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Could not load visitor analytics.');
+        return response.json() as Promise<VisitorAnalytics>;
+      })
+      .then(setVisitorAnalytics)
+      .catch((error) => console.error(error));
+  }, []);
 
   const handleOutreachAssistant = async () => {
     if (!outreachTask.trim()) {
@@ -296,6 +316,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-6">
+      {visitorAnalytics && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Unique visitors</div>
+            <div className="mt-2 text-2xl font-mono font-bold text-white">{visitorAnalytics.uniqueVisitors.toLocaleString()}</div>
+            <div className="mt-1 text-[11px] text-zinc-500">Privacy-preserving browser IDs</div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Page views</div>
+            <div className="mt-2 text-2xl font-mono font-bold text-white">{visitorAnalytics.totalPageViews.toLocaleString()}</div>
+            <div className="mt-1 text-[11px] text-zinc-500">Recorded site visits</div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Top source</div>
+            <div className="mt-2 truncate text-lg font-mono font-bold text-white">{visitorAnalytics.sources[0]?.source || 'No data yet'}</div>
+            <div className="mt-1 text-[11px] text-zinc-500">{visitorAnalytics.sources[0]?.pageViews || 0} page views</div>
+          </div>
+        </div>
+      )}
       
       {/* Top Banner */}
       <div className="p-4 sm:p-5 rounded-xl bg-[#0f1420] border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
