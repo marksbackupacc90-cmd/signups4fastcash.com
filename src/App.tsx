@@ -262,7 +262,7 @@ export default function App() {
             if (permission === 'granted') {
               setPushEnabled(true);
               showToast('Push notifications enabled.');
-              safeShowNotification('signups4fastcash.com alerts active', {
+              safeShowNotification('Signups4FastCash.com alerts active', {
                 body: 'New high-value offer alerts will appear here.',
                 icon: '/favicon.ico',
               });
@@ -412,7 +412,7 @@ export default function App() {
       return;
     }
 
-    showToast(`Published ${fullOffer.company} to signups4fastcash.com!`);
+    showToast(`Published ${fullOffer.company} to Signups4FastCash.com!`);
   };
 
   const handleSubscribeNewsletter = async (email: string, frequency: 'instant' | 'daily' | 'weekly') => {
@@ -628,6 +628,14 @@ export default function App() {
         onTogglePush={handleTogglePush}
         pushEnabled={pushEnabled}
         onOpenLegal={setLegalSection}
+        onSelectOffers={() => {
+          setActiveTab('offers');
+          window.setTimeout(() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth' }), 0);
+        }}
+        onSelectSurveys={() => {
+          setActiveTab('surveys');
+          window.setTimeout(() => document.getElementById('surveys')?.scrollIntoView({ behavior: 'smooth' }), 0);
+        }}
         onSelectAdmin={() => {
           if (isAdminUnlocked) {
             setActiveTab('admin');

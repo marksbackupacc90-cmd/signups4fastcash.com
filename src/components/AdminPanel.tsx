@@ -1046,7 +1046,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type="submit"
             className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-mono font-bold text-xs transition-colors"
           >
-            Publish Custom Offer to signups4fastcash.com
+            Publish Custom Offer to Signups4FastCash.com
           </button>
         </form>
       )}

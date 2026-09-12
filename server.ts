@@ -176,6 +176,11 @@ app.post('/api/auth/username', async (req, res) => {
   }
   try {
     if (database) {
+      const taken = await database.query(
+        'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1) AND id <> $2 LIMIT 1',
+        [username, user.id],
+      );
+      if (taken.rowCount) return res.status(409).json({ error: 'Username taken. Please pick another.' });
       const result = await database.query(
         'UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, username',
         [username, user.id],
@@ -211,6 +216,11 @@ app.put('/api/auth/profile', async (req, res) => {
   if (state && !/^[A-Z]{2}$/.test(state)) return res.status(400).json({ error: 'Choose a valid US state.' });
   try {
     if (database) {
+      const taken = await database.query(
+        'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1) AND id <> $2 LIMIT 1',
+        [username, user.id],
+      );
+      if (taken.rowCount) return res.status(409).json({ error: 'Username taken. Please pick another.' });
       const result = await database.query(
         `UPDATE users SET username = $1, paypal_email = NULLIF($2, ''), date_of_birth = NULLIF($3, '')::date,
          sex = NULLIF($4, ''), state = NULLIF($5, ''), updated_at = NOW()
@@ -327,6 +337,10 @@ async function initializeOfferStore() {
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS state TEXT`);
+  await database.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique
+    ON users (LOWER(username)) WHERE username IS NOT NULL
+  `);
   await database.query(`
     CREATE TABLE IF NOT EXISTS survey_payout_requests (
       id TEXT PRIMARY KEY,
@@ -481,7 +495,7 @@ app.post('/api/life-admin/analyze', async (req, res) => {
   }
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-2.5-flash',
       contents: `You are ClearDay, a careful life-admin assistant. Analyze the user's pasted bill, notice, email, or letter.
 Never give legal, medical, tax, or financial advice. Do not invent dates or amounts. If information is missing, say "Not stated".
 Return practical next steps, deadlines, money impact, and a polite draft reply. The user must approve any action.
@@ -806,7 +820,7 @@ app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-2.5-flash',
       contents: `You are a cautious outreach planning assistant for signups4fastcash.com.
 Create a compliant, human-reviewable outreach plan from the owner's task.
 You may suggest public search terms and draft one post, but you must never recommend mass-posting,
@@ -970,7 +984,7 @@ For each offer, return:
    - councilSummary (a 1-2 sentence multi-model consensus endorsement)`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -1177,7 +1191,7 @@ Target category: ${targetCategory || 'Any'}
 Provide a structured consensus response answering the user's specific scenario with recommendations, individual AI model voting breakdowns, and an actionable speedrun execution plan.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         contents: systemInstruction,
         config: {
           responseMimeType: 'application/json',

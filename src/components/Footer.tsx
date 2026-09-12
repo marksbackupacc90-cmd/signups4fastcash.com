@@ -11,6 +11,8 @@ interface FooterProps {
   isAdminUnlocked?: boolean;
   theme?: 'dark' | 'light';
   onToggleTheme?: () => void;
+  onSelectOffers: () => void;
+  onSelectSurveys: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -22,6 +24,8 @@ export const Footer: React.FC<FooterProps> = ({
   isAdminUnlocked = false,
   theme = 'dark',
   onToggleTheme,
+  onSelectOffers,
+  onSelectSurveys,
 }) => {
   return (
     <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
@@ -40,7 +44,7 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             
             <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
-              signups4fastcash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.
+              Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.
             </p>
             <p className="text-zinc-500 text-xs leading-relaxed max-w-md">
               Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href="mailto:support@signups4fastcash.com">support@signups4fastcash.com</a>. Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.
@@ -61,14 +65,14 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             <ul className="space-y-1.5 text-zinc-400 font-sans">
               <li>
-                <a href="#offers" className="hover:text-white transition-colors">
+                <button onClick={onSelectOffers} className="hover:text-white transition-colors">
                   All Available Offers
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#surveys" className="hover:text-white transition-colors">
+                <button onClick={onSelectSurveys} className="hover:text-white transition-colors">
                   Surveys &amp; Rewards
-                </a>
+                </button>
               </li>
               <li>
                 <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
@@ -116,7 +120,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Bottom copyright & disclaimer */}
         <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-zinc-500">
           <div>
-            &copy; {new Date().getFullYear()} signups4fastcash.com — All rights reserved.
+            &copy; {new Date().getFullYear()} Signups4FastCash.com — All rights reserved.
           </div>
           <div className="flex items-center gap-4">
             <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How offers work</a>
