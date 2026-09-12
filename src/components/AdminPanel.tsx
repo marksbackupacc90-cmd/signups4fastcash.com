@@ -44,6 +44,15 @@ interface AdminPanelProps {
   onLockAdmin?: () => void;
 }
 
+interface OutreachResult {
+  summary: string;
+  safetyNotes: string[];
+  searchQueries: string[];
+  workflow: { step: number; action: string; reason: string }[];
+  draftPost: string;
+  disclosure: string;
+}
+
 export interface UserReferralPreset {
   company: string;
   code: string;
@@ -109,7 +118,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   blastLogs,
   onLockAdmin,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts'>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant'>('live');
+  const [outreachTask, setOutreachTask] = useState('');
+  const [outreachContext, setOutreachContext] = useState('');
+  const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
+  const [outreachLoading, setOutreachLoading] = useState(false);
+  const [outreachError, setOutreachError] = useState<string | null>(null);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -147,6 +161,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   ]);
 
   const selectedPendingOffer = pendingOffers.find((o) => o.id === selectedPendingId);
+
+  const handleOutreachAssistant = async () => {
+    if (!outreachTask.trim()) {
+      setOutreachError('Describe the outreach task first.');
+      return;
+    }
+    setOutreachLoading(true);
+    setOutreachError(null);
+    setOutreachResult(null);
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    try {
+      const response = await fetch('/api/admin/outreach-assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({ task: outreachTask, context: outreachContext }),
+      });
+      const data = await response.json().catch(() => null) as { result?: OutreachResult; error?: string } | null;
+      if (!response.ok || !data?.result) {
+        throw new Error(data?.error || 'The outreach assistant could not complete this task.');
+      }
+      setOutreachResult(data.result);
+    } catch (error) {
+      setOutreachError(error instanceof Error ? error.message : 'The outreach assistant could not complete this task.');
+    } finally {
+      setOutreachLoading(false);
+    }
+  };
 
   // Sync default values when changing pending selection
   const handleSelectPending = (offer: Offer) => {
@@ -337,6 +378,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           >
             <Send className="w-3.5 h-3.5 text-[#00f2fe]" />
             Blast Logs ({blastLogs.length})
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('assistant')}
+            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
+              activeAdminTab === 'assistant'
+                ? 'bg-cyan-400/15 text-cyan-200 font-bold border border-cyan-400/30'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+            Outreach Assistant
           </button>
         </div>
       </div>
@@ -991,6 +1044,92 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeAdminTab === 'assistant' && (
+        <div className="space-y-4">
+          <div className="p-5 rounded-xl bg-[#0e121a] border border-cyan-400/20 space-y-4">
+            <div>
+              <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-300" />
+                AI Outreach Assistant
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                Give the assistant a promotion task. It will create a human-reviewable plan, search phrases,
+                rule checks, and one customized draft. It never auto-posts, mass-posts, or bypasses moderation.
+              </p>
+            </div>
+            <textarea
+              rows={4}
+              value={outreachTask}
+              onChange={(e) => setOutreachTask(e.target.value)}
+              placeholder="Example: Find relevant Facebook communities for a transparent signup-bonus comparison resource and prepare one post for a group that allows self-promotion."
+              className="w-full rounded-lg border border-white/10 bg-[#090b0e] px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-cyan-400 focus:outline-none"
+            />
+            <textarea
+              rows={2}
+              value={outreachContext}
+              onChange={(e) => setOutreachContext(e.target.value)}
+              placeholder="Optional context: audience, location, offer category, or a group's visible rules."
+              className="w-full rounded-lg border border-white/10 bg-[#090b0e] px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-cyan-400 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleOutreachAssistant}
+              disabled={outreachLoading}
+              className="rounded-lg bg-cyan-400 px-4 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-60"
+            >
+              {outreachLoading ? 'Preparing safe outreach plan...' : 'Create outreach plan'}
+            </button>
+            {outreachError && (
+              <div className="rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">
+                {outreachError}
+              </div>
+            )}
+          </div>
+
+          {outreachResult && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+                <h4 className="text-sm font-bold text-white">Plan summary</h4>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">{outreachResult.summary}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-200">Search phrases</h4>
+                  <ul className="mt-3 space-y-2 text-xs text-zinc-300">
+                    {outreachResult.searchQueries.map((query) => <li key={query}>• {query}</li>)}
+                  </ul>
+                </div>
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-5">
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-200">Safety checks</h4>
+                  <ul className="mt-3 space-y-2 text-xs text-amber-100/80">
+                    {outreachResult.safetyNotes.map((note) => <li key={note}>• {note}</li>)}
+                  </ul>
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white">Human workflow</h4>
+                <ol className="mt-3 space-y-3">
+                  {outreachResult.workflow.map((item) => (
+                    <li key={item.step} className="text-xs text-zinc-300">
+                      <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-200">{item.step}</span>
+                      <strong className="text-white">{item.action}</strong>
+                      <span className="ml-2 text-zinc-500">{item.reason}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-5">
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-200">Draft post</h4>
+                <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed text-zinc-100">{outreachResult.draftPost}</pre>
+                <p className="mt-4 border-t border-white/10 pt-3 text-xs text-emerald-100/80">
+                  Disclosure: {outreachResult.disclosure}
+                </p>
+              </div>
             </div>
           )}
         </div>

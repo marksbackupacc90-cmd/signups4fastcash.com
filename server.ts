@@ -444,6 +444,75 @@ function hasValidAdminToken(token: string | undefined) {
   return true;
 }
 
+app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
+  const task = typeof req.body?.task === 'string' ? req.body.task.trim() : '';
+  const context = typeof req.body?.context === 'string' ? req.body.context.trim() : '';
+  if (!task || task.length > 4000) {
+    return res.status(400).json({ error: 'Enter an outreach task up to 4,000 characters.' });
+  }
+
+  const ai = getGenAI();
+  if (!ai) {
+    return res.status(503).json({ error: 'AI outreach is not configured. Add GEMINI_API_KEY to enable the assistant.' });
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: `You are a cautious outreach planning assistant for signups4fastcash.com.
+Create a compliant, human-reviewable outreach plan from the owner's task.
+You may suggest public search terms and draft one post, but you must never recommend mass-posting,
+automated posting, scraping private communities, bypassing moderation, fake engagement, or evading platform limits.
+Assume every community has its own rules. Tell the owner to inspect rules and obtain permission when unclear.
+Do not promise traffic, earnings, approval, or conversions. Keep affiliate disclosures visible.
+Return practical steps that a human can perform one community at a time.
+
+OWNER TASK:
+${task}
+
+OPTIONAL CONTEXT:
+${context || 'No additional context.'}`,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING },
+            safetyNotes: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+            searchQueries: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+            workflow: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  step: { type: Type.NUMBER },
+                  action: { type: Type.STRING },
+                  reason: { type: Type.STRING },
+                },
+                required: ['step', 'action', 'reason'],
+              },
+            },
+            draftPost: { type: Type.STRING },
+            disclosure: { type: Type.STRING },
+          },
+          required: ['summary', 'safetyNotes', 'searchQueries', 'workflow', 'draftPost', 'disclosure'],
+        },
+      },
+    });
+    const result = JSON.parse(response.text || '{}');
+    return res.json({ result });
+  } catch (error) {
+    console.error('Outreach assistant failed:', error);
+    return res.status(500).json({ error: 'The outreach assistant could not complete this task.' });
+  }
+});
+
 app.put('/api/offers/:id', requireAdmin, async (req, res) => {
   const index = liveOffersStore.findIndex((offer) => offer.id === req.params.id);
   if (index === -1) {
