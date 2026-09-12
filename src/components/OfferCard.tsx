@@ -258,7 +258,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             onClick={handleClaim}
             id={`claim-offer-btn-${offer.id}`}
             aria-label={`Claim ${offer.incentiveAmount} offer from ${offer.company}`}
-            className="w-full py-2.5 px-4 rounded-lg bg-white text-black font-semibold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm group/btn active:scale-[0.99]"
+            className="w-full py-2.5 px-4 rounded-lg bg-blue-600 text-green-300 font-semibold hover:bg-blue-500 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm group/btn active:scale-[0.99]"
           >
             <span>Claim {offer.incentiveAmount} on {offer.company}</span>
             <ExternalLink className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
