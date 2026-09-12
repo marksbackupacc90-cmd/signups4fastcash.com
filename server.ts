@@ -64,6 +64,11 @@ function getGenAI(): GoogleGenAI | null {
   return genAI;
 }
 
+function containsSensitiveCredentials(value: string) {
+  return /(?:password|passwd|passcode|login|username|email)\s*[:=]?\s+\S+/i.test(value)
+    || /(?:facebook|instagram|google|gmail|outlook|yahoo)\s+\S+@\S+/i.test(value);
+}
+
 // In-memory / server state for demo & persistence
 let liveOffersStore: any[] = [];
 let pendingOffersStore: any[] = [];
@@ -449,6 +454,11 @@ app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
   const context = typeof req.body?.context === 'string' ? req.body.context.trim() : '';
   if (!task || task.length > 4000) {
     return res.status(400).json({ error: 'Enter an outreach task up to 4,000 characters.' });
+  }
+  if (containsSensitiveCredentials(task) || containsSensitiveCredentials(context)) {
+    return res.status(400).json({
+      error: 'Do not enter passwords, login details, passcodes, or private account information. Review the text and try again.',
+    });
   }
 
   const ai = getGenAI();

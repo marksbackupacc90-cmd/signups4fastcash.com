@@ -1061,6 +1061,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Give the assistant a promotion task. It will create a human-reviewable plan, search phrases,
                 rule checks, and one customized draft. It never auto-posts, mass-posts, or bypasses moderation.
               </p>
+              <p className="mt-2 rounded border border-red-400/20 bg-red-400/5 px-3 py-2 text-xs leading-relaxed text-red-200">
+                Never enter passwords, login details, passcodes, private messages, or account credentials here.
+                The assistant cannot log in or publish for you.
+              </p>
             </div>
             <textarea
               rows={4}
