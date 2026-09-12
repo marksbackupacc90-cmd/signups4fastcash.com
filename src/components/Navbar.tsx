@@ -30,7 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">
-                  signups4<span className="text-cyan-300">fastcash.com</span>
+                  Signups4<span className="text-cyan-300">FastCash.com</span>
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-300/20 text-[11px] font-mono text-emerald-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
