@@ -13,11 +13,16 @@ import { LegalModal } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
 import { CheckCircle2 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
+import { AccountPanel } from './components/AccountPanel';
 
 interface AuthUser {
   id: string;
   email: string;
   username: string | null;
+  paypalEmail?: string | null;
+  dateOfBirth?: string | null;
+  sex?: string | null;
+  state?: string | null;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -39,7 +44,7 @@ function depositSortValue(depositRequired: string) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'offers' | 'admin'>('offers');
+  const [activeTab, setActiveTab] = useState<'offers' | 'surveys' | 'admin'>('offers');
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     localStorage.getItem('signups4fastcash_theme') === 'light' ? 'light' : 'dark'
   );
@@ -102,6 +107,8 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [authOpenRequest, setAuthOpenRequest] = useState(0);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_visitor_id';
@@ -467,6 +474,14 @@ export default function App() {
         setActiveTab={setActiveTab}
         onInstallApp={handleInstallApp}
         installAvailable={Boolean(installPrompt)}
+        username={authUser?.username}
+        onSignIn={() => setAuthOpenRequest((request) => request + 1)}
+        onAccount={() => setAccountOpen(true)}
+        onSignOut={async () => {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          setAuthUser(null);
+          setAccountOpen(false);
+        }}
       />
 
       {installPrompt && (
@@ -559,11 +574,13 @@ export default function App() {
               </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8" id="surveys">
-              <SurveyRewardsPanel userId={authUser?.id} />
-            </div>
-
             <TrustAndFaq />
+          </div>
+        )}
+
+        {activeTab === 'surveys' && (
+          <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8" id="surveys">
+            <SurveyRewardsPanel userId={authUser?.id} />
           </div>
         )}
 
@@ -592,7 +609,10 @@ export default function App() {
         subscriberCount={subscribers.length}
       />
 
-      <AuthModal user={authUser} onUserChange={setAuthUser} />
+      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} />
+      {accountOpen && authUser && (
+        <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
+      )}
 
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 p-4 rounded-xl bg-[#10141d] border border-[#00f2fe]/40 text-white text-xs font-mono shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-3 duration-200">

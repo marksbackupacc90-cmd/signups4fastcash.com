@@ -2,10 +2,14 @@ import React from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 
 interface NavbarProps {
-  activeTab: 'offers' | 'admin';
-  setActiveTab: (tab: 'offers' | 'admin') => void;
+  activeTab: 'offers' | 'surveys' | 'admin';
+  setActiveTab: (tab: 'offers' | 'surveys' | 'admin') => void;
   onInstallApp: () => void;
   installAvailable: boolean;
+  username?: string | null;
+  onSignIn: () => void;
+  onAccount: () => void;
+  onSignOut: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -13,6 +17,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onInstallApp,
   installAvailable,
+  username,
+  onSignIn,
+  onAccount,
+  onSignOut,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
@@ -65,7 +73,33 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Install App
           </button>
+          <button
+            id="nav-surveys-tab"
+            onClick={() => setActiveTab('surveys')}
+            className={`retro-button px-3.5 py-1.5 text-xs font-medium transition-all ${
+              activeTab === 'surveys' ? 'bg-blue-800 text-white font-semibold' : 'text-zinc-200 hover:text-white'
+            }`}
+          >
+            Surveys
+          </button>
         </nav>
+
+        <div className="flex items-center gap-2">
+          {username ? (
+            <>
+              <button onClick={onAccount} className="retro-button px-3 py-1.5 text-xs text-cyan-200 hover:text-white">
+                @{username}
+              </button>
+              <button onClick={onSignOut} className="retro-button px-3 py-1.5 text-xs text-zinc-300 hover:text-white">
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button onClick={onSignIn} className="retro-button bg-cyan-300 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-200">
+              Sign in
+            </button>
+          )}
+        </div>
 
       </div>
     </header>

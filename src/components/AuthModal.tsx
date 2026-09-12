@@ -4,18 +4,27 @@ interface AuthUser {
   id: string;
   email: string;
   username: string | null;
+  paypalEmail?: string | null;
+  dateOfBirth?: string | null;
+  sex?: string | null;
+  state?: string | null;
 }
 
 interface AuthModalProps {
   user: AuthUser | null;
   onUserChange: (user: AuthUser | null) => void;
+  openRequest?: number;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0 }) => {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const needsUsername = Boolean(user && !user.username);
+
+  useEffect(() => {
+    if (openRequest > 0) setOpen(true);
+  }, [openRequest]);
 
   useEffect(() => {
     fetch('/api/auth/me')

@@ -38,7 +38,7 @@ export const Hero: React.FC<HeroProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="retro-window">
           <div className="retro-titlebar flex items-center justify-between text-xs">
-            <span>Welcome to signups4fastcash.com</span>
+            <span>Welcome to Signups4FastCash.com!</span>
             <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
           </div>
           <div className="p-4 sm:p-6">

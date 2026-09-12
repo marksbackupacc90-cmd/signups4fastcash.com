@@ -22,7 +22,7 @@ const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
 const appUrl = (env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const adminTokens = new Map<string, number>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
-const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null }>();
+const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const cpxTransactions = new Set<string>();
 const cpxBalances = new Map<string, number>();
@@ -69,19 +69,19 @@ async function getAuthenticatedUser(req: express.Request) {
   }
   if (session) authSessions.delete(token);
   if (!database) return null;
-  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null }>(
-    `SELECT users.id, users.google_sub, users.email, users.username
+  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null }>(
+    `SELECT users.id, users.google_sub, users.email, users.username, users.paypal_email, users.date_of_birth, users.sex, users.state
      FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.token = $1 AND auth_sessions.expires_at > NOW()`,
     [token],
   );
   return result.rows[0]
-    ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username }
+    ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state }
     : null;
 }
 
-function authUserResponse(user: { id: string; email: string; username: string | null } | null) {
-  return user ? { id: user.id, email: user.email, username: user.username } : null;
+function authUserResponse(user: { id: string; email: string; username: string | null; paypalEmail?: string | null; dateOfBirth?: string | null; sex?: string | null; state?: string | null } | null) {
+  return user ? { id: user.id, email: user.email, username: user.username, paypalEmail: user.paypalEmail || null, dateOfBirth: user.dateOfBirth || null, sex: user.sex || null, state: user.state || null } : null;
 }
 
 app.get('/api/auth/me', async (req, res) => {
@@ -146,8 +146,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
       : undefined;
     if (database && !user) return res.status(500).send('Could not create your account.');
     const memoryUser = user
-      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username }
-      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null };
+      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, paypalEmail: null, dateOfBirth: null, sex: null, state: null }
+      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null };
     authUsers.set(memoryUser.id, memoryUser);
     const sessionToken = randomBytes(32).toString('hex');
     const expiresAt = Date.now() + AUTH_SESSION_MAX_AGE_SECONDS * 1000;
@@ -189,6 +189,44 @@ app.post('/api/auth/username', async (req, res) => {
     if (!memoryUser) return res.status(404).json({ error: 'Account not found.' });
     memoryUser.username = username;
     res.json({ user: authUserResponse(memoryUser) });
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505') return res.status(409).json({ error: 'That username is already taken.' });
+    throw error;
+  }
+});
+
+app.put('/api/auth/profile', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const paypalEmail = typeof req.body?.paypalEmail === 'string' ? req.body.paypalEmail.trim().toLowerCase() : '';
+  const dateOfBirth = typeof req.body?.dateOfBirth === 'string' ? req.body.dateOfBirth : '';
+  const sex = typeof req.body?.sex === 'string' ? req.body.sex : '';
+  const state = typeof req.body?.state === 'string' ? req.body.state.trim().toUpperCase() : '';
+  if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-24 letters, numbers, or underscores.' });
+  if (paypalEmail && !SURVEY_PAYOUT_EMAIL_PATTERN.test(paypalEmail)) return res.status(400).json({ error: 'Enter a valid PayPal email address.' });
+  if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) return res.status(400).json({ error: 'Enter a valid date of birth.' });
+  if (dateOfBirth && new Date(`${dateOfBirth}T00:00:00Z`) > new Date()) return res.status(400).json({ error: 'Date of birth cannot be in the future.' });
+  if (sex && !['female', 'male', 'nonbinary', 'prefer_not_to_say'].includes(sex)) return res.status(400).json({ error: 'Choose a valid sex option.' });
+  if (state && !/^[A-Z]{2}$/.test(state)) return res.status(400).json({ error: 'Choose a valid US state.' });
+  try {
+    if (database) {
+      const result = await database.query(
+        `UPDATE users SET username = $1, paypal_email = NULLIF($2, ''), date_of_birth = NULLIF($3, '')::date,
+         sex = NULLIF($4, ''), state = NULLIF($5, ''), updated_at = NOW()
+         WHERE id = $6 RETURNING id, email, username, paypal_email, date_of_birth, sex, state`,
+        [username, paypalEmail, dateOfBirth, sex, state, user.id],
+      );
+      return res.json({ user: result.rows[0] ? { id: result.rows[0].id, email: result.rows[0].email, username: result.rows[0].username, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state } : null });
+    }
+    const memoryUser = authUsers.get(user.id);
+    if (!memoryUser) return res.status(404).json({ error: 'Account not found.' });
+    memoryUser.username = username;
+    memoryUser.paypalEmail = paypalEmail || null;
+    memoryUser.dateOfBirth = dateOfBirth || null;
+    memoryUser.sex = sex || null;
+    memoryUser.state = state || null;
+    return res.json({ user: authUserResponse(memoryUser) });
   } catch (error) {
     if ((error as { code?: string }).code === '23505') return res.status(409).json({ error: 'That username is already taken.' });
     throw error;
@@ -265,6 +303,31 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      google_sub TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL,
+      username TEXT UNIQUE,
+      paypal_email TEXT,
+      date_of_birth DATE,
+      sex TEXT,
+      state TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS paypal_email TEXT`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS state TEXT`);
+  await database.query(`
     CREATE TABLE IF NOT EXISTS survey_payout_requests (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -279,23 +342,6 @@ async function initializeOfferStore() {
   await database.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS one_pending_survey_payout_per_user
     ON survey_payout_requests (user_id) WHERE status IN ('pending', 'processing')
-  `);
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      google_sub TEXT NOT NULL UNIQUE,
-      email TEXT NOT NULL,
-      username TEXT UNIQUE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS auth_sessions (
-      token TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL
-    )
   `);
 
   await database.query(`
