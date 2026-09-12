@@ -129,7 +129,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Manual create offer form state
   const [newCompany, setNewCompany] = useState('');
   const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState<'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto' | 'surveys'>('fintech');
+  const [newCategory, setNewCategory] = useState<'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto'>('fintech');
   const [newIncentive, setNewIncentive] = useState('$50 Cash Bonus');
   const [newIncentiveVal, setNewIncentiveVal] = useState(50);
   const [newPayoutSpeed, setNewPayoutSpeed] = useState('Instant');

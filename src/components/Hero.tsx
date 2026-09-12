@@ -17,7 +17,7 @@ const CATEGORIES: { id: string; label: string }[] = [
   { id: 'fintech', label: 'Banking & Fintech' },
   { id: 'brokerage', label: 'Free Stocks & Brokerages' },
   { id: 'cashback', label: 'Cashback & Rebates' },
-  { id: 'surveys', label: 'Surveys & Rewards' },
+  { id: 'apps', label: 'Apps & Rewards' },
   { id: 'crypto', label: 'Crypto & Web3' },
 ];
 

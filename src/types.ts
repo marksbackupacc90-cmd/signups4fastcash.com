@@ -1,4 +1,4 @@
-export type OfferCategory = 'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto' | 'surveys';
+export type OfferCategory = 'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto';
 
 export interface SpeedrunStep {
   step: number;
