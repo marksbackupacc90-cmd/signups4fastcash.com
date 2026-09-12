@@ -107,6 +107,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [accountBalancePoints, setAccountBalancePoints] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
 
@@ -127,6 +128,17 @@ export default function App() {
       body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
     });
   }, []);
+
+  useEffect(() => {
+    if (!authUser) {
+      setAccountBalancePoints(0);
+      return;
+    }
+    fetch(`/api/cpx/balance?user_id=${encodeURIComponent(authUser.id)}`)
+      .then((response) => response.ok ? response.json() as Promise<{ points?: number }> : null)
+      .then((data) => setAccountBalancePoints(data?.points || 0))
+      .catch(() => setAccountBalancePoints(0));
+  }, [authUser]);
 
   useEffect(() => {
     localStorage.setItem('signups4fastcash_theme', theme);
@@ -482,6 +494,7 @@ export default function App() {
           setAuthUser(null);
           setAccountOpen(false);
         }}
+        balancePoints={accountBalancePoints}
       />
 
       {installPrompt && (
@@ -611,7 +624,7 @@ export default function App() {
 
       <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} />
       {accountOpen && authUser && (
-        <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
+        <AccountPanel user={authUser} onUserChange={setAuthUser} balancePoints={accountBalancePoints} onClose={() => setAccountOpen(false)} />
       )}
 
       {toastMessage && (

@@ -14,9 +14,10 @@ interface AccountPanelProps {
   user: AccountUser;
   onUserChange: (user: AccountUser) => void;
   onClose: () => void;
+  balancePoints: number;
 }
 
-export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose }) => {
+export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose, balancePoints }) => {
   const [form, setForm] = useState({
     username: user.username || '',
     paypalEmail: user.paypalEmail || '',
@@ -62,6 +63,7 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
             <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Account settings</p>
             <h2 id="profile-title" className="mt-2 text-2xl font-bold text-white">Your profile</h2>
             <p className="mt-1 text-xs text-zinc-500">{user.email}</p>
+            <p className="mt-3 text-sm font-semibold text-emerald-300">Survey balance: ${(balancePoints / 100).toFixed(2)} ({balancePoints.toLocaleString()} points)</p>
           </div>
           <button onClick={onClose} className="text-xs text-zinc-400 hover:text-white">Close</button>
         </div>

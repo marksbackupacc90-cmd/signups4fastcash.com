@@ -10,6 +10,7 @@ interface NavbarProps {
   onSignIn: () => void;
   onAccount: () => void;
   onSignOut: () => void;
+  balancePoints?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -21,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignIn,
   onAccount,
   onSignOut,
+  balancePoints = 0,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
@@ -49,11 +51,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Center / Navigation Links */}
-        <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto border-2 border-gray-600 border-t-white border-l-white p-1 md:order-none md:w-auto">
+        <nav className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto px-1 py-1 md:order-none md:w-auto md:flex-1">
           <button
             id="nav-offers-tab"
             onClick={() => setActiveTab('offers')}
-            className={`retro-button shrink-0 px-3.5 py-1.5 text-xs font-medium transition-all ${
+            className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
               activeTab === 'offers'
                 ? 'bg-blue-800 text-white font-semibold'
                 : 'text-zinc-200 hover:text-white'
@@ -64,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-install-app"
             onClick={onInstallApp}
-            className={`retro-button shrink-0 px-3.5 py-1.5 text-xs font-medium transition-all ${
+            className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
               installAvailable
                 ? 'text-blue-800'
                 : 'text-zinc-200 hover:text-white'
@@ -76,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-surveys-tab"
             onClick={() => setActiveTab('surveys')}
-            className={`retro-button shrink-0 px-3.5 py-1.5 text-xs font-medium transition-all ${
+            className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
               activeTab === 'surveys' ? 'bg-blue-800 text-white font-semibold' : 'text-zinc-200 hover:text-white'
             }`}
           >
@@ -87,6 +89,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {username ? (
             <>
+              <span className="text-[10px] font-semibold text-emerald-300 sm:text-xs">
+                ${(balancePoints / 100).toFixed(2)}
+              </span>
               <button onClick={onAccount} className="retro-button px-3 py-1.5 text-xs text-cyan-200 hover:text-white">
                 @{username}
               </button>
