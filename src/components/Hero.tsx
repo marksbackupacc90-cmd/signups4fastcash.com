@@ -147,7 +147,7 @@ export const Hero: React.FC<HeroProps> = ({
               className={`retro-button px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
                   ? 'bg-blue-800 text-white font-semibold'
-                  : 'text-black'
+                  : 'text-zinc-200 hover:text-white'
               }`}
             >
               {cat.label}

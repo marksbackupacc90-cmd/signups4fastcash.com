@@ -21,15 +21,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveTab('offers')}
-            className="retro-button flex items-center gap-2.5 text-left group focus:outline-none"
+            className="retro-button min-w-0 flex items-center gap-2.5 text-left group focus:outline-none"
             id="brand-logo-btn"
           >
             <div className="w-9 h-9 rounded-xl border border-cyan-300/40 bg-gradient-to-br from-cyan-300 to-violet-400 flex items-center justify-center text-slate-950 shadow-[0_0_24px_rgba(56,189,248,.35)]">
               <span className="font-black text-sm">4<span className="text-violet-900">*</span></span>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold tracking-tight text-base sm:text-lg text-black">
+                <span className="max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">
                   signups4<span className="text-cyan-300">fastcash.com</span>
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-300/20 text-[11px] font-mono text-emerald-300">
@@ -49,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className={`retro-button px-3.5 py-1.5 text-xs font-medium transition-all ${
               activeTab === 'offers'
                 ? 'bg-blue-800 text-white font-semibold'
-                : 'text-black'
+                : 'text-zinc-200 hover:text-white'
             }`}
           >
             Offers
@@ -60,7 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className={`retro-button px-3.5 py-1.5 text-xs font-medium transition-all ${
               installAvailable
                 ? 'text-blue-800'
-                : 'text-black'
+                : 'text-zinc-200 hover:text-white'
             }`}
             title={installAvailable ? 'Install signups4fastcash as an app' : 'View app installation instructions'}
           >
