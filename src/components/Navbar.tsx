@@ -1,4 +1,5 @@
 import React from 'react';
+import { SfcCoinLogo } from './SfcCoinLogo';
 
 interface NavbarProps {
   activeTab: 'offers' | 'admin';
@@ -24,9 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="retro-button min-w-0 flex items-center gap-2.5 text-left group focus:outline-none"
             id="brand-logo-btn"
           >
-            <div className="w-9 h-9 rounded-xl border border-cyan-300/40 bg-gradient-to-br from-cyan-300 to-violet-400 flex items-center justify-center text-slate-950 shadow-[0_0_24px_rgba(56,189,248,.35)]">
-              <span className="font-black text-sm">4<span className="text-violet-900">*</span></span>
-            </div>
+            <SfcCoinLogo />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">

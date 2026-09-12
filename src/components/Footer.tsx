@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Lock, Bell, Moon, Sun } from 'lucide-react';
+import { SfcCoinLogo } from './SfcCoinLogo';
 
 interface FooterProps {
   onOpenNewsletter: () => void;
@@ -32,9 +33,7 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Col 1: Brand & Promise */}
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-[#10141d] border border-white/10 flex items-center justify-center text-[#00f2fe] font-black text-xs">
-                4*
-              </div>
+              <SfcCoinLogo size="sm" />
               <span className="font-mono font-bold text-white text-base">
                 signups4<span className="text-[#00f2fe]">fastcash.com</span>
               </span>
