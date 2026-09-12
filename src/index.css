@@ -1,11 +1,9 @@
 @import "tailwindcss";
 
 :root {
-	font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
-	color: #eef4ff;
-	background: #070a12;
 }
 
 body,
@@ -18,138 +16,6 @@ select {
 
 /* Keep the existing utility names, but give the public UI one calm type system. */
 .font-mono {
-	font-family: "Courier New", monospace;
-	letter-spacing: 0;
-}
-
-body {
-	margin: 0;
-	background: #070a12;
-	color: #eef4ff;
-	font-size: 14px;
-}
-
-button,
-input,
-select,
-textarea {
-	border-radius: 0 !important;
-}
-
-button {
-	cursor: pointer;
-}
-
-/* CashOS command-center surfaces: a calm dark field with luminous data panels. */
-.retro-window {
-	background: linear-gradient(145deg, rgba(22, 30, 48, .96), rgba(10, 14, 25, .96)) !important;
-	border: 1px solid rgba(148, 163, 184, .2) !important;
-	border-radius: 22px !important;
-	box-shadow: 0 24px 70px rgba(0, 0, 0, .35), inset 0 1px rgba(255,255,255,.08);
-	color: #eef4ff !important;
-}
-
-.retro-titlebar {
-	background: linear-gradient(90deg, rgba(56, 189, 248, .16), rgba(139, 92, 246, .12)) !important;
-	border-bottom: 1px solid rgba(148, 163, 184, .18);
-	border-radius: 22px 22px 0 0 !important;
-	color: #dcecff;
 	font-family: inherit;
-	font-weight: 700;
-	letter-spacing: .01em;
-	padding: 12px 16px;
-}
-
-.retro-button {
-	background: rgba(255,255,255,.06) !important;
-	border: 1px solid rgba(148,163,184,.25) !important;
-	border-radius: 10px !important;
-	box-shadow: none;
-	color: #dbeafe !important;
-	padding: 8px 12px;
-	transition: .2s ease;
-}
-
-.retro-button:active,
-.retro-button[data-active="true"] {
-	border-color: #38bdf8 !important;
-	box-shadow: none;
-	transform: translateY(1px);
-}
-
-.retro-button:hover {
-	background: rgba(56, 189, 248, .14) !important;
-	border-color: rgba(56,189,248,.65) !important;
-}
-
-.retro-inset {
-	background: rgba(2, 6, 23, .52) !important;
-	border: 1px solid rgba(148,163,184,.22) !important;
-	border-radius: 16px !important;
-	color: #e5efff !important;
-}
-
-.retro-desktop {
-	background-color: #070a12 !important;
-	background-image: radial-gradient(circle at 15% 0%, rgba(56,189,248,.13), transparent 32%), radial-gradient(circle at 90% 35%, rgba(139,92,246,.13), transparent 28%), linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px) !important;
-	background-size: auto, auto, 40px 40px, 40px 40px !important;
-}
-
-.retro-desktop .text-emerald-400,
-.retro-desktop .text-emerald-300 {
-	color: #5eead4 !important;
-}
-
-.retro-desktop input::placeholder {
-	color: #8190a8 !important;
-}
-
-.retro-window [class~="bg-[#141824]"],
-.retro-window [class~="bg-[#07090e]"],
-.retro-window [class~="bg-[#0e121a]"] {
-	background: rgba(255,255,255,.045) !important;
-	color: #e5efff !important;
-}
-
-.retro-window [class*="border-white"] {
-	border-color: rgba(148,163,184,.2) !important;
-}
-
-.retro-window input {
-	background: rgba(2,6,23,.7) !important;
-	color: #f8fbff !important;
-	border-color: rgba(148,163,184,.3) !important;
-}
-
-.retro-window .retro-titlebar,
-.retro-window .retro-titlebar span {
-	color: #dcecff;
-}
-
-.retro-window .text-blue-500,
-.retro-window .text-cyan-400,
-.retro-window .text-cyan-300 {
-	color: #67e8f9 !important;
-}
-
-@media (max-width: 640px) {
-	.retro-titlebar {
-		font-size: 12px;
-	}
-}
-
-@keyframes slot-reel-spin {
-	0% { transform: translateY(-6px); filter: blur(0); }
-	45% { transform: translateY(5px); filter: blur(2px); }
-	100% { transform: translateY(0); filter: blur(0); }
-}
-
-.slot-reel-spinning .slot-symbol {
-	animation: slot-reel-spin 420ms cubic-bezier(.22,.61,.36,1) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.slot-reel-spinning .slot-symbol {
-		animation: none;
-	}
+	letter-spacing: 0;
 }
