@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Lock, Bell } from 'lucide-react';
+import { ShieldCheck, Lock, Bell, Moon, Sun } from 'lucide-react';
 
 interface FooterProps {
   onOpenNewsletter: () => void;
@@ -8,6 +8,8 @@ interface FooterProps {
   pushEnabled?: boolean;
   onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
   isAdminUnlocked?: boolean;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -17,6 +19,8 @@ export const Footer: React.FC<FooterProps> = ({
   pushEnabled = false,
   onOpenLegal,
   isAdminUnlocked = false,
+  theme = 'dark',
+  onToggleTheme,
 }) => {
   return (
     <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
@@ -117,6 +121,16 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
           <div className="flex items-center gap-4">
             <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How offers work</a>
+            {onToggleTheme && (
+              <button
+                onClick={onToggleTheme}
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              </button>
+            )}
           </div>
         </div>
 

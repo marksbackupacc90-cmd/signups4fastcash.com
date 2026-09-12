@@ -32,6 +32,9 @@ function depositSortValue(depositRequired: string) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'offers' | 'admin'>('offers');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    localStorage.getItem('signups4fastcash_theme') === 'light' ? 'light' : 'dark'
+  );
 
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
@@ -108,6 +111,10 @@ export default function App() {
       body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
     });
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('signups4fastcash_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     try {
@@ -445,7 +452,7 @@ export default function App() {
     });
 
   return (
-    <div className="retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black">
+    <div className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}>
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -591,6 +598,8 @@ export default function App() {
           }
         }}
         isAdminUnlocked={isAdminUnlocked}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />

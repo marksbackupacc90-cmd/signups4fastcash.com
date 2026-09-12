@@ -19,3 +19,43 @@ select {
 	font-family: inherit;
 	letter-spacing: 0;
 }
+
+.light-mode {
+	background: #f4f7fb;
+	color: #172033;
+}
+
+.light-mode .bg-\[\#07090d\],
+.light-mode .bg-\[\#090b0e\],
+.light-mode .bg-\[\#0e121a\],
+.light-mode .bg-\[\#10141d\],
+.light-mode .bg-\[\#141824\] {
+	background-color: #ffffff !important;
+}
+
+.light-mode .text-white {
+	color: #172033 !important;
+}
+
+.light-mode .text-zinc-300,
+.light-mode .text-zinc-400 {
+	color: #475569 !important;
+}
+
+.light-mode .text-zinc-500 {
+	color: #64748b !important;
+}
+
+.light-mode [class*="border-white/"] {
+	border-color: #d7dee9 !important;
+}
+
+.light-mode .text-cyan-300,
+.light-mode .text-cyan-200 {
+	color: #087f91 !important;
+}
+
+.light-mode footer {
+	background-color: #e8eef7 !important;
+	color: #475569 !important;
+}
