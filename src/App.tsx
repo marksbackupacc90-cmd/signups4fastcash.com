@@ -8,6 +8,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
+import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { LegalModal } from './components/LegalModal';
 import { CheckCircle2 } from 'lucide-react';
 
@@ -535,6 +536,10 @@ export default function App() {
                   Subscribe to alerts
                 </button>
               </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8" id="surveys">
+              <SurveyRewardsPanel />
             </div>
 
             <TrustAndFaq />

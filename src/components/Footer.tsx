@@ -63,6 +63,11 @@ export const Footer: React.FC<FooterProps> = ({
                 </a>
               </li>
               <li>
+                <a href="#surveys" className="hover:text-white transition-colors">
+                  Surveys &amp; Rewards
+                </a>
+              </li>
+              <li>
                 <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
                   Email Drop Alerts
                 </button>
