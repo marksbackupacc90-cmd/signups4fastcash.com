@@ -28,6 +28,7 @@ const cpxTransactions = new Set<string>();
 const cpxBalances = new Map<string, number>();
 const SURVEY_POINTS_PER_DOLLAR = 100;
 const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
+const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const adminUnlockAttempts = new Map<string, { failures: number; windowStartedAt: number; blockedUntil: number }>();
 const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_UNLOCK_MAX_FAILURES = 5;
@@ -264,6 +265,22 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
+    CREATE TABLE IF NOT EXISTS survey_payout_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      points INTEGER NOT NULL CHECK (points >= ${SURVEY_MINIMUM_PAYOUT_POINTS}),
+      paypal_email TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'processing', 'paid', 'rejected')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      processed_at TIMESTAMPTZ
+    )
+  `);
+  await database.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS one_pending_survey_payout_per_user
+    ON survey_payout_requests (user_id) WHERE status IN ('pending', 'processing')
+  `);
+  await database.query(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       google_sub TEXT NOT NULL UNIQUE,
@@ -487,6 +504,71 @@ app.get('/api/cpx/balance', async (req, res) => {
     payoutMethod: 'PayPal',
     payoutRequestsEnabled: false,
   });
+});
+
+app.post('/api/rewards/cashout', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in with Google before requesting a payout.' });
+  if (!database) return res.status(503).json({ error: 'Payouts require the production account database.' });
+  const paypalEmail = typeof req.body?.paypalEmail === 'string' ? req.body.paypalEmail.trim().toLowerCase() : '';
+  if (!SURVEY_PAYOUT_EMAIL_PATTERN.test(paypalEmail) || paypalEmail.length > 254) {
+    return res.status(400).json({ error: 'Enter a valid PayPal email address.' });
+  }
+
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const balance = await client.query<{ points: number }>(
+      'SELECT points FROM survey_reward_balances WHERE user_id = $1 FOR UPDATE',
+      [user.id],
+    );
+    const points = Number(balance.rows[0]?.points || 0);
+    if (points < SURVEY_MINIMUM_PAYOUT_POINTS) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `You need at least ${SURVEY_MINIMUM_PAYOUT_POINTS} points ($${(SURVEY_MINIMUM_PAYOUT_POINTS / SURVEY_POINTS_PER_DOLLAR).toFixed(2)}) to cash out.`,
+        points,
+      });
+    }
+    const existing = await client.query(
+      `SELECT id FROM survey_payout_requests
+       WHERE user_id = $1 AND status IN ('pending', 'processing')
+       LIMIT 1`,
+      [user.id],
+    );
+    if (existing.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'You already have a payout request being processed.' });
+    }
+    const payoutId = randomUUID();
+    await client.query(
+      `INSERT INTO survey_payout_requests (id, user_id, points, paypal_email)
+       VALUES ($1, $2, $3, $4)`,
+      [payoutId, user.id, points, paypalEmail],
+    );
+    await client.query(
+      `UPDATE survey_reward_balances
+       SET points = 0, updated_at = NOW()
+       WHERE user_id = $1`,
+      [user.id],
+    );
+    await client.query('COMMIT');
+    return res.status(201).json({
+      requestId: payoutId,
+      status: 'pending',
+      points,
+      dollars: points / SURVEY_POINTS_PER_DOLLAR,
+      message: 'Your PayPal payout request was received and is pending review.',
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    if ((error as { code?: string }).code === '23505') {
+      return res.status(409).json({ error: 'You already have a payout request being processed.' });
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 app.get('/api/cpx/survey-url', (req, res) => {

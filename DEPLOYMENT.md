@@ -20,7 +20,7 @@ Set these in the hosting panel:
 
 Once `CPX_SECURE_HASH` is configured, the Surveys & Rewards category generates a signed CPX iframe URL for each anonymous browser session. Without this secret, the site intentionally shows a configuration message instead of a broken survey wall.
 
-Survey accounting currently records provider callbacks at 100 points per $1 and displays a $5 PayPal minimum. Automatic PayPal transfers and user cash-out requests remain disabled until authenticated user accounts, fraud/reversal review, and PayPal payout credentials are configured.
+Survey accounting records provider callbacks at 100 points per $1, displays the balance in the signed-in Surveys & Rewards panel, and allows a PayPal cash-out request at 500 points ($5). Requests are reserved transactionally and stored as `pending` in PostgreSQL so the same balance cannot be requested twice. They still require manual review and PayPal processing; the site does not claim that a request has been paid until an operator completes it.
 
 Google sign-in requires a Google Cloud OAuth client configured as a **Web application**. Add this authorized redirect URI exactly:
 
