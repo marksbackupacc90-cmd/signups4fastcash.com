@@ -35,6 +35,15 @@ export const SfcCoinLogo: React.FC<SfcCoinLogoProps> = ({ size = 'md' }) => {
           <stop offset="45%" stopColor="#4ade80" />
           <stop offset="100%" stopColor="#15803d" />
         </linearGradient>
+        <linearGradient id={`${id}-hat`} x1="15%" y1="0%" x2="85%" y2="100%">
+          <stop offset="0%" stopColor="#fff7a8" />
+          <stop offset="28%" stopColor="#fde047" />
+          <stop offset="65%" stopColor="#facc15" />
+          <stop offset="100%" stopColor="#ca8a04" />
+        </linearGradient>
+        <filter id={`${id}-hat-shadow`} x="-30%" y="-30%" width="160%" height="180%">
+          <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#422006" floodOpacity=".65" />
+        </filter>
       </defs>
       <circle cx="50" cy="50" r="47" fill="#0f172a" stroke="#020617" strokeWidth="4" />
       <circle cx="50" cy="50" r="43" fill={`url(#${id}-rim)`} stroke="#67e8f9" strokeWidth="1.5" />
@@ -46,11 +55,11 @@ export const SfcCoinLogo: React.FC<SfcCoinLogoProps> = ({ size = 'md' }) => {
         SFC
       </text>
       <path d="M26 24c12-10 30-13 45-4" fill="none" stroke="#fff" strokeOpacity=".65" strokeWidth="2.5" strokeLinecap="round" />
-      <g>
-        <path d="M24 31L29 19l7 8 5-14 7 13 7-18 7 18 8-10 4 15c-15-4-35-4-50 0Z" fill="#facc15" stroke="#422006" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M25 30l4-9 7 8 5-13 7 20c-8-3-16-3-23-1Z" fill="#fde047" fillOpacity=".98" />
-        <path d="M48 16l7 13 7-17 7 18c-7-2-14-2-21-1Z" fill="#a16207" fillOpacity=".98" />
-        <path d="M29 20l7 8M41 15l7 13M55 11l7 18M70 20l-6 9" stroke="#fef08a" strokeOpacity=".85" strokeWidth="1.5" strokeLinecap="round" />
+      <g filter={`url(#${id}-hat-shadow)`}>
+        <path d="M25 31L31 20L37 26L43 13L50 24L57 9L64 24L70 16L76 31C60 27 41 27 25 31Z" fill={`url(#${id}-hat)`} stroke="#422006" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M25 31C41 27 60 27 76 31" fill="none" stroke="#fff7a8" strokeOpacity=".9" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M31 20l6 6 6-13 7 11" fill="none" stroke="#fff7a8" strokeOpacity=".75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M57 10l7 14 6-8" fill="none" stroke="#a16207" strokeOpacity=".7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </g>
     </svg>
   );
