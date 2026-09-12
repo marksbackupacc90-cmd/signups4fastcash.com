@@ -39,7 +39,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
         .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
         .then(({ user: currentUser }) => {
           onUserChange(currentUser);
-          setOpen(true);
+          setOpen(!currentUser || !currentUser.username);
         })
         .catch(() => setError('Could not load your account.'));
     };
