@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 
-export const SurveyRewardsPanel: React.FC = () => (
-  <SurveyPanelContent />
+export const SurveyRewardsPanel: React.FC<{ userId?: string }> = ({ userId }) => (
+  <SurveyPanelContent userId={userId} />
 );
 
-const SurveyPanelContent: React.FC = () => {
+const SurveyPanelContent: React.FC<{ userId?: string }> = ({ userId }) => {
   const [surveyUrl, setSurveyUrl] = useState<string | null>(null);
   const [surveyUnavailable, setSurveyUnavailable] = useState(false);
   const [points, setPoints] = useState(0);
@@ -13,15 +13,15 @@ const SurveyPanelContent: React.FC = () => {
   useEffect(() => {
     const storageKey = 'signups4fastcash_survey_user_id';
     const existing = localStorage.getItem(storageKey);
-    const userId = existing || `web-${crypto.randomUUID()}`;
-    if (!existing) localStorage.setItem(storageKey, userId);
-    fetch(`/api/cpx/balance?user_id=${encodeURIComponent(userId)}`)
+    const surveyUserId = userId || existing || `web-${crypto.randomUUID()}`;
+    if (!userId && !existing) localStorage.setItem(storageKey, surveyUserId);
+    fetch(`/api/cpx/balance?user_id=${encodeURIComponent(surveyUserId)}`)
       .then((response) => response.ok ? response.json() : null)
       .then((data: { points?: number } | null) => {
         if (data?.points !== undefined) setPoints(data.points);
       })
       .catch(() => undefined);
-    fetch(`/api/cpx/survey-url?user_id=${encodeURIComponent(userId)}`)
+    fetch(`/api/cpx/survey-url?user_id=${encodeURIComponent(surveyUserId)}`)
       .then(async (response) => {
         if (!response.ok) {
           setSurveyUnavailable(true);
@@ -32,7 +32,7 @@ const SurveyPanelContent: React.FC = () => {
         else setSurveyUnavailable(true);
       })
       .catch(() => setSurveyUnavailable(true));
-  }, []);
+  }, [userId]);
 
   return (
   <section className="rounded-xl border border-cyan-400/20 bg-[#0e121a] p-5 sm:p-7">

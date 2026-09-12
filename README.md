@@ -38,6 +38,7 @@ Feature-specific:
 - `GEMINI_API_KEY` — enables CashBot AI scans
 - `CPX_APP_ID` — CPX Research app ID (currently `36089`)
 - `CPX_SECURE_HASH` — private CPX signing secret
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — Google OAuth web client credentials
 
 Never commit `.env.local` or provider secrets.
 
@@ -63,4 +64,5 @@ Before launch, verify:
 - PostgreSQL is connected.
 - CPX and admin secrets are configured.
 - Survey postbacks use the deployed HTTPS URL.
+- CPX app approval, survey inventory, and a non-zero respondent reward share are enabled in the CPX publisher dashboard.
 - Cash-out messaging matches the payout features actually enabled.

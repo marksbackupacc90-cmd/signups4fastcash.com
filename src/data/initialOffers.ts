@@ -448,4 +448,41 @@ export const INITIAL_OFFERS: Offer[] = [
 ];
 
 export const PUBLIC_OFFERS = INITIAL_OFFERS;
-export const INITIAL_PENDING_OFFERS: Offer[] = [];
+export const INITIAL_PENDING_OFFERS: Offer[] = [
+  {
+    id: 'pending-polymarket-us-50-bonus',
+    company: 'Polymarket.us',
+    companySlug: 'polymarket-us',
+    title: '$50 Bonus After Verification and $10 Deposit',
+    category: 'apps',
+    incentiveAmount: '$50 Bonus',
+    incentiveValue: 50,
+    payoutSpeed: 'Confirm with provider',
+    difficulty: 'Standard (10 min)',
+    depositRequired: '$10 deposit after identity verification',
+    officialMerchantUrl: 'https://polymarket.us',
+    referralCode: 'cmeheathyb',
+    referralUrl: 'https://polymarket.us',
+    sourceUrl: 'https://polymarket.us',
+    verificationStatus: 'unverified',
+    honestTruth: {
+      summary: 'User-submitted promotion claimed to offer a $50 bonus after verification and a $10 deposit.',
+      theCatch: 'This promotion has not been independently verified. Confirm that the code works, the site is official, and the $50 reward is available in your jurisdiction before publishing.',
+      minimumHoldTime: 'Not confirmed; check the current provider terms.',
+      idVerificationRequired: true,
+      hiddenFeesWarning: 'The offer may be location-restricted and may involve eligibility, funding, trading, withdrawal, or other conditions. Review the official terms.',
+      trustScore: 0,
+    },
+    speedrunHints: [
+      { step: 1, instruction: 'Open the official Polymarket.us website and confirm the promotion is displayed there.', proTip: 'Do not deposit until the official terms clearly mention the $50 offer and code.' },
+      { step: 2, instruction: 'Complete identity verification only through the official provider site.', proTip: 'Never send identification documents or account credentials through this website.' },
+      { step: 3, instruction: 'If eligible, deposit the required $10 and save the official terms and confirmation.', proTip: 'Reward timing and withdrawal rules must be confirmed with the provider.' },
+    ],
+    status: 'pending',
+    featured: false,
+    clicksCount: 0,
+    conversionsCount: 0,
+    createdAt: '2026-09-12T00:00:00Z',
+    updatedAt: '2026-09-12T00:00:00Z',
+  },
+];

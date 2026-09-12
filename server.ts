@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { createHash, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -17,7 +17,13 @@ const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { 
 const adminPasscode = env.ADMIN_PASSCODE;
 const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
+const googleClientId = env.GOOGLE_CLIENT_ID;
+const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
+const appUrl = (env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const adminTokens = new Map<string, number>();
+const authSessions = new Map<string, { userId: string; expiresAt: number }>();
+const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null }>();
+const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const cpxTransactions = new Set<string>();
 const cpxBalances = new Map<string, number>();
 const SURVEY_POINTS_PER_DOLLAR = 100;
@@ -47,6 +53,156 @@ function isPublishableOffer(offer: Record<string, unknown>) {
 }
 
 app.use(express.json());
+
+function getSessionToken(req: express.Request) {
+  const cookie = req.headers.cookie?.split(';').find((part) => part.trim().startsWith('sfc_session='));
+  return cookie?.split('=')[1] || null;
+}
+
+async function getAuthenticatedUser(req: express.Request) {
+  const token = getSessionToken(req);
+  if (!token) return null;
+  const session = authSessions.get(token);
+  if (session && session.expiresAt > Date.now()) {
+    return authUsers.get(session.userId) || null;
+  }
+  if (session) authSessions.delete(token);
+  if (!database) return null;
+  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null }>(
+    `SELECT users.id, users.google_sub, users.email, users.username
+     FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id
+     WHERE auth_sessions.token = $1 AND auth_sessions.expires_at > NOW()`,
+    [token],
+  );
+  return result.rows[0]
+    ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username }
+    : null;
+}
+
+function authUserResponse(user: { id: string; email: string; username: string | null } | null) {
+  return user ? { id: user.id, email: user.email, username: user.username } : null;
+}
+
+app.get('/api/auth/me', async (req, res) => {
+  res.json({ user: authUserResponse(await getAuthenticatedUser(req)) });
+});
+
+app.get('/api/auth/google', (req, res) => {
+  if (!googleClientId || !googleClientSecret) {
+    return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
+  }
+  const params = new URLSearchParams({
+    client_id: googleClientId,
+    redirect_uri: `${appUrl}/api/auth/google/callback`,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'online',
+    prompt: 'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const code = typeof req.query.code === 'string' ? req.query.code : '';
+  if (!googleClientId || !googleClientSecret || !code) {
+    return res.status(400).send('Google sign-in could not be completed.');
+  }
+  try {
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: googleClientId,
+        client_secret: googleClientSecret,
+        redirect_uri: `${appUrl}/api/auth/google/callback`,
+        grant_type: 'authorization_code',
+      }),
+    });
+    if (!tokenResponse.ok) return res.status(401).send('Google sign-in was rejected.');
+    const tokens = await tokenResponse.json() as { id_token?: string };
+    if (!tokens.id_token) return res.status(401).send('Google did not return an identity token.');
+    const identityResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(tokens.id_token)}`);
+    if (!identityResponse.ok) return res.status(401).send('Google identity verification failed.');
+    const identity = await identityResponse.json() as { sub?: string; email?: string; email_verified?: string; aud?: string; iss?: string };
+    if (
+      !identity.sub || !identity.email || identity.email_verified !== 'true' ||
+      identity.aud !== googleClientId ||
+      !['accounts.google.com', 'https://accounts.google.com'].includes(identity.iss || '')
+    ) {
+      return res.status(401).send('Google identity verification failed.');
+    }
+
+    const userId = randomUUID();
+    let user = database
+      ? (await database.query<{ id: string; google_sub: string; email: string; username: string | null }>(
+        `INSERT INTO users (id, google_sub, email)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()
+         RETURNING id, google_sub, email, username`,
+        [userId, identity.sub, identity.email],
+      )).rows[0]
+      : undefined;
+    if (database && !user) return res.status(500).send('Could not create your account.');
+    const memoryUser = user
+      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username }
+      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null };
+    authUsers.set(memoryUser.id, memoryUser);
+    const sessionToken = randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + AUTH_SESSION_MAX_AGE_SECONDS * 1000;
+    authSessions.set(sessionToken, { userId: memoryUser.id, expiresAt });
+    if (database) {
+      await database.query(
+        `INSERT INTO auth_sessions (token, user_id, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
+        [sessionToken, memoryUser.id],
+      );
+    }
+    res.setHeader('Set-Cookie', `sfc_session=${sessionToken}; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax${env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>window.opener?.postMessage({type:'sfc-auth-complete'},${JSON.stringify(appUrl)});window.close();</script><p>You can close this window.</p>`);
+  } catch (error) {
+    console.error('Google sign-in failed:', error);
+    res.status(500).send('Google sign-in could not be completed.');
+  }
+});
+
+app.post('/api/auth/username', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) {
+    return res.status(400).json({ error: 'Username must be 3-24 letters, numbers, or underscores.' });
+  }
+  try {
+    if (database) {
+      const result = await database.query(
+        'UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, username',
+        [username, user.id],
+      );
+      if (!result.rows[0]) return res.status(404).json({ error: 'Account not found.' });
+      return res.json({ user: result.rows[0] });
+    }
+    const duplicate = [...authUsers.values()].some((entry) => entry.username?.toLowerCase() === username.toLowerCase() && entry.id !== user.id);
+    if (duplicate) return res.status(409).json({ error: 'That username is already taken.' });
+    const memoryUser = authUsers.get(user.id);
+    if (!memoryUser) return res.status(404).json({ error: 'Account not found.' });
+    memoryUser.username = username;
+    res.json({ user: authUserResponse(memoryUser) });
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505') return res.status(409).json({ error: 'That username is already taken.' });
+    throw error;
+  }
+});
+
+app.post('/api/auth/logout', async (req, res) => {
+  const token = getSessionToken(req);
+  if (token) {
+    authSessions.delete(token);
+    if (database) await database.query('DELETE FROM auth_sessions WHERE token = $1', [token]);
+  }
+  res.setHeader('Set-Cookie', 'sfc_session=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
+  res.json({ ok: true });
+});
 
 // Initialize Gemini client server-side safely
 let genAI: GoogleGenAI | null = null;
@@ -105,6 +261,23 @@ async function initializeOfferStore() {
       user_id TEXT PRIMARY KEY,
       points INTEGER NOT NULL DEFAULT 0,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      google_sub TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL,
+      username TEXT UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL
     )
   `);
 

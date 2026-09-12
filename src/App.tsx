@@ -12,6 +12,13 @@ import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { LegalModal } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
 import { CheckCircle2 } from 'lucide-react';
+import { AuthModal } from './components/AuthModal';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  username: string | null;
+}
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -94,6 +101,7 @@ export default function App() {
   const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_visitor_id';
@@ -552,7 +560,7 @@ export default function App() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8" id="surveys">
-              <SurveyRewardsPanel />
+              <SurveyRewardsPanel userId={authUser?.id} />
             </div>
 
             <TrustAndFaq />
@@ -583,6 +591,8 @@ export default function App() {
         onSubscribe={handleSubscribeNewsletter}
         subscriberCount={subscribers.length}
       />
+
+      <AuthModal user={authUser} onUserChange={setAuthUser} />
 
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 p-4 rounded-xl bg-[#10141d] border border-[#00f2fe]/40 text-white text-xs font-mono shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-3 duration-200">

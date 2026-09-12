@@ -19,6 +19,7 @@ const CATEGORIES: { id: string; label: string }[] = [
   { id: 'cashback', label: 'Cashback & Rebates' },
   { id: 'apps', label: 'Apps & Rewards' },
   { id: 'crypto', label: 'Crypto & Web3' },
+  { id: 'surveys', label: 'Surveys & Rewards' },
 ];
 
 export const Hero: React.FC<HeroProps> = ({
