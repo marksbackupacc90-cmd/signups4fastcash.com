@@ -191,11 +191,21 @@ async function initializeOfferStore() {
     }
     liveOffersStore = PUBLIC_OFFERS;
   } else {
+    const existingIds = new Set(existing.rows.map((row) => row.offer.id));
+    const missingCatalogOffers = PUBLIC_OFFERS.filter(
+      (offer) => offer.status === 'live' && !existingIds.has(offer.id),
+    );
+    for (const offer of missingCatalogOffers) {
+      await database.query(
+        `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
+        [offer.id, offer.status, offer, offer.updatedAt],
+      );
+    }
     liveOffersStore = existing.rows.filter((row) => !['offer-stake-us', 'offer-acebet'].includes(row.offer.id)).map((row) => ({
       ...row.offer,
       clicksCount: 0,
       conversionsCount: 0,
-    }));
+    })).concat(missingCatalogOffers);
     await saveLiveOffers();
   }
 }
