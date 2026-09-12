@@ -10,6 +10,7 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { LegalModal } from './components/LegalModal';
+import { SfcCoinLogo } from './components/SfcCoinLogo';
 import { CheckCircle2 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -93,6 +94,8 @@ export default function App() {
   const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [lionPosition, setLionPosition] = useState({ left: 8, top: 24 });
+  const [lionFacing, setLionFacing] = useState(1);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_visitor_id';
@@ -115,6 +118,19 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('signups4fastcash_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (activeTab !== 'offers' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const moveLion = () => {
+      setLionPosition({
+        left: 8 + Math.random() * 78,
+        top: 18 + Math.random() * 64,
+      });
+      setLionFacing(Math.random() > 0.5 ? 1 : -1);
+    };
+    const interval = window.setInterval(moveLion, 9000);
+    return () => window.clearInterval(interval);
+  }, [activeTab]);
 
   useEffect(() => {
     try {
@@ -473,6 +489,15 @@ export default function App() {
       )}
 
       <main className="flex-1">
+        {activeTab === 'offers' && (
+          <div
+            aria-hidden="true"
+            className="sfc-lion-walk pointer-events-none fixed z-10 opacity-35 transition-[left,top] duration-[3500ms] ease-in-out"
+            style={{ left: `${lionPosition.left}%`, top: `${lionPosition.top}%`, transform: `scaleX(${lionFacing})` }}
+          >
+            <SfcCoinLogo size="md" />
+          </div>
+        )}
         {activeTab === 'offers' && (
           <div>
             <Hero
