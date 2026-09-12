@@ -11,6 +11,7 @@ import { TrustAndFaq } from './components/TrustAndFaq';
 import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { LegalModal } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
+import { SfcLionWalker } from './components/SfcLionWalker';
 import { CheckCircle2 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -495,7 +496,7 @@ export default function App() {
             className="sfc-lion-walk pointer-events-none fixed z-10 opacity-35 transition-[left,top] duration-[3500ms] ease-in-out"
             style={{ left: `${lionPosition.left}%`, top: `${lionPosition.top}%`, transform: `scaleX(${lionFacing})` }}
           >
-            <SfcCoinLogo size="md" />
+            <SfcLionWalker />
           </div>
         )}
         {activeTab === 'offers' && (
