@@ -47,10 +47,10 @@ export const SfcCoinLogo: React.FC<SfcCoinLogoProps> = ({ size = 'md' }) => {
       </text>
       <path d="M26 24c12-10 30-13 45-4" fill="none" stroke="#fff" strokeOpacity=".65" strokeWidth="2.5" strokeLinecap="round" />
       <g>
-        <path d="M24 31L29 19l7 8 5-14 7 13 7-18 7 18 8-10 4 15c-15-4-35-4-50 0Z" fill="#ef4444" stroke="#450a0a" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M25 30l4-9 7 8 5-13 7 20c-8-3-16-3-23-1Z" fill="#f87171" fillOpacity=".95" />
-        <path d="M48 16l7 13 7-17 7 18c-7-2-14-2-21-1Z" fill="#b91c1c" fillOpacity=".98" />
-        <path d="M29 20l7 8M41 15l7 13M55 11l7 18M70 20l-6 9" stroke="#fecaca" strokeOpacity=".75" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M24 31L29 19l7 8 5-14 7 13 7-18 7 18 8-10 4 15c-15-4-35-4-50 0Z" fill="#facc15" stroke="#422006" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M25 30l4-9 7 8 5-13 7 20c-8-3-16-3-23-1Z" fill="#fde047" fillOpacity=".98" />
+        <path d="M48 16l7 13 7-17 7 18c-7-2-14-2-21-1Z" fill="#a16207" fillOpacity=".98" />
+        <path d="M29 20l7 8M41 15l7 13M55 11l7 18M70 20l-6 9" stroke="#fef08a" strokeOpacity=".85" strokeWidth="1.5" strokeLinecap="round" />
       </g>
     </svg>
   );
