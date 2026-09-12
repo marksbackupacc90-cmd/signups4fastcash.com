@@ -46,6 +46,11 @@ export const SfcCoinLogo: React.FC<SfcCoinLogoProps> = ({ size = 'md' }) => {
         SFC
       </text>
       <path d="M26 24c12-10 30-13 45-4" fill="none" stroke="#fff" strokeOpacity=".65" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M24 25L50 2l26 23c-16-4-36-4-52 0Z" fill="#166534" stroke="#052e16" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M29 23L50 6l21 17c-13-2-29-2-42 0Z" fill="#22c55e" />
+      <path d="M50 3v23" stroke="#bbf7d0" strokeOpacity=".8" strokeWidth="2" />
+      <circle cx="50" cy="3" r="3" fill="#dcfce7" stroke="#166534" strokeWidth="1" />
+      <path d="M24 25c16-4 36-4 52 0" fill="none" stroke="#86efac" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   );
 };
