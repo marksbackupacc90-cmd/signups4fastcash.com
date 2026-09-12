@@ -77,7 +77,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
       <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
         <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Your rewards account</p>
         <h2 id="account-title" className="mt-2 text-2xl font-bold text-white">
-          {needsUsername ? 'Choose your username' : 'Create your account'}
+          {needsUsername ? 'Choose your username' : 'Sign in or create your account'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
           Sign in with Google to keep your survey rewards connected to your account.
