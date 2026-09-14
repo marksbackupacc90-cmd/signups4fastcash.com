@@ -8,6 +8,14 @@ interface SupportMessage {
 }
 
 export const SupportBot: React.FC = () => {
+  const [conversationId] = useState(() => {
+    const key = 's4fc_support_conversation';
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    localStorage.setItem(key, created);
+    return created;
+  });
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +34,7 @@ export const SupportBot: React.FC = () => {
       const response = await fetch('/api/support-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, conversationId }),
       });
       const data = await response.json() as { answer?: string; error?: string };
       if (!response.ok) throw new Error(data.error || 'The support assistant is unavailable.');

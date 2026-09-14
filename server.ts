@@ -290,6 +290,27 @@ let visitorAnalyticsStore = {
   sources: new Map<string, number>(),
 };
 let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
+const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
+
+function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>) {
+  const lower = message.toLowerCase();
+  if (/hello|hi|help|start/.test(lower)) {
+    return 'I can help you compare offers. Ask me about deposits, payout speed, easy steps, requirements, or the fine print.';
+  }
+  if (/deposit|cost|spend|purchase/.test(lower)) {
+    return 'Check each offer’s Deposit Req box before clicking. Some offers are $0, while others require a purchase or deposit. Review the merchant’s current official terms before signing up.';
+  }
+  if (/payout|pay|when|time|cash/.test(lower)) {
+    return 'Each offer shows its payout speed near the top of the card. Timing depends on the merchant and eligibility, so the official offer terms control.';
+  }
+  if (/remember|previous|before|earlier/.test(lower) && previousMessages.length > 0) {
+    const lastTopic = previousMessages.slice(-4).find((entry) => entry.role === 'user');
+    return lastTopic
+      ? `I remember your recent question about “${lastTopic.content.slice(0, 80)}”. You can ask a follow-up, or open an offer to compare its requirements and fine print.`
+      : 'I remember this conversation. Ask me a follow-up about the offer you were reviewing.';
+  }
+  return 'Open an offer card to compare its incentive, deposit requirement, payout speed, easy steps, and honest catch. I can help explain those details, but the merchant’s official terms always control.';
+}
 
 async function initializeOfferStore() {
   if (!database) {
@@ -397,6 +418,15 @@ async function initializeOfferStore() {
       source TEXT NOT NULL,
       path TEXT NOT NULL,
       viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS support_chat_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
   await database.query(
@@ -966,19 +996,50 @@ ${message}`,
 
 app.post('/api/support-chat', async (req, res) => {
   const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const conversationId = typeof req.body?.conversationId === 'string' ? req.body.conversationId.trim().slice(0, 120) : '';
   if (!message || message.length > 1000) {
     return res.status(400).json({ error: 'Enter a question up to 1,000 characters.' });
+  }
+  if (!conversationId) {
+    return res.status(400).json({ error: 'A conversation ID is required.' });
   }
   if (containsSensitiveCredentials(message)) {
     return res.status(400).json({ error: 'Please do not share passwords, account details, API keys, or financial information.' });
   }
 
+  let previousMessages = supportMemory.get(conversationId) || [];
+  if (previousMessages.length === 0 && database) {
+    try {
+      const stored = await database.query<{ role: 'user' | 'assistant'; content: string }>(
+        'SELECT role, content FROM support_chat_messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 12',
+        [conversationId],
+      );
+      previousMessages = stored.rows.reverse();
+    } catch (error) {
+      console.error('Could not load support conversation:', error);
+    }
+  }
+  const answer = createBuiltInSupportAnswer(message, previousMessages);
+  const nextMessages = [...previousMessages, { role: 'user' as const, content: message }, { role: 'assistant' as const, content: answer }].slice(-12);
+  supportMemory.set(conversationId, nextMessages);
+  if (database) {
+    try {
+      await database.query(
+        'INSERT INTO support_chat_messages (id, conversation_id, role, content) VALUES ($1, $2, $3, $4)',
+        [randomUUID(), conversationId, 'user', message],
+      );
+      await database.query(
+        'INSERT INTO support_chat_messages (id, conversation_id, role, content) VALUES ($1, $2, $3, $4)',
+        [randomUUID(), conversationId, 'assistant', answer],
+      );
+    } catch (error) {
+      console.error('Could not persist support conversation:', error);
+    }
+  }
+
   const ai = getGenAI();
   if (!ai) {
-    return res.json({
-      answer: 'I can help you compare the listed offers, but the live AI service is not configured right now. Open an offer to review its deposit, payout speed, steps, and fine print before using the official signup link.',
-      fallback: true,
-    });
+    return res.json({ answer, fallback: true, memory: true });
   }
 
   try {
@@ -994,7 +1055,7 @@ VISITOR QUESTION:
 ${message}`,
       config: { temperature: 0.3 },
     });
-    return res.json({ answer: response.text?.trim() || 'Please open the offer details and review the official terms before signing up.' });
+    return res.json({ answer: response.text?.trim() || answer, memory: true });
   } catch (error) {
     console.error('Support chatbot failed:', error);
     return res.json({
