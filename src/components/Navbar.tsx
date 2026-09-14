@@ -97,10 +97,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Install App
           </button>
-          <CommunityChat username={username} userId={userId} />
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <CommunityChat username={username} userId={userId} />
           {username ? (
             <div className="relative">
               <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-cyan-200 hover:text-white" aria-expanded={accountMenuOpen}>

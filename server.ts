@@ -1174,18 +1174,21 @@ app.get('/api/friends', async (req, res) => {
   if (!database) return res.json({ friends: [], users: [] });
   const result = await database.query(
     `SELECT u.id, u.username, u.avatar_url,
-      COALESCE(fc.status, 'none') AS relationship
+      COALESCE((
+        SELECT fc.status FROM friend_connections fc
+        WHERE fc.requester_id = $1 AND fc.recipient_id = u.id
+        LIMIT 1
+      ), 'none') AS relationship
      FROM users u
-     LEFT JOIN friend_connections fc
-       ON ((fc.requester_id = $1 AND fc.recipient_id = u.id)
-        OR (fc.requester_id = u.id AND fc.recipient_id = $1))
      WHERE u.id <> $1 AND u.username IS NOT NULL
      ORDER BY LOWER(u.username)`,
     [user.id],
   );
   const friends = result.rows.filter((entry) => entry.relationship === 'active');
+  const blocked = result.rows.filter((entry) => entry.relationship === 'blocked');
   return res.json({
     friends: friends.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
+    blocked: blocked.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
     users: result.rows.filter((entry) => entry.relationship === 'none').map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
   });
 });

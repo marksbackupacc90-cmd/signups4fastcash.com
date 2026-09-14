@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import { DEFAULT_SITE_SETTINGS, OfferCategory, SiteSettings } from '../types';
+import { DEFAULT_SITE_SETTINGS, Offer, OfferCategory, SiteSettings } from '../types';
+import { CompanyLogo } from './CompanyLogo';
 
 interface HeroProps {
   siteSettings?: SiteSettings;
@@ -12,6 +13,7 @@ interface HeroProps {
   sortBy: 'highest' | 'fastest' | 'easiest';
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
   totalOffersCount: number;
+  featuredOffers: Offer[];
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -33,6 +35,7 @@ export const Hero: React.FC<HeroProps> = ({
   sortBy,
   setSortBy,
   totalOffersCount,
+  featuredOffers,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
@@ -56,6 +59,21 @@ export const Hero: React.FC<HeroProps> = ({
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
+          </div>
+          <div className="grid w-full max-w-xs grid-cols-2 gap-2 self-start lg:w-64">
+            {featuredOffers.slice(0, 4).map((offer) => (
+              <button
+                key={offer.id}
+                type="button"
+                onClick={() => document.getElementById(`offer-card-${offer.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className="group flex min-h-[6.5rem] flex-col items-center justify-center rounded-lg border border-white/[0.08] bg-[#0e121a] p-2 text-center transition-colors hover:border-[#8bd3a7]/60 hover:bg-[#14251f]"
+                title={`View ${offer.company} offer`}
+              >
+                <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" />
+                <span className="mt-1.5 max-w-full truncate text-[10px] font-semibold text-zinc-200 group-hover:text-white">{offer.company}</span>
+                <span className="max-w-full truncate text-[9px] text-[#8bd3a7]">{offer.incentiveAmount}</span>
+              </button>
+            ))}
           </div>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
