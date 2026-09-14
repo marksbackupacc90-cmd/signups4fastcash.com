@@ -190,6 +190,10 @@ export default function App() {
   }, [activeTab, isAdminUnlocked]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!authUser) {
       setCanAccessAdmin(false);
       return;
@@ -864,7 +868,6 @@ export default function App() {
         onOpenLegal={setLegalSection}
         onSelectOffers={() => {
           setActiveTab('offers');
-          window.setTimeout(() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth' }), 0);
         }}
         onSelectAdmin={() => {
           if (isAdminUnlocked) {
