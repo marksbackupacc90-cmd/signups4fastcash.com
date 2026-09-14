@@ -35,7 +35,6 @@ const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_UNLOCK_MAX_FAILURES = 5;
 const ADMIN_UNLOCK_BLOCK_MS = 15 * 60 * 1000;
 const delegatedAdminUsernames = new Set<string>();
-delegatedAdminUsernames.add('modmark');
 
 function isHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2048) return false;
@@ -294,6 +293,7 @@ let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 
 async function initializeOfferStore() {
   if (!database) {
+    delegatedAdminUsernames.add('modmark');
     liveOffersStore = PUBLIC_OFFERS;
     return;
   }
@@ -343,9 +343,11 @@ async function initializeOfferStore() {
       granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
-  await database.query(
-    `INSERT INTO admin_access (username) VALUES ('modmark') ON CONFLICT (username) DO NOTHING`,
-  );
+  const adminAccessCount = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM admin_access');
+  if (adminAccessCount.rows[0]?.count === '0') {
+    await database.query(`INSERT INTO admin_access (username) VALUES ('modmark')`);
+  }
+  delegatedAdminUsernames.clear();
   const adminAccessRows = await database.query<{ username: string }>('SELECT username FROM admin_access ORDER BY username');
   adminAccessRows.rows.forEach((row) => delegatedAdminUsernames.add(row.username.toLowerCase()));
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS paypal_email TEXT`);
