@@ -168,6 +168,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [resettingAnalytics, setResettingAnalytics] = useState(false);
+  const [analyticsResetMessage, setAnalyticsResetMessage] = useState<string | null>(null);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -435,6 +437,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="mt-2 truncate text-lg font-mono font-bold text-white">{visitorAnalytics.sources[0]?.source || 'No data yet'}</div>
             <div className="mt-1 text-[11px] text-zinc-500">{visitorAnalytics.sources[0]?.pageViews || 0} page views</div>
           </div>
+          {isOwnerAdmin && (
+            <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#9b7650]/35 bg-[#10131d] p-4">
+              <div>
+                <div className="text-xs font-semibold text-[#d6a96d]">Analytics controls</div>
+                <p className="mt-1 text-[11px] text-zinc-500">Reset visits, clicks, conversions, and offer counters to zero.</p>
+              </div>
+              <button
+                type="button"
+                disabled={resettingAnalytics}
+                onClick={async () => {
+                  if (!window.confirm('Reset all visits, clicks, conversions, and offer counters to zero? This cannot be undone.')) return;
+                  setResettingAnalytics(true);
+                  setAnalyticsResetMessage(null);
+                  try {
+                    const token = localStorage.getItem('signups4fastcash_admin_token');
+                    const response = await fetch('/api/admin/analytics/reset', {
+                      method: 'POST',
+                      headers: token ? { 'x-admin-token': token } : {},
+                    });
+                    const data = await response.json().catch(() => null) as { error?: string } | null;
+                    if (!response.ok) throw new Error(data?.error || 'Could not reset analytics.');
+                    setAnalyticsResetMessage('All counters were reset to zero.');
+                    window.setTimeout(() => window.location.reload(), 700);
+                  } catch (error) {
+                    setAnalyticsResetMessage(error instanceof Error ? error.message : 'Could not reset analytics.');
+                  } finally {
+                    setResettingAnalytics(false);
+                  }
+                }}
+                className="rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-2 text-xs font-bold text-[#102018] hover:bg-[#8bd3a7] disabled:cursor-wait disabled:opacity-60"
+              >
+                {resettingAnalytics ? 'Resetting...' : 'Reset analytics'}
+              </button>
+              {analyticsResetMessage && <span className="text-xs text-[#d6a96d]">{analyticsResetMessage}</span>}
+            </div>
+          )}
         </div>
       )}
       

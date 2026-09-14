@@ -1565,6 +1565,36 @@ app.get('/api/admin/analytics/visitors', requireAdmin, (_req, res) => {
   });
 });
 
+app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
+  analyticsStore = { totalClicks: 0, totalConversions: 0 };
+  visitorAnalyticsStore = {
+    totalPageViews: 0,
+    uniqueVisitors: new Set<string>(),
+    sources: new Map<string, number>(),
+  };
+  liveOffersStore = liveOffersStore.map((offer) => ({
+    ...offer,
+    clicksCount: 0,
+    conversionsCount: 0,
+  }));
+
+  if (database) {
+    try {
+      await database.query('BEGIN');
+      await database.query('UPDATE analytics_counters SET total_clicks = 0, total_conversions = 0 WHERE id = 1');
+      await database.query('DELETE FROM visitor_events');
+      await database.query('COMMIT');
+      await saveLiveOffers();
+    } catch (error) {
+      await database.query('ROLLBACK').catch(() => undefined);
+      console.error('Could not reset analytics:', error);
+      return res.status(500).json({ error: 'Could not reset analytics.' });
+    }
+  }
+
+  return res.json({ success: true });
+});
+
 // API: Newsletter subscription
 app.post('/api/newsletter/subscribe', async (req, res) => {
   const { email, frequency } = req.body;
