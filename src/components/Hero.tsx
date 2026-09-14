@@ -50,7 +50,7 @@ export const Hero: React.FC<HeroProps> = ({
         <div className="retro-window">
           <div className="bg-[#141824] p-4 sm:p-6">
         
-        <div className="mb-5 flex flex-wrap items-center justify-end gap-2">
+        <div className="mb-5 flex min-h-14 flex-wrap items-center justify-end gap-2 rounded-lg border border-white/[0.06] bg-[#14251f] p-2">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"

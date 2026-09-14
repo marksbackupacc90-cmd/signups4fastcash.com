@@ -74,7 +74,7 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
           </div>
           <label className="block text-xs font-semibold text-zinc-300">Sex<select value={form.sex} onChange={(e) => update('sex', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white"><option value="">Prefer not to say</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option></select></label>
           <p className="text-[11px] leading-relaxed text-zinc-500">These details are optional and used for account updates. Your password is managed by Google; change it in your Google Account.</p>
-          <button disabled={saving} className="w-full rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-bold text-black hover:bg-cyan-200 disabled:opacity-60">{saving ? 'Saving…' : 'Save profile'}</button>
+          <button disabled={saving} className="w-full rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-4 py-2.5 text-sm font-bold text-[#102018] hover:bg-[#8bd3a7] disabled:opacity-60">{saving ? 'Saving…' : 'Save profile'}</button>
           {message && <p role="status" className="text-xs text-emerald-300">{message}</p>}
           {error && <p role="alert" className="text-xs text-rose-300">{error}</p>}
         </form>
