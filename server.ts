@@ -21,7 +21,7 @@ const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
 const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
 const appUrl = (env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
-const adminTokens = new Map<string, number>();
+const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
 const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -34,6 +34,8 @@ const adminUnlockAttempts = new Map<string, { failures: number; windowStartedAt:
 const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_UNLOCK_MAX_FAILURES = 5;
 const ADMIN_UNLOCK_BLOCK_MS = 15 * 60 * 1000;
+const delegatedAdminUsernames = new Set<string>();
+delegatedAdminUsernames.add('modmark');
 
 function isHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2048) return false;
@@ -335,6 +337,17 @@ async function initializeOfferStore() {
       expires_at TIMESTAMPTZ NOT NULL
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS admin_access (
+      username TEXT PRIMARY KEY,
+      granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(
+    `INSERT INTO admin_access (username) VALUES ('modmark') ON CONFLICT (username) DO NOTHING`,
+  );
+  const adminAccessRows = await database.query<{ username: string }>('SELECT username FROM admin_access ORDER BY username');
+  adminAccessRows.rows.forEach((row) => delegatedAdminUsernames.add(row.username.toLowerCase()));
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS paypal_email TEXT`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT`);
@@ -722,7 +735,7 @@ app.put('/api/site-settings', requireAdmin, (req, res) => {
         metaTitle: incoming.metaTitle,
         metaDescription: incoming.metaDescription,
       }).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-    ) as SiteSettings,
+    ) as unknown as SiteSettings,
   };
 
   siteSettingsStore = nextSettings;
@@ -761,14 +774,25 @@ app.post('/api/admin/unlock', (req, res) => {
   }
   adminUnlockAttempts.delete(clientKey);
   const token = randomUUID();
-  adminTokens.set(token, Date.now() + 8 * 60 * 60 * 1000);
-  res.json({ token });
+  adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role: 'owner' });
+  res.json({ token, role: 'owner' });
+});
+
+app.post('/api/admin/unlock-user', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const username = user?.username?.trim().toLowerCase();
+  if (!user || !username || !delegatedAdminUsernames.has(username)) {
+    return res.status(403).json({ error: 'This account has not been granted admin access.' });
+  }
+  const token = randomUUID();
+  adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role: 'delegated' });
+  res.json({ token, role: 'delegated' });
 });
 
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const token = req.header('x-admin-token');
-  const expiresAt = token ? adminTokens.get(token) : undefined;
-  if (!expiresAt || expiresAt < Date.now()) {
+  const session = token ? adminTokens.get(token) : undefined;
+  if (!session || session.expiresAt < Date.now()) {
     if (token) adminTokens.delete(token);
     return res.status(401).json({ error: 'Admin authentication required' });
   }
@@ -776,13 +800,53 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 }
 
 function hasValidAdminToken(token: string | undefined) {
-  const expiresAt = token ? adminTokens.get(token) : undefined;
-  if (!expiresAt || expiresAt < Date.now()) {
+  const session = token ? adminTokens.get(token) : undefined;
+  if (!session || session.expiresAt < Date.now()) {
     if (token) adminTokens.delete(token);
     return false;
   }
   return true;
 }
+
+function requireOwnerAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const token = req.header('x-admin-token');
+  const session = token ? adminTokens.get(token) : undefined;
+  if (!session || session.expiresAt < Date.now() || session.role !== 'owner') {
+    if (token && (!session || session.expiresAt < Date.now())) adminTokens.delete(token);
+    return res.status(403).json({ error: 'Owner admin access is required.' });
+  }
+  next();
+}
+
+app.get('/api/admin/access', requireOwnerAdmin, (_req, res) => {
+  res.json({ usernames: [...delegatedAdminUsernames].sort() });
+});
+
+app.put('/api/admin/access', requireOwnerAdmin, async (req, res) => {
+  const incoming: unknown[] = Array.isArray(req.body?.usernames) ? req.body.usernames : [];
+  const usernames = [...new Set(incoming
+    .filter((value: unknown): value is string => typeof value === 'string')
+    .map((value: string) => value.trim().toLowerCase())
+    .filter((value: string) => /^[a-zA-Z0-9_]{3,24}$/.test(value)))];
+  if (usernames.length > 100) return res.status(400).json({ error: 'You can grant access to up to 100 usernames.' });
+
+  if (database) {
+    await database.query('BEGIN');
+    try {
+      await database.query('DELETE FROM admin_access');
+      for (const username of usernames) {
+        await database.query('INSERT INTO admin_access (username) VALUES ($1)', [username]);
+      }
+      await database.query('COMMIT');
+    } catch (error) {
+      await database.query('ROLLBACK');
+      throw error;
+    }
+  }
+  delegatedAdminUsernames.clear();
+  usernames.forEach((username) => delegatedAdminUsernames.add(username));
+  res.json({ usernames: [...delegatedAdminUsernames].sort() });
+});
 
 app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
   const task = typeof req.body?.task === 'string' ? req.body.task.trim() : '';

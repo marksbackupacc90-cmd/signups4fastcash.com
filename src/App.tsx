@@ -107,6 +107,8 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'highest' | 'fastest' | 'easiest'>('highest');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
+  const [isOwnerAdmin, setIsOwnerAdmin] = useState(false);
+  const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
@@ -199,11 +201,13 @@ export default function App() {
       }).catch(() => null);
 
       if (response?.ok) {
-        const data = await response.json() as { token: string };
+        const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
         setIsAdminUnlocked(true);
+        setIsOwnerAdmin(data.role === 'owner');
         localStorage.setItem('signups4fastcash_admin_token', data.token);
         setSearchQuery('');
         setActiveTab('admin');
+        if (data.role === 'owner') void loadAdminUsernames(data.token);
         showToast('Admin access enabled for this browser session.');
         return;
       }
@@ -216,8 +220,54 @@ export default function App() {
     setSearchQuery(query);
   };
 
+  const loadAdminUsernames = async (token?: string) => {
+    const response = await fetch('/api/admin/access', {
+      headers: { 'x-admin-token': token || localStorage.getItem('signups4fastcash_admin_token') || '' },
+    });
+    if (!response.ok) return;
+    const data = await response.json() as { usernames?: string[] };
+    setAdminUsernames(data.usernames || []);
+  };
+
+  const handleDelegatedAdminAccess = async () => {
+    if (!authUser) {
+      showToast('Sign in first to use delegated admin access.');
+      setAuthMode('signin');
+      setAuthOpenRequest((request) => request + 1);
+      return;
+    }
+    const response = await fetch('/api/admin/unlock-user', { method: 'POST' }).catch(() => null);
+    if (!response?.ok) {
+      const data = await response?.json().catch(() => null) as { error?: string } | null;
+      showToast(data?.error || 'This account does not have admin access.');
+      return;
+    }
+    const data = await response.json() as { token: string; role?: 'delegated' };
+    localStorage.setItem('signups4fastcash_admin_token', data.token);
+    setIsAdminUnlocked(true);
+    setIsOwnerAdmin(false);
+    setActiveTab('admin');
+    showToast('Delegated admin access enabled for this browser session.');
+  };
+
+  const handleUpdateAdminUsernames = async (usernames: string[]) => {
+    const response = await fetch('/api/admin/access', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+      body: JSON.stringify({ usernames }),
+    });
+    const data = await response.json().catch(() => null) as { usernames?: string[]; error?: string } | null;
+    if (!response.ok) {
+      showToast(data?.error || 'Could not update admin access.');
+      return;
+    }
+    setAdminUsernames(data?.usernames || []);
+    showToast('Delegated admin access updated.');
+  };
+
   const handleLockAdmin = () => {
     setIsAdminUnlocked(false);
+    setIsOwnerAdmin(false);
     try {
       localStorage.removeItem('signups4fastcash_admin_token');
     } catch {
@@ -604,7 +654,9 @@ export default function App() {
           await fetch('/api/auth/logout', { method: 'POST' });
           setAuthUser(null);
           setAccountOpen(false);
+          handleLockAdmin();
         }}
+        onAdminAccess={() => void handleDelegatedAdminAccess()}
       />
 
       {installPrompt && (
@@ -784,6 +836,9 @@ export default function App() {
               onLockAdmin={handleLockAdmin}
               siteSettings={siteSettings}
               onUpdateSiteSettings={handleUpdateSiteSettings}
+              isOwnerAdmin={isOwnerAdmin}
+              adminUsernames={adminUsernames}
+              onUpdateAdminUsernames={handleUpdateAdminUsernames}
             />
           </div>
         )}

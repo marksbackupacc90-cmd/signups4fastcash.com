@@ -44,6 +44,9 @@ interface AdminPanelProps {
   onLockAdmin?: () => void;
   siteSettings: SiteSettings;
   onUpdateSiteSettings: (updates: Partial<SiteSettings>) => void;
+  isOwnerAdmin?: boolean;
+  adminUsernames?: string[];
+  onUpdateAdminUsernames?: (usernames: string[]) => void;
 }
 
 interface OutreachResult {
@@ -127,6 +130,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLockAdmin,
   siteSettings,
   onUpdateSiteSettings,
+  isOwnerAdmin = false,
+  adminUsernames = [],
+  onUpdateAdminUsernames,
 }) => {
   const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'settings'>('live');
   const [outreachTask, setOutreachTask] = useState('');
@@ -144,6 +150,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [liveSearchFilter, setLiveSearchFilter] = useState<string>('');
   const [settingsDraft, setSettingsDraft] = useState<SiteSettings>(siteSettings || DEFAULT_SITE_SETTINGS);
+  const [adminUsernamesDraft, setAdminUsernamesDraft] = useState(adminUsernames.join(', '));
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -178,6 +185,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     setSettingsDraft(siteSettings || DEFAULT_SITE_SETTINGS);
   }, [siteSettings]);
+
+  useEffect(() => {
+    setAdminUsernamesDraft(adminUsernames.join(', '));
+  }, [adminUsernames]);
 
   useEffect(() => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -553,6 +564,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <textarea value={settingsDraft.metaDescription} onChange={(e) => setSettingsDraft({ ...settingsDraft, metaDescription: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
             </label>
           </div>
+
+          {isOwnerAdmin && onUpdateAdminUsernames && (
+            <div className="border-t border-white/[0.08] pt-4">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-amber-200">Delegated admin access</div>
+              <p className="mt-1 text-xs text-zinc-400">Enter usernames separated by commas. These users must sign in with Google before the Admin button will work.</p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={adminUsernamesDraft}
+                  onChange={(event) => setAdminUsernamesDraft(event.target.value)}
+                  placeholder="ModMark, another_username"
+                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => onUpdateAdminUsernames(adminUsernamesDraft.split(',').map((username) => username.trim()).filter(Boolean))}
+                  className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-400/20"
+                >
+                  Save admin access
+                </button>
+              </div>
+              <div className="mt-2 text-[11px] text-zinc-500">Current access: {adminUsernames.length ? adminUsernames.join(', ') : 'none'}</div>
+            </div>
+          )}
         </div>
       )}
 
