@@ -874,6 +874,52 @@ app.put('/api/admin/access', requireOwnerAdmin, async (req, res) => {
   res.json({ usernames: [...delegatedAdminUsernames].sort() });
 });
 
+app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const context = typeof req.body?.context === 'string' ? req.body.context.trim() : '';
+  if (!message || message.length > 4000) {
+    return res.status(400).json({ error: 'Enter a question up to 4,000 characters.' });
+  }
+  if (containsSensitiveCredentials(message) || containsSensitiveCredentials(context)) {
+    return res.status(400).json({
+      error: 'Do not enter passwords, login details, passcodes, or private account information.',
+    });
+  }
+
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json({
+      answer: `I can help plan that, but the connected AI service is unavailable right now. Start with this: ${message}\n\nUse the Live Offers tab for offer links and codes, Site Settings for public copy and SEO, and the Outreach Assistant for a reviewed promotion plan. I cannot make changes or publish anything without your explicit action.`,
+      fallback: true,
+    });
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `You are S4FC Copilot, a concise and practical assistant embedded in the private admin panel for Signups4FastCash.com.
+Help the administrator understand the site, diagnose issues, plan content, improve offers, and choose the correct admin-panel control.
+You may recommend exact edits, field values, validation steps, and code changes, but you must not claim to have changed data, deployed code, sent emails, or published posts.
+Never request or repeat passwords, API keys, login details, private messages, bank details, or government IDs.
+Prefer short step-by-step answers. Flag affiliate, financial, legal, privacy, and platform-policy risks when relevant.
+
+CURRENT SITE CONTEXT:
+${context || 'No site context was provided.'}
+
+ADMIN QUESTION:
+${message}`,
+      config: { temperature: 0.3 },
+    });
+    return res.json({ answer: response.text?.trim() || 'I could not produce an answer. Try asking in a more specific way.' });
+  } catch (error) {
+    console.error('Admin copilot failed:', error);
+    return res.json({
+      answer: `The AI service is temporarily unavailable. I can still help you work through this manually: ${message}\n\nCheck the relevant Admin Panel tab, verify the official merchant terms, and test the change on the public site before deploying.`,
+      fallback: true,
+    });
+  }
+});
+
 app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
   const task = typeof req.body?.task === 'string' ? req.body.task.trim() : '';
   const context = typeof req.body?.context === 'string' ? req.body.context.trim() : '';

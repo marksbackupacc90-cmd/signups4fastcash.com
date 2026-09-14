@@ -20,7 +20,9 @@ import {
   Check,
   Search,
   Save,
-  ArrowUpRight
+  ArrowUpRight,
+  MessageCircle,
+  User
 } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SpeedrunStep, SiteSettings, DEFAULT_SITE_SETTINGS } from '../types';
 import { CompanyLogo } from './CompanyLogo';
@@ -56,6 +58,11 @@ interface OutreachResult {
   workflow: { step: number; action: string; reason: string }[];
   draftPost: string;
   disclosure: string;
+}
+
+interface CopilotMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 interface VisitorAnalytics {
@@ -134,12 +141,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'settings'>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings'>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
   const [outreachLoading, setOutreachLoading] = useState(false);
   const [outreachError, setOutreachError] = useState<string | null>(null);
+  const [copilotInput, setCopilotInput] = useState('');
+  const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([
+    { role: 'assistant', content: 'I am your S4FC Copilot. Ask me about offers, site copy, admin tools, analytics, troubleshooting, or what to do next.' },
+  ]);
+  const [copilotLoading, setCopilotLoading] = useState(false);
+  const [copilotError, setCopilotError] = useState<string | null>(null);
   const [visitorAnalytics, setVisitorAnalytics] = useState<VisitorAnalytics | null>(null);
 
   // Live Offers inline draft referral inputs and filters
@@ -227,6 +240,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setOutreachError(error instanceof Error ? error.message : 'The outreach assistant could not complete this task.');
     } finally {
       setOutreachLoading(false);
+    }
+  };
+
+  const handleCopilotSubmit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const message = copilotInput.trim();
+    if (!message || copilotLoading) return;
+    setCopilotInput('');
+    setCopilotError(null);
+    setCopilotMessages((previous) => [...previous, { role: 'user', content: message }]);
+    setCopilotLoading(true);
+    const context = JSON.stringify({
+      adminRole: isOwnerAdmin ? 'owner' : 'delegated',
+      liveOffers: liveOffers.map((offer) => ({ company: offer.company, title: offer.title, category: offer.category, incentive: offer.incentiveAmount, deposit: offer.depositRequired, payout: offer.payoutSpeed })),
+      pendingOfferCount: pendingOffers.length,
+      subscriberCount: subscribers.length,
+      siteSettings,
+    });
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token');
+      const response = await fetch('/api/admin/copilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({ message, context }),
+      });
+      const data = await response.json().catch(() => null) as { answer?: string; error?: string } | null;
+      if (!response.ok || !data?.answer) throw new Error(data?.error || 'Copilot could not answer that question.');
+      setCopilotMessages((previous) => [...previous, { role: 'assistant', content: data.answer as string }]);
+    } catch (error) {
+      setCopilotError(error instanceof Error ? error.message : 'Copilot could not answer that question.');
+    } finally {
+      setCopilotLoading(false);
     }
   };
 
@@ -444,6 +489,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           >
             <Send className="w-3.5 h-3.5 text-[#00f2fe]" />
             Blast Logs ({blastLogs.length})
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('copilot')}
+            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1.5 ${
+              activeAdminTab === 'copilot'
+                ? 'bg-amber-400/15 text-amber-200 font-bold border border-amber-400/30'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-amber-300" />
+            S4FC Copilot
           </button>
 
           <button
@@ -1346,6 +1403,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeAdminTab === 'copilot' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-amber-400/25 bg-[#0e121a] p-5">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-amber-400/15 p-2 text-amber-200"><MessageCircle className="h-5 w-5" /></div>
+              <div>
+                <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-white">S4FC Copilot</h3>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Ask for help understanding the site, improving an offer, writing public copy, diagnosing a problem, or choosing the right admin control. I can recommend changes, but you approve and save them.</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-red-400/20 bg-red-400/5 px-3 py-2 text-xs leading-relaxed text-red-200">Never enter passwords, API keys, passcodes, private messages, bank details, or government ID.</div>
+          </div>
+
+          <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+            <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+              {copilotMessages.map((message, index) => (
+                <div key={`${message.role}-${index}`} className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {message.role === 'assistant' && <Bot className="mt-2 h-4 w-4 shrink-0 text-amber-300" />}
+                  <div className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${message.role === 'user' ? 'bg-cyan-400/15 text-cyan-50' : 'bg-[#141824] text-zinc-200'}`}>
+                    {message.content}
+                  </div>
+                  {message.role === 'user' && <User className="mt-2 h-4 w-4 shrink-0 text-cyan-300" />}
+                </div>
+              ))}
+              {copilotLoading && <div className="text-xs text-zinc-500">Copilot is thinking...</div>}
+            </div>
+            <form onSubmit={handleCopilotSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={copilotInput}
+                onChange={(event) => setCopilotInput(event.target.value)}
+                placeholder="How should I improve the Freecash offer?"
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#090b0e] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none"
+              />
+              <button type="submit" disabled={copilotLoading || !copilotInput.trim()} className="rounded-lg bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50">Ask Copilot</button>
+            </form>
+            {copilotError && <div className="mt-3 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{copilotError}</div>}
+          </div>
         </div>
       )}
 
