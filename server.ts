@@ -820,6 +820,30 @@ function requireOwnerAdmin(req: express.Request, res: express.Response, next: ex
   next();
 }
 
+function createFallbackOutreachResult(task: string, reason: string) {
+  return {
+    summary: `Create a human-reviewed outreach post for: ${task}`,
+    safetyNotes: [
+      'Review each community\'s rules before posting and ask permission when promotional links are restricted.',
+      'Post manually one community at a time. Do not mass-post, scrape private groups, or evade moderation.',
+      `Automated planning was unavailable (${reason}), so verify every claim and offer term against the official merchant page.`,
+    ],
+    searchQueries: [
+      `${task} official terms referral bonus`,
+      'site:reddit.com promotional offers referral rules',
+      'cashback signup bonus community disclosure guidelines',
+    ],
+    workflow: [
+      { step: 1, action: 'Open the official merchant offer and verify the current reward, requirements, eligibility, and expiration.', reason: 'Prevent outdated or misleading claims.' },
+      { step: 2, action: 'Find one relevant public community and read its current self-promotion and affiliate-link rules.', reason: 'Respect community policies and avoid unwanted promotion.' },
+      { step: 3, action: 'Write a concise post with the requirements first, the official link, and a clear affiliate disclosure.', reason: 'Give readers enough context to make an informed decision.' },
+      { step: 4, action: 'Submit or publish manually only after checking the final text and link.', reason: 'Keep a human in control of the publication.' },
+    ],
+    draftPost: `I found a current signup offer for ${task}. Before applying, check the official terms for eligibility, required actions, timing, and any deposit or purchase requirements.\n\nOfficial offer: [paste the verified merchant link]\n\nDisclosure: This may be a referral or affiliate link, which may compensate the publisher at no extra cost to you. Terms and eligibility can change, so verify them on the official merchant site before signing up.`,
+    disclosure: 'This may be a referral or affiliate link. The merchant controls eligibility, terms, and payout timing. Verify the official offer before participating.',
+  };
+}
+
 app.get('/api/admin/access', requireOwnerAdmin, (_req, res) => {
   res.json({ usernames: [...delegatedAdminUsernames].sort() });
 });
@@ -864,7 +888,7 @@ app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
 
   const ai = getGenAI();
   if (!ai) {
-    return res.status(503).json({ error: 'AI outreach is not configured. Add GEMINI_API_KEY to enable the assistant.' });
+    return res.json({ result: createFallbackOutreachResult(task, 'Gemini is not configured') });
   }
 
   try {
@@ -920,7 +944,7 @@ ${context || 'No additional context.'}`,
     return res.json({ result });
   } catch (error) {
     console.error('Outreach assistant failed:', error);
-    return res.status(500).json({ error: 'The outreach assistant could not complete this task.' });
+    return res.json({ result: createFallbackOutreachResult(task, 'the AI service was unavailable') });
   }
 });
 
