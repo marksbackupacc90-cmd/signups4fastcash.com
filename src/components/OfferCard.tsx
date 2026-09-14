@@ -60,11 +60,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       id={`offer-card-${offer.id}`}
       className="retro-window group relative bg-[#0e121a] transition-colors duration-200 overflow-hidden flex flex-col"
     >
-      <div className="retro-titlebar flex items-center justify-between text-xs">
-        <span>{offer.company} - offer details</span>
-        <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
-      </div>
-
       <div className="bg-[#141824] p-3 sm:p-4 flex-1 flex flex-col">
         
         {/* Header: Company Logo next to Title + Incentive Badge */}
