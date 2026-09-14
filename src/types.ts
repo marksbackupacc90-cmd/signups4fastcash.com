@@ -108,6 +108,9 @@ export interface SiteSettings {
   trustSubtext: string;
   metaTitle: string;
   metaDescription: string;
+  themeBackgroundColor: string;
+  themeAccentColor: string;
+  themePanelColor: string;
 }
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -126,6 +129,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   trustSubtext: 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.',
   metaTitle: 'Best Signup Bonuses & No-Deposit Offers | Signups4FastCash.com',
   metaDescription: 'Compare signup bonuses, no-deposit offers, cashback rewards, and referral incentives with the actual requirements, payout timing, and fine print before you click through.',
+  themeBackgroundColor: '#0b1020',
+  themeAccentColor: '#00f2fe',
+  themePanelColor: '#10141d',
 };
 
 export interface AnalyticsSummary {

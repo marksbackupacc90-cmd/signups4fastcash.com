@@ -15,6 +15,7 @@ interface NavbarProps {
   onAccount: () => void;
   onSignOut: () => void;
   onAdminAccess: () => void;
+  canAccessAdmin?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -30,6 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onAccount,
   onSignOut,
   onAdminAccess,
+  canAccessAdmin = false,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
@@ -92,9 +94,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button onClick={onAccount} className="retro-button px-3 py-1.5 text-xs text-cyan-200 hover:text-white">
                 @{username}
               </button>
-              <button onClick={onAdminAccess} className="retro-button border border-amber-300/40 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-300/10">
-                Admin
-              </button>
+              {canAccessAdmin && (
+                <button onClick={onAdminAccess} className="retro-button border border-amber-300/40 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-300/10">
+                  Admin
+                </button>
+              )}
               <button onClick={onSignOut} className="retro-button px-3 py-1.5 text-xs text-zinc-300 hover:text-white">
                 Sign out
               </button>

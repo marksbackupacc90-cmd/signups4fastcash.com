@@ -7,7 +7,30 @@
 }
 
 html {
-  background: #0b1020;
+  background: var(--site-background, #0b1020);
+}
+
+[data-site-theme="custom"] {
+  background: var(--site-background, #0b1020);
+}
+
+[data-site-theme="custom"] .retro-window {
+  border-color: color-mix(in srgb, var(--site-accent, #00f2fe) 24%, transparent);
+}
+
+[data-site-theme="custom"] .retro-titlebar {
+  border-color: color-mix(in srgb, var(--site-accent, #00f2fe) 22%, transparent);
+}
+
+[data-site-theme="custom"] .text-cyan-200,
+[data-site-theme="custom"] .text-cyan-300,
+[data-site-theme="custom"] .text-cyan-400 {
+  color: var(--site-accent, #00f2fe) !important;
+}
+
+[data-site-theme="custom"] .bg-\[\#10141d\],
+[data-site-theme="custom"] .bg-\[\#0e121a\] {
+  background-color: var(--site-panel, #10141d) !important;
 }
 
 body,

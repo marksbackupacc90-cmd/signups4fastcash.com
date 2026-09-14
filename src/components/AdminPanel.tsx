@@ -42,6 +42,7 @@ interface AdminPanelProps {
   onUpdateLiveOffer: (offerId: string, updates: Partial<Offer>) => void;
   onDeleteLiveOffer: (offerId: string) => void;
   onCreateCustomOffer: (newOffer: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>) => void;
+  onCashBotScan: () => Promise<void>;
   blastLogs: EmailBlastLog[];
   onLockAdmin?: () => void;
   siteSettings: SiteSettings;
@@ -69,6 +70,13 @@ interface VisitorAnalytics {
   totalPageViews: number;
   uniqueVisitors: number;
   sources: { source: string; pageViews: number }[];
+}
+
+interface AdminAccount {
+  id: string;
+  email: string;
+  username: string | null;
+  createdAt: string | null;
 }
 
 export interface UserReferralPreset {
@@ -133,6 +141,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateLiveOffer,
   onDeleteLiveOffer,
   onCreateCustomOffer,
+  onCashBotScan,
   blastLogs,
   onLockAdmin,
   siteSettings,
@@ -141,7 +150,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings'>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts'>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
@@ -154,6 +163,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotError, setCopilotError] = useState<string | null>(null);
   const [visitorAnalytics, setVisitorAnalytics] = useState<VisitorAnalytics | null>(null);
+  const [cashBotScanning, setCashBotScanning] = useState(false);
+  const [cashBotError, setCashBotError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -202,6 +216,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     setAdminUsernamesDraft(adminUsernames.join(', '));
   }, [adminUsernames]);
+
+  useEffect(() => {
+    if (activeAdminTab !== 'accounts' || !isOwnerAdmin) return;
+    setAccountsLoading(true);
+    setAccountsError(null);
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    fetch('/api/admin/accounts', { headers: token ? { 'x-admin-token': token } : {} })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string } | null;
+        if (!response.ok) throw new Error(data?.error || 'Could not load accounts.');
+        setAccounts(data?.accounts || []);
+      })
+      .catch((error) => setAccountsError(error instanceof Error ? error.message : 'Could not load accounts.'))
+      .finally(() => setAccountsLoading(false));
+  }, [activeAdminTab, isOwnerAdmin]);
 
   useEffect(() => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -527,8 +556,60 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <FileText className="w-3.5 h-3.5 text-cyan-300" />
             Site Settings
           </button>
+
+          {isOwnerAdmin && (
+            <button
+              onClick={() => setActiveAdminTab('accounts')}
+              className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
+                activeAdminTab === 'accounts'
+                  ? 'bg-cyan-400/15 text-cyan-200 font-bold border border-cyan-400/30'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              Accounts
+            </button>
+          )}
         </div>
       </div>
+
+      {activeAdminTab === 'accounts' && isOwnerAdmin && (
+        <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+          <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Registered accounts</div>
+              <h3 className="mt-1 text-lg font-bold text-white">Signed-up users ({accounts.length})</h3>
+            </div>
+            {accountsLoading && <span className="text-xs text-zinc-400">Loading...</span>}
+          </div>
+          {accountsError && <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{accountsError}</p>}
+          {!accountsLoading && !accountsError && accounts.length === 0 && (
+            <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
+          )}
+          {accounts.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-xs">
+                <thead className="border-b border-white/[0.08] text-zinc-500">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Email</th>
+                    <th className="px-3 py-2 font-medium">Username</th>
+                    <th className="px-3 py-2 font-medium">Signed up</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.map((account) => (
+                    <tr key={account.id} className="border-b border-white/[0.05] text-zinc-200">
+                      <td className="px-3 py-3">{account.email}</td>
+                      <td className="px-3 py-3">{account.username ? `@${account.username}` : 'Not chosen'}</td>
+                      <td className="px-3 py-3 text-zinc-400">{account.createdAt ? new Date(account.createdAt).toLocaleString() : 'Current session data'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {activeAdminTab === 'settings' && (
         <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5 space-y-4">
@@ -621,6 +702,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               Meta description
               <textarea value={settingsDraft.metaDescription} onChange={(e) => setSettingsDraft({ ...settingsDraft, metaDescription: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
             </label>
+
+            <div className="md:col-span-2 border-t border-white/[0.08] pt-4">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Site colors</div>
+              <p className="mt-1 text-xs text-zinc-500">Choose the main background, accent, and panel colors used across the public site.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {([
+                  ['themeBackgroundColor', 'Background color'],
+                  ['themeAccentColor', 'Accent color'],
+                  ['themePanelColor', 'Panel color'],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#090d18] p-3 text-xs text-zinc-300">
+                    <input
+                      type="color"
+                      value={settingsDraft[key]}
+                      onChange={(event) => setSettingsDraft({ ...settingsDraft, [key]: event.target.value })}
+                      className="h-9 w-12 cursor-pointer rounded border-0 bg-transparent p-0"
+                      aria-label={label}
+                    />
+                    <span>
+                      <span className="block font-semibold text-white">{label}</span>
+                      <span className="font-mono text-[11px] text-zinc-500">{settingsDraft[key]}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
           {isOwnerAdmin && onUpdateAdminUsernames && (
@@ -651,6 +758,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 1: Pending CashBot Findings & Approval */}
       {activeAdminTab === 'pending' && (
         <div className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-bold text-white">Run a fresh CashBot scan</div>
+              <p className="mt-1 text-xs text-zinc-400">Find current public promotions and add unique results to the review queue.</p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setCashBotScanning(true);
+                setCashBotError(null);
+                try {
+                  await onCashBotScan();
+                } catch (error) {
+                  setCashBotError(error instanceof Error ? error.message : 'CashBot scan failed.');
+                } finally {
+                  setCashBotScanning(false);
+                }
+              }}
+              disabled={cashBotScanning}
+              className="shrink-0 rounded-lg bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-60"
+            >
+              {cashBotScanning ? 'Scanning...' : 'Scan now'}
+            </button>
+          </div>
+          {cashBotError && <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs text-red-200">{cashBotError}</div>}
           {pendingOffers.length === 0 ? (
             <div className="p-12 text-center rounded-xl bg-[#0b0e14] border border-white/[0.08]">
               <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />

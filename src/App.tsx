@@ -115,6 +115,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -126,7 +127,7 @@ export default function App() {
     fetch('/api/site-settings')
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load site settings'))))
       .then((data: { settings?: SiteSettings }) => {
-        if (data.settings) setSiteSettings(data.settings);
+        if (data.settings) setSiteSettings({ ...DEFAULT_SITE_SETTINGS, ...data.settings });
       })
       .catch(() => {
         setSiteSettings(DEFAULT_SITE_SETTINGS);
@@ -158,7 +159,13 @@ export default function App() {
       : document.referrer ? new URL(document.referrer).hostname : 'direct';
     void fetch('/api/analytics/pageview', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(() => {
+          const token = localStorage.getItem('signups4fastcash_admin_token');
+          return token ? { 'x-admin-token': token } : {};
+        })(),
+      },
       body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
     });
   }, []);
@@ -180,6 +187,18 @@ export default function App() {
       setActiveTab('offers');
     }
   }, [activeTab, isAdminUnlocked]);
+
+  useEffect(() => {
+    if (!authUser) {
+      setCanAccessAdmin(false);
+      return;
+    }
+
+    fetch('/api/admin/can-access')
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Could not check admin access'))))
+      .then((data: { canAccess?: boolean }) => setCanAccessAdmin(Boolean(data.canAccess)))
+      .catch(() => setCanAccessAdmin(false));
+  }, [authUser]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -397,6 +416,9 @@ export default function App() {
   };
 
   const handleClaimClick = async (offerId: string) => {
+    const adminToken = localStorage.getItem('signups4fastcash_admin_token');
+    if (adminToken) return;
+
     setLiveOffers((prev) =>
       prev.map((o) => (o.id === offerId ? { ...o, clicksCount: o.clicksCount + 1 } : o))
     );
@@ -479,6 +501,25 @@ export default function App() {
   const handleRejectOffer = (offerId: string) => {
     setPendingOffers((prev) => prev.filter((o) => o.id !== offerId));
     showToast('Removed offer from the pending queue.');
+  };
+
+  const handleCashBotScan = async () => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const response = await fetch('/api/cashbot/scan', {
+      method: 'POST',
+      headers: token ? { 'x-admin-token': token } : {},
+    });
+    const data = await response.json().catch(() => null) as { findings?: Offer[]; error?: string } | null;
+    if (!response.ok || !data?.findings) {
+      throw new Error(data?.error || 'CashBot scan failed.');
+    }
+
+    setPendingOffers((current) => {
+      const existingIds = new Set(current.map((offer) => offer.id));
+      const newFindings = data.findings!.filter((offer) => !existingIds.has(offer.id));
+      return [...newFindings, ...current];
+    });
+    showToast(`CashBot found ${data.findings.length} offer${data.findings.length === 1 ? '' : 's'} for review.`);
   };
 
   const handleUpdateLiveOffer = async (offerId: string, updates: Partial<Offer>) => {
@@ -593,11 +634,6 @@ export default function App() {
       return 0;
     });
 
-  const noDepositOffers = liveOffers
-    .filter((offer) => /\$0|no deposit|zero deposit/i.test(offer.depositRequired))
-    .sort((a, b) => b.incentiveValue - a.incentiveValue)
-    .slice(0, 3);
-
   const shareUrl = 'https://signups4fastcash.com/?utm_source=visitor_share&utm_medium=referral&utm_campaign=share_cta';
   const shareMessage = `I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: ${shareUrl}`;
   const handleShare = async () => {
@@ -625,14 +661,24 @@ export default function App() {
     });
     if (!response.ok) {
       setSiteSettings(siteSettings);
+      showToast('Could not save changes. Please try again.');
       return;
     }
     const data = await response.json() as { settings?: SiteSettings };
     if (data.settings) setSiteSettings(data.settings);
+    showToast('Changes saved successfully.');
   };
 
   return (
-    <div className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}>
+    <div
+      data-site-theme="custom"
+      style={{
+        '--site-background': siteSettings.themeBackgroundColor,
+        '--site-accent': siteSettings.themeAccentColor,
+        '--site-panel': siteSettings.themePanelColor,
+      } as React.CSSProperties}
+      className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}
+    >
       <Navbar
         siteSettings={siteSettings}
         activeTab={activeTab}
@@ -657,6 +703,7 @@ export default function App() {
           handleLockAdmin();
         }}
         onAdminAccess={() => void handleDelegatedAdminAccess()}
+        canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
 
       {installPrompt && (
@@ -682,7 +729,7 @@ export default function App() {
             <Hero
               siteSettings={siteSettings}
               searchQuery={searchQuery}
-              setSearchQuery={handleSearchChange}
+              setSearchQuery={setSearchQuery}
               onSearchSubmit={(query) => void handleSearchChange(query, true)}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
@@ -719,45 +766,6 @@ export default function App() {
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
-              {noDepositOffers.length > 0 && selectedCategory === 'all' && !searchQuery.trim() && (
-                <section aria-labelledby="no-deposit-heading" className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.04] p-4 sm:p-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-[11px] font-mono uppercase tracking-wider text-emerald-300">Start with $0 out of pocket</p>
-                      <h2 id="no-deposit-heading" className="mt-1 text-lg font-bold text-white">Best no-deposit offers</h2>
-                      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
-                        These offers currently show no deposit requirement in our catalog. Account approval, identity checks,
-                        and merchant eligibility can still apply.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSearchQuery('$0 deposit')}
-                      className="shrink-0 rounded-lg border border-emerald-300/25 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-300/10"
-                    >
-                      See all $0 offers
-                    </button>
-                  </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    {noDepositOffers.map((offer) => (
-                      <button
-                        key={offer.id}
-                        onClick={() => {
-                          void handleClaimClick(offer.id);
-                          window.open(offer.referralUrl || offer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
-                        }}
-                        className="rounded-xl border border-white/10 bg-[#0e121a]/80 p-3 text-left transition-colors hover:border-emerald-300/40"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-bold text-white">{offer.company}</span>
-                          <span className="text-xs font-mono font-bold text-emerald-300">{offer.incentiveAmount}</span>
-                        </div>
-                        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">{offer.title}</p>
-                        <span className="mt-3 inline-flex text-[11px] font-semibold text-cyan-200">View offer &rarr;</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
@@ -790,14 +798,16 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="max-w-4xl mx-auto space-y-5">
-                  {filteredOffers.map((offer) => (
-                    <OfferCard
-                      key={offer.id}
-                      offer={offer}
-                      onClaimClick={handleClaimClick}
-                    />
-                  ))}
+                <div className="mx-auto max-w-5xl rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.03] p-3 sm:p-5">
+                  <div className="max-w-4xl mx-auto space-y-5">
+                    {filteredOffers.map((offer) => (
+                      <OfferCard
+                        key={offer.id}
+                        offer={offer}
+                        onClaimClick={handleClaimClick}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -832,6 +842,7 @@ export default function App() {
               onUpdateLiveOffer={handleUpdateLiveOffer}
               onDeleteLiveOffer={handleDeleteLiveOffer}
               onCreateCustomOffer={handleCreateCustomOffer}
+              onCashBotScan={handleCashBotScan}
               blastLogs={blastLogs}
               onLockAdmin={handleLockAdmin}
               siteSettings={siteSettings}

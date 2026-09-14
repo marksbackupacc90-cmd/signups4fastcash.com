@@ -736,6 +736,15 @@ app.put('/api/site-settings', requireAdmin, (req, res) => {
         trustSubtext: incoming.trustSubtext,
         metaTitle: incoming.metaTitle,
         metaDescription: incoming.metaDescription,
+        themeBackgroundColor: typeof incoming.themeBackgroundColor === 'string' && /^#[0-9a-f]{6}$/i.test(incoming.themeBackgroundColor)
+          ? incoming.themeBackgroundColor
+          : undefined,
+        themeAccentColor: typeof incoming.themeAccentColor === 'string' && /^#[0-9a-f]{6}$/i.test(incoming.themeAccentColor)
+          ? incoming.themeAccentColor
+          : undefined,
+        themePanelColor: typeof incoming.themePanelColor === 'string' && /^#[0-9a-f]{6}$/i.test(incoming.themePanelColor)
+          ? incoming.themePanelColor
+          : undefined,
       }).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
     ) as unknown as SiteSettings,
   };
@@ -789,6 +798,12 @@ app.post('/api/admin/unlock-user', async (req, res) => {
   const token = randomUUID();
   adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role: 'delegated' });
   res.json({ token, role: 'delegated' });
+});
+
+app.get('/api/admin/can-access', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const username = user?.username?.trim().toLowerCase();
+  res.json({ canAccess: Boolean(username && delegatedAdminUsernames.has(username)) });
 });
 
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -848,6 +863,31 @@ app.get('/api/admin/access', requireOwnerAdmin, (_req, res) => {
   res.json({ usernames: [...delegatedAdminUsernames].sort() });
 });
 
+app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
+  if (database) {
+    const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date }>(
+      'SELECT id, email, username, created_at FROM users ORDER BY created_at DESC',
+    );
+    return res.json({
+      accounts: result.rows.map((account) => ({
+        id: account.id,
+        email: account.email,
+        username: account.username,
+        createdAt: account.created_at.toISOString(),
+      })),
+    });
+  }
+
+  return res.json({
+    accounts: [...authUsers.values()].map((account) => ({
+      id: account.id,
+      email: account.email,
+      username: account.username,
+      createdAt: null,
+    })),
+  });
+});
+
 app.put('/api/admin/access', requireOwnerAdmin, async (req, res) => {
   const incoming: unknown[] = Array.isArray(req.body?.usernames) ? req.body.usernames : [];
   const usernames = [...new Set(incoming
@@ -889,7 +929,7 @@ app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
   const ai = getGenAI();
   if (!ai) {
     return res.json({
-      answer: `I can help plan that, but the connected AI service is unavailable right now. Start with this: ${message}\n\nUse the Live Offers tab for offer links and codes, Site Settings for public copy and SEO, and the Outreach Assistant for a reviewed promotion plan. I cannot make changes or publish anything without your explicit action.`,
+      answer: `Gemini is not configured for this server. Add a valid GEMINI_API_KEY in Render's Environment settings, redeploy, and try again. Until then, I can only provide the built-in manual guidance for: ${message}\n\nUse the Live Offers tab for offer links and codes, Site Settings for public copy and SEO, and the Outreach Assistant for a reviewed promotion plan.`,
       fallback: true,
     });
   }
@@ -913,8 +953,11 @@ ${message}`,
     return res.json({ answer: response.text?.trim() || 'I could not produce an answer. Try asking in a more specific way.' });
   } catch (error) {
     console.error('Admin copilot failed:', error);
+    const providerMessage = String(error).match(/API_KEY_INVALID|API key not valid/i)
+      ? "The configured GEMINI_API_KEY is invalid. Replace it in Render's Environment settings, redeploy, and try again."
+      : 'The Gemini service is temporarily unavailable.';
     return res.json({
-      answer: `The AI service is temporarily unavailable. I can still help you work through this manually: ${message}\n\nCheck the relevant Admin Panel tab, verify the official merchant terms, and test the change on the public site before deploying.`,
+      answer: `${providerMessage}\n\nI can still help you work through this manually: ${message}\n\nCheck the relevant Admin Panel tab, verify the official merchant terms, and test the change on the public site before deploying.`,
       fallback: true,
     });
   }
@@ -1061,7 +1104,7 @@ app.delete('/api/offers/:id', requireAdmin, async (req, res) => {
 });
 
 // API: Trigger Omni-AI Multi-Model scan
-app.post('/api/cashbot/scan', async (req, res) => {
+app.post('/api/cashbot/scan', requireAdmin, async (req, res) => {
   try {
     const ai = getGenAI();
 
@@ -1428,6 +1471,12 @@ Provide a structured consensus response answering the user's specific scenario w
 
 // API: Track click & conversion telemetry
 app.post('/api/analytics/track', (req, res) => {
+  const adminToken = req.header('x-admin-token');
+  const adminSession = adminToken ? adminTokens.get(adminToken) : undefined;
+  if (adminSession && adminSession.expiresAt > Date.now()) {
+    return res.json({ success: true, excluded: true });
+  }
+
   const { offerId, type } = req.body;
   if (typeof offerId !== 'string' || !['click', 'conversion'].includes(type)) {
     return res.status(400).json({ error: 'A valid offerId and event type are required' });
@@ -1472,6 +1521,12 @@ app.post('/api/analytics/track', (req, res) => {
 });
 
 app.post('/api/analytics/pageview', async (req, res) => {
+  const adminToken = req.header('x-admin-token');
+  const adminSession = adminToken ? adminTokens.get(adminToken) : undefined;
+  if (adminSession && adminSession.expiresAt > Date.now()) {
+    return res.json({ success: true, excluded: true });
+  }
+
   const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.trim() : '';
   const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '/';
   const source = typeof req.body?.source === 'string' && req.body.source.trim()
