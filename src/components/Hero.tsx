@@ -5,6 +5,7 @@ import { OfferCategory } from '../types';
 interface HeroProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  onSearchSubmit?: (query: string) => void;
   selectedCategory: string;
   setSelectedCategory: (category: string) => void;
   sortBy: 'highest' | 'fastest' | 'easiest';
@@ -19,12 +20,12 @@ const CATEGORIES: { id: string; label: string }[] = [
   { id: 'cashback', label: 'Cashback & Rebates' },
   { id: 'apps', label: 'Apps & Rewards' },
   { id: 'crypto', label: 'Crypto & Web3' },
-  { id: 'surveys', label: 'Surveys & Rewards' },
 ];
 
 export const Hero: React.FC<HeroProps> = ({
   searchQuery,
   setSearchQuery,
+  onSearchSubmit,
   selectedCategory,
   setSelectedCategory,
   sortBy,
@@ -54,7 +55,7 @@ export const Hero: React.FC<HeroProps> = ({
             Find the offers worth your time.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
-            Compare rewards, cashback offers, and signup incentives with the actual requirements, payout timing, and fine print visible before you click through.
+            Compare the best signup bonuses, no-deposit offers, cashback rewards, and referral incentives with the actual requirements, payout timing, and fine print visible before you click through.
           </p>
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
@@ -79,7 +80,7 @@ export const Hero: React.FC<HeroProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  setSearchQuery((e.target as HTMLInputElement).value);
+                  onSearchSubmit?.((e.target as HTMLInputElement).value);
                 }
               }}
               placeholder="Search companies, cash bonuses, or $0 deposit..."

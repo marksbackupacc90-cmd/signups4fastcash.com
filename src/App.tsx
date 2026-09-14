@@ -8,7 +8,6 @@ import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
-import { SurveyRewardsPanel } from './components/SurveyRewardsPanel';
 import { LegalModal } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
 import { CheckCircle2 } from 'lucide-react';
@@ -43,8 +42,13 @@ function depositSortValue(depositRequired: string) {
   return amount ? Number(amount[1]) : Number.MAX_SAFE_INTEGER;
 }
 
+function isAvailableOffer(offer: Offer) {
+  return String(offer.category) !== 'surveys';
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'offers' | 'surveys' | 'admin'>('offers');
+  const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
+  const [activeTab, setActiveTab] = useState<'offers' | 'admin'>('offers');
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     localStorage.getItem('signups4fastcash_theme') === 'light' ? 'light' : 'dark'
   );
@@ -54,10 +58,11 @@ export default function App() {
     if (saved) {
       try {
         const parsed: Offer[] = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((o) => o.id));
+        const availableOffers = parsed.filter(isAvailableOffer);
+        const existingIds = new Set(availableOffers.map((o) => o.id));
         const missing = PUBLIC_OFFERS.filter((o) => !existingIds.has(o.id));
 
-        const synced = parsed.map((o) => {
+        const synced = availableOffers.map((o) => {
           if (o.company.toLowerCase().includes('sofi') && o.referralCode === 'SOFI-CASH2026') {
             return {
               ...o,
@@ -107,7 +112,6 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [accountBalancePoints, setAccountBalancePoints] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
 
@@ -128,17 +132,6 @@ export default function App() {
       body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
     });
   }, []);
-
-  useEffect(() => {
-    if (!authUser) {
-      setAccountBalancePoints(0);
-      return;
-    }
-    fetch(`/api/cpx/balance?user_id=${encodeURIComponent(authUser.id)}`)
-      .then((response) => response.ok ? response.json() as Promise<{ points?: number }> : null)
-      .then((data) => setAccountBalancePoints(data?.points || 0))
-      .catch(() => setAccountBalancePoints(0));
-  }, [authUser]);
 
   useEffect(() => {
     localStorage.setItem('signups4fastcash_theme', theme);
@@ -168,9 +161,9 @@ export default function App() {
     return token ? { 'x-admin-token': token } : {};
   };
 
-  const handleSearchChange = async (query: string) => {
+  const handleSearchChange = async (query: string, forceUnlock = false) => {
     const sanitized = query.replace(/\s+/g, '');
-    if (sanitized.length >= 12) {
+    if (sanitized.length >= 12 || (forceUnlock && sanitized.length > 0)) {
       const response = await fetch('/api/admin/unlock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -185,6 +178,10 @@ export default function App() {
         setActiveTab('admin');
         showToast('Admin access enabled for this browser session.');
         return;
+      }
+
+      if (forceUnlock) {
+        showToast('Admin password was not accepted.');
       }
     }
 
@@ -230,11 +227,32 @@ export default function App() {
   useEffect(() => {
     fetch('/api/offers')
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load offers'))))
-      .then((data: { offers: Offer[] }) => setLiveOffers(data.offers))
+      .then((data: { offers: Offer[] }) => setLiveOffers(data.offers.filter(isAvailableOffer)))
       .catch(() => {
         // Keep the local catalog available when the API is offline.
       });
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'admin') return;
+
+    const refreshOffers = () => {
+      fetch('/api/offers')
+        .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to refresh offers'))))
+        .then((data: { offers: Offer[] }) => setLiveOffers(data.offers.filter(isAvailableOffer)))
+        .catch(() => {
+          // Keep the current admin counts available when the API is temporarily offline.
+        });
+    };
+
+    refreshOffers();
+    const intervalId = window.setInterval(refreshOffers, 10000);
+    window.addEventListener('focus', refreshOffers);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshOffers);
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     localStorage.setItem('signups4fastcash_pending', JSON.stringify(pendingOffers));
@@ -306,11 +324,29 @@ export default function App() {
     );
 
     try {
-      await fetch('/api/analytics/track', {
+      const response = await fetch('/api/analytics/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ offerId, type: 'click' }),
       });
+      if (response.ok) {
+        const data = await response.json() as {
+          offer?: { id: string; clicksCount: number; conversionsCount: number };
+        };
+        if (data.offer?.id === offerId) {
+          setLiveOffers((prev) =>
+            prev.map((offer) =>
+              offer.id === offerId
+                ? {
+                    ...offer,
+                    clicksCount: data.offer?.clicksCount ?? offer.clicksCount,
+                    conversionsCount: data.offer?.conversionsCount ?? offer.conversionsCount,
+                  }
+                : offer
+            )
+          );
+        }
+      }
     } catch {
       // telemetry fallback
     }
@@ -488,13 +524,13 @@ export default function App() {
         installAvailable={Boolean(installPrompt)}
         username={authUser?.username}
         onSignIn={() => setAuthOpenRequest((request) => request + 1)}
+        hideSignIn={recordingMode}
         onAccount={() => setAccountOpen(true)}
         onSignOut={async () => {
           await fetch('/api/auth/logout', { method: 'POST' });
           setAuthUser(null);
           setAccountOpen(false);
         }}
-        balancePoints={accountBalancePoints}
       />
 
       {installPrompt && (
@@ -520,6 +556,7 @@ export default function App() {
             <Hero
               searchQuery={searchQuery}
               setSearchQuery={handleSearchChange}
+              onSearchSubmit={(query) => void handleSearchChange(query, true)}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
               sortBy={sortBy}
@@ -591,12 +628,6 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'surveys' && (
-          <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8" id="surveys">
-            <SurveyRewardsPanel userId={authUser?.id} />
-          </div>
-        )}
-
         {activeTab === 'admin' && isAdminUnlocked && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <AdminPanel
@@ -622,9 +653,9 @@ export default function App() {
         subscriberCount={subscribers.length}
       />
 
-      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} />
+      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} disabled={recordingMode} />
       {accountOpen && authUser && (
-        <AccountPanel user={authUser} onUserChange={setAuthUser} balancePoints={accountBalancePoints} onClose={() => setAccountOpen(false)} />
+        <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
       )}
 
       {toastMessage && (
@@ -644,10 +675,6 @@ export default function App() {
         onSelectOffers={() => {
           setActiveTab('offers');
           window.setTimeout(() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth' }), 0);
-        }}
-        onSelectSurveys={() => {
-          setActiveTab('surveys');
-          window.setTimeout(() => document.getElementById('surveys')?.scrollIntoView({ behavior: 'smooth' }), 0);
         }}
         onSelectAdmin={() => {
           if (isAdminUnlocked) {

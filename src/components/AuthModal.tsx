@@ -14,19 +14,21 @@ interface AuthModalProps {
   user: AuthUser | null;
   onUserChange: (user: AuthUser | null) => void;
   openRequest?: number;
+  disabled?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0 }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, disabled = false }) => {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const needsUsername = Boolean(user && !user.username);
 
   useEffect(() => {
-    if (openRequest > 0) setOpen(true);
-  }, [openRequest]);
+    if (!disabled && openRequest > 0) setOpen(true);
+  }, [disabled, openRequest]);
 
   useEffect(() => {
+    if (disabled) return;
     fetch('/api/auth/me')
       .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
       .then(({ user: currentUser }) => {
@@ -46,7 +48,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
     window.addEventListener('message', (event) => {
       if (event.origin === window.location.origin && event.data?.type === 'sfc-auth-complete') handleAuthComplete();
     });
-  }, [onUserChange]);
+  }, [disabled, onUserChange]);
 
   const signIn = () => {
     setError('');
@@ -71,7 +73,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
     setOpen(false);
   };
 
-  if (!open) return null;
+  if (disabled || !open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
       <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
@@ -80,7 +82,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
           {needsUsername ? 'Choose your username' : 'Sign in or create your account'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Sign in with Google to keep your survey rewards connected to your account.
+          Sign in with Google to manage your account and receive offer updates.
         </p>
         {needsUsername ? (
           <form onSubmit={saveUsername} className="mt-5 space-y-3">

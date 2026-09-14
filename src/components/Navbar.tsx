@@ -2,15 +2,15 @@ import React from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 
 interface NavbarProps {
-  activeTab: 'offers' | 'surveys' | 'admin';
-  setActiveTab: (tab: 'offers' | 'surveys' | 'admin') => void;
+  activeTab: 'offers' | 'admin';
+  setActiveTab: (tab: 'offers' | 'admin') => void;
   onInstallApp: () => void;
   installAvailable: boolean;
   username?: string | null;
   onSignIn: () => void;
+  hideSignIn?: boolean;
   onAccount: () => void;
   onSignOut: () => void;
-  balancePoints?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,9 +20,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   installAvailable,
   username,
   onSignIn,
+  hideSignIn = false,
   onAccount,
   onSignOut,
-  balancePoints = 0,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
@@ -75,23 +75,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Install App
           </button>
-          <button
-            id="nav-surveys-tab"
-            onClick={() => setActiveTab('surveys')}
-            className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
-              activeTab === 'surveys' ? 'bg-blue-800 text-white font-semibold' : 'text-zinc-200 hover:text-white'
-            }`}
-          >
-            Surveys
-          </button>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {username ? (
             <>
-              <span className="text-[10px] font-semibold text-emerald-300 sm:text-xs">
-                ${(balancePoints / 100).toFixed(2)}
-              </span>
               <button onClick={onAccount} className="retro-button px-3 py-1.5 text-xs text-cyan-200 hover:text-white">
                 @{username}
               </button>
@@ -99,11 +87,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Sign out
               </button>
             </>
-          ) : (
+          ) : !hideSignIn ? (
             <button onClick={onSignIn} className="retro-button bg-cyan-300 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-200">
               Sign in
             </button>
-          )}
+          ) : null}
         </div>
 
       </div>

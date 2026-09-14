@@ -14,10 +14,9 @@ interface AccountPanelProps {
   user: AccountUser;
   onUserChange: (user: AccountUser) => void;
   onClose: () => void;
-  balancePoints: number;
 }
 
-export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose, balancePoints }) => {
+export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose }) => {
   const [form, setForm] = useState({
     username: user.username || '',
     paypalEmail: user.paypalEmail || '',
@@ -63,7 +62,6 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
             <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Account settings</p>
             <h2 id="profile-title" className="mt-2 text-2xl font-bold text-white">Your profile</h2>
             <p className="mt-1 text-xs text-zinc-500">{user.email}</p>
-            <p className="mt-3 text-sm font-semibold text-emerald-300">Survey balance: ${(balancePoints / 100).toFixed(2)} ({balancePoints.toLocaleString()} points)</p>
           </div>
           <button onClick={onClose} className="text-xs text-zinc-400 hover:text-white">Close</button>
         </div>
@@ -75,7 +73,7 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
             <label className="block text-xs font-semibold text-zinc-300">State<select value={form.state} onChange={(e) => update('state', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white"><option value="">Select state</option>{['AL','AK','AZ','AR','CA','CO','CT','FL','GA','IL','MA','MD','MI','MN','MO','NC','NJ','NM','NV','NY','OH','OK','OR','PA','SC','TN','TX','UT','VA','WA','WI'].map((state) => <option key={state} value={state}>{state}</option>)}</select></label>
           </div>
           <label className="block text-xs font-semibold text-zinc-300">Sex<select value={form.sex} onChange={(e) => update('sex', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white"><option value="">Prefer not to say</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option></select></label>
-          <p className="text-[11px] leading-relaxed text-zinc-500">These details are optional and used for payout processing and survey eligibility. Your password is managed by Google; change it in your Google Account.</p>
+          <p className="text-[11px] leading-relaxed text-zinc-500">These details are optional and used for account updates. Your password is managed by Google; change it in your Google Account.</p>
           <button disabled={saving} className="w-full rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-bold text-black hover:bg-cyan-200 disabled:opacity-60">{saving ? 'Saving…' : 'Save profile'}</button>
           {message && <p role="status" className="text-xs text-emerald-300">{message}</p>}
           {error && <p role="alert" className="text-xs text-rose-300">{error}</p>}

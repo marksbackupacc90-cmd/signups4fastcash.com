@@ -959,7 +959,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <option value="fintech">Banking & Fintech</option>
                 <option value="brokerage">Brokerage & Stocks</option>
                 <option value="cashback">Cashback & Shopping</option>
-                <option value="surveys">Surveys & Rewards</option>
                 <option value="crypto">Crypto & Web3</option>
                 <option value="apps">Apps & Services</option>
               </select>

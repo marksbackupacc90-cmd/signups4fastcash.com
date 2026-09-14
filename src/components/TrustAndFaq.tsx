@@ -13,7 +13,7 @@ export const TrustAndFaq: React.FC = () => {
           How signup bonuses work
         </h2>
         <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
-          We organize publicly available referral and promotional offers so you can compare the reward, requirements, timing, and fine print before visiting the official merchant. We do not hold your money, complete applications for you, or guarantee payment.
+          We organize publicly available referral and promotional offers so you can compare signup bonuses, no-deposit rewards, cashback offers, requirements, timing, and fine print before visiting the official merchant. We do not hold your money, complete applications for you, or guarantee payment.
         </p>
         <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
           Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.

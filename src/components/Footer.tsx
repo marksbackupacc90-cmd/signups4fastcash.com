@@ -12,7 +12,6 @@ interface FooterProps {
   theme?: 'dark' | 'light';
   onToggleTheme?: () => void;
   onSelectOffers: () => void;
-  onSelectSurveys: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -25,7 +24,6 @@ export const Footer: React.FC<FooterProps> = ({
   theme = 'dark',
   onToggleTheme,
   onSelectOffers,
-  onSelectSurveys,
 }) => {
   return (
     <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
@@ -67,11 +65,6 @@ export const Footer: React.FC<FooterProps> = ({
               <li>
                 <button onClick={onSelectOffers} className="hover:text-white transition-colors">
                   All Available Offers
-                </button>
-              </li>
-              <li>
-                <button onClick={onSelectSurveys} className="hover:text-white transition-colors">
-                  Surveys &amp; Rewards
                 </button>
               </li>
               <li>
