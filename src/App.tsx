@@ -114,6 +114,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_visitor_id';
@@ -520,6 +521,17 @@ export default function App() {
     .sort((a, b) => b.incentiveValue - a.incentiveValue)
     .slice(0, 3);
 
+  const shareMessage = 'I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: https://signups4fastcash.com/';
+  const handleShare = async () => {
+    if (navigator.share) {
+      await navigator.share({ title: 'Signup bonuses and no-deposit offers', text: shareMessage, url: 'https://signups4fastcash.com/' });
+      return;
+    }
+    await navigator.clipboard.writeText(shareMessage);
+    setShareCopied(true);
+    window.setTimeout(() => setShareCopied(false), 2500);
+  };
+
   return (
     <div className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}>
       <Navbar
@@ -570,6 +582,23 @@ export default function App() {
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
+              <section className="rounded-2xl border border-blue-300/20 bg-blue-300/[0.05] p-4 sm:p-5" aria-labelledby="share-heading">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-mono uppercase tracking-wider text-blue-200">Share the savings list</p>
+                    <h2 id="share-heading" className="mt-1 text-lg font-bold text-white">Know someone hunting for extra cash?</h2>
+                    <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
+                      Share the comparison page. Friends can see requirements upfront instead of relying on unverified promo posts.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => void handleShare()}
+                    className="shrink-0 rounded-lg bg-blue-500 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-400"
+                  >
+                    {shareCopied ? 'Message copied' : 'Share this site'}
+                  </button>
+                </div>
+              </section>
               <div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[0.04] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-cyan-200">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
