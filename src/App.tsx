@@ -697,6 +697,7 @@ export default function App() {
         onShare={() => void handleShare()}
         shareCopied={shareCopied}
         onOpenFinder={() => setOfferFinderOpen(true)}
+        onOpenNewsletter={() => setIsNewsletterOpen(true)}
         onSignUp={() => {
           setAuthMode('signup');
           setAuthOpenRequest((request) => request + 1);
@@ -800,21 +801,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Get new high-value offers by email</h3>
-                  <p className="text-xs text-zinc-500 mt-1">One verified offer at a time. No daily noise or unverified hype.</p>
-                </div>
-                <button
-                  onClick={() => setIsNewsletterOpen(true)}
-                  className="px-3 py-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] text-[#102018] hover:bg-[#8bd3a7] font-semibold text-xs transition-colors"
-                >
-                  Subscribe to alerts
-                </button>
-              </div>
             </div>
 
             <TrustAndFaq siteSettings={siteSettings} />

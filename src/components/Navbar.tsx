@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 import { CommunityChat } from './CommunityChat';
-import { ChevronDown, Search, Share2 } from 'lucide-react';
+import { Bell, ChevronDown, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
   siteSettings?: SiteSettings;
@@ -22,6 +22,7 @@ interface NavbarProps {
   onShare: () => void;
   shareCopied: boolean;
   onOpenFinder: () => void;
+  onOpenNewsletter: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onShare,
   shareCopied,
   onOpenFinder,
+  onOpenNewsletter,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -107,6 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {accountMenuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
                   <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
+                  <button onClick={() => { onOpenNewsletter(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Bell className="h-3.5 w-3.5" /> Subscribe to alerts</button>
                   <button onClick={() => { onOpenFinder(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Search className="h-3.5 w-3.5" /> Find my best offers</button>
                   <button onClick={() => { onShare(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Share2 className="h-3.5 w-3.5" /> {shareCopied ? 'Message copied' : 'Share site'}</button>
                   {canAccessAdmin && <button onClick={() => { onAdminAccess(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-amber-200 hover:bg-white/10">Admin panel</button>}
