@@ -521,10 +521,11 @@ export default function App() {
     .sort((a, b) => b.incentiveValue - a.incentiveValue)
     .slice(0, 3);
 
-  const shareMessage = 'I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: https://signups4fastcash.com/';
+  const shareUrl = 'https://signups4fastcash.com/?utm_source=visitor_share&utm_medium=referral&utm_campaign=share_cta';
+  const shareMessage = `I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: ${shareUrl}`;
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({ title: 'Signup bonuses and no-deposit offers', text: shareMessage, url: 'https://signups4fastcash.com/' });
+      await navigator.share({ title: 'Signup bonuses and no-deposit offers', text: shareMessage, url: shareUrl });
       return;
     }
     await navigator.clipboard.writeText(shareMessage);
