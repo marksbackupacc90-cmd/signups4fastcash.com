@@ -736,30 +736,12 @@ export default function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
+              onShare={() => void handleShare()}
+              shareCopied={shareCopied}
+              onOpenFinder={() => setOfferFinderOpen(true)}
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
-              <button onClick={() => setOfferFinderOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-purple-300/20 bg-purple-300/[0.05] p-4 text-left hover:border-purple-300/40">
-                <span><span className="block text-[11px] font-mono uppercase tracking-wider text-purple-200">Personalized recommendations</span><strong className="mt-1 block text-base text-white">Not sure where to start? Find your best-fit offers.</strong><span className="mt-1 block text-xs text-zinc-400">Filter out completed offers, deposits you cannot make, and requirements you prefer to avoid.</span></span>
-                <span className="ml-3 shrink-0 rounded-lg bg-purple-300 px-3 py-2 text-xs font-bold text-black">Start finder</span>
-              </button>
-              <section className="rounded-2xl border border-blue-300/20 bg-blue-300/[0.05] p-4 sm:p-5" aria-labelledby="share-heading">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-[11px] font-mono uppercase tracking-wider text-blue-200">Share the savings list</p>
-                    <h2 id="share-heading" className="mt-1 text-lg font-bold text-white">Know someone hunting for extra cash?</h2>
-                    <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
-                      Share the comparison page. Friends can see requirements upfront instead of relying on unverified promo posts.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => void handleShare()}
-                    className="shrink-0 rounded-lg bg-blue-500 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-400"
-                  >
-                    {shareCopied ? 'Message copied' : 'Share this site'}
-                  </button>
-                </div>
-              </section>
               <div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[0.04] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-cyan-200">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate

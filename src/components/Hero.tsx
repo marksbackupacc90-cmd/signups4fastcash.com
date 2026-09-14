@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, Share2, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, OfferCategory, SiteSettings } from '../types';
 
 interface HeroProps {
@@ -12,6 +12,9 @@ interface HeroProps {
   sortBy: 'highest' | 'fastest' | 'easiest';
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
   totalOffersCount: number;
+  onShare: () => void;
+  shareCopied: boolean;
+  onOpenFinder: () => void;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -33,6 +36,9 @@ export const Hero: React.FC<HeroProps> = ({
   sortBy,
   setSortBy,
   totalOffersCount,
+  onShare,
+  shareCopied,
+  onOpenFinder,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
@@ -48,9 +54,29 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
           <div className="p-4 sm:p-6">
         
-        <div className="flex items-center gap-2 mb-5 text-xs font-mono text-emerald-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          {settings.heroBadge}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            {settings.heroBadge}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenFinder}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-200 transition-colors hover:bg-amber-300/20"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Find my best offers
+            </button>
+            <button
+              type="button"
+              onClick={onShare}
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-xs font-bold text-emerald-200 transition-colors hover:bg-emerald-300/20"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              {shareCopied ? 'Message copied' : 'Share'}
+            </button>
+          </div>
         </div>
 
         {/* Main Headline */}
