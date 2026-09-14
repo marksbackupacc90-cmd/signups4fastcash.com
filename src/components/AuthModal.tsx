@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 
 interface AuthUser {
   id: string;
@@ -80,7 +81,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
       <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
-        <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Your rewards account</p>
+        <div className="flex items-start justify-between gap-4">
+          <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Your rewards account</p>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Cancel sign in"
+            className="rounded-md p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
         <h2 id="account-title" className="mt-2 text-2xl font-bold text-white">
           {needsUsername ? 'Choose your username' : mode === 'signup' ? 'Create your account' : 'Sign in to your account'}
         </h2>
