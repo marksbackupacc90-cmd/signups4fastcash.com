@@ -106,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button onClick={onSignUp} className="retro-button border border-cyan-300/50 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10">
                 Sign up
               </button>
-              <button onClick={onSignIn} className="retro-button bg-cyan-300 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-200">
+              <button onClick={onSignIn} className="retro-button border border-[#9b7650]/60 bg-[#6eae89] px-3 py-1.5 text-xs font-bold text-[#102018] hover:bg-[#8bd3a7]">
                 Sign in
               </button>
             </div>
