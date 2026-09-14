@@ -7,6 +7,7 @@ interface NavbarProps {
   onInstallApp: () => void;
   installAvailable: boolean;
   username?: string | null;
+  onSignUp: () => void;
   onSignIn: () => void;
   hideSignIn?: boolean;
   onAccount: () => void;
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onInstallApp,
   installAvailable,
   username,
+  onSignUp,
   onSignIn,
   hideSignIn = false,
   onAccount,
@@ -88,9 +90,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </>
           ) : !hideSignIn ? (
-            <button onClick={onSignIn} className="retro-button bg-cyan-300 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-200">
-              Sign in
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={onSignUp} className="retro-button border border-cyan-300/50 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10">
+                Sign up
+              </button>
+              <button onClick={onSignIn} className="retro-button bg-cyan-300 px-3 py-1.5 text-xs font-bold text-black hover:bg-cyan-200">
+                Sign in
+              </button>
+            </div>
           ) : null}
         </div>
 

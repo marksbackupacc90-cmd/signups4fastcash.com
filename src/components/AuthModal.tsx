@@ -14,10 +14,11 @@ interface AuthModalProps {
   user: AuthUser | null;
   onUserChange: (user: AuthUser | null) => void;
   openRequest?: number;
+  mode?: 'signin' | 'signup';
   disabled?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, disabled = false }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', disabled = false }) => {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
@@ -81,10 +82,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
       <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
         <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Your rewards account</p>
         <h2 id="account-title" className="mt-2 text-2xl font-bold text-white">
-          {needsUsername ? 'Choose your username' : 'Sign in or create your account'}
+          {needsUsername ? 'Choose your username' : mode === 'signup' ? 'Create your account' : 'Sign in to your account'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Sign in with Google to manage your account and receive offer updates.
+          {mode === 'signup'
+            ? 'Create an account with Google to save your preferences and receive offer updates.'
+            : 'Sign in with Google to manage your account and receive offer updates.'}
         </p>
         {needsUsername ? (
           <form onSubmit={saveUsername} className="mt-5 space-y-3">
@@ -104,7 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
           </form>
         ) : (
           <button onClick={signIn} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-black hover:bg-zinc-200">
-            Continue with Google
+            {mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}
           </button>
         )}
         {error && <p role="alert" className="mt-3 text-xs text-rose-300">{error}</p>}

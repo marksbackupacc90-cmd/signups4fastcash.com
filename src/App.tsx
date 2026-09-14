@@ -115,6 +115,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
 
@@ -548,7 +549,14 @@ export default function App() {
         onInstallApp={handleInstallApp}
         installAvailable={Boolean(installPrompt)}
         username={authUser?.username}
-        onSignIn={() => setAuthOpenRequest((request) => request + 1)}
+        onSignUp={() => {
+          setAuthMode('signup');
+          setAuthOpenRequest((request) => request + 1);
+        }}
+        onSignIn={() => {
+          setAuthMode('signin');
+          setAuthOpenRequest((request) => request + 1);
+        }}
         hideSignIn={recordingMode}
         onAccount={() => setAccountOpen(true)}
         onSignOut={async () => {
@@ -744,7 +752,7 @@ export default function App() {
         subscriberCount={subscribers.length}
       />
 
-      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} disabled={recordingMode} />
+      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} mode={authMode} disabled={recordingMode} />
       {accountOpen && authUser && (
         <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
       )}
