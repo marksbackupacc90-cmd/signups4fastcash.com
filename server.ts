@@ -967,7 +967,7 @@ app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: `You are S4FC Copilot, a concise and practical assistant embedded in the private admin panel for Signups4FastCash.com.
 Help the administrator understand the site, diagnose issues, plan content, improve offers, and choose the correct admin-panel control.
 You may recommend exact edits, field values, validation steps, and code changes, but you must not claim to have changed data, deployed code, sent emails, or published posts.
@@ -1044,7 +1044,7 @@ app.post('/api/support-chat', async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: `You are S4FC Support, a friendly public customer-support assistant for Signups4FastCash.com.
 Help visitors compare signup bonuses and understand offer requirements, payout timing, steps, risks, and affiliate disclosures.
 Do not promise approval, payment, earnings, or eligibility. Direct visitors to official merchant terms.
@@ -1084,7 +1084,7 @@ app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: `You are a cautious outreach planning assistant for signups4fastcash.com.
 Create a compliant, human-reviewable outreach plan from the owner's task.
 You may suggest public search terms and draft one post, but you must never recommend mass-posting,
@@ -1248,7 +1248,7 @@ For each offer, return:
    - councilSummary (a 1-2 sentence multi-model consensus endorsement)`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -1455,7 +1455,7 @@ Target category: ${targetCategory || 'Any'}
 Provide a structured consensus response answering the user's specific scenario with recommendations, individual AI model voting breakdowns, and an actionable speedrun execution plan.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: systemInstruction,
         config: {
           responseMimeType: 'application/json',
