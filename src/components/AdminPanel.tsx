@@ -504,111 +504,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </p>
         </div>
 
-        {/* Sub-nav tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#07090e] border border-white/10 font-mono text-xs shrink-0 flex-wrap">
-          <button
-            onClick={() => setActiveAdminTab('live')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1.5 ${
-              activeAdminTab === 'live'
-                ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
+        {/* Compact admin section menu */}
+        <label className="flex shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#07090e] p-1 font-mono text-xs text-zinc-400">
+          <span className="sr-only">Admin section</span>
+          <select
+            value={activeAdminTab}
+            onChange={(event) => setActiveAdminTab(event.target.value as typeof activeAdminTab)}
+            className="max-w-[15rem] rounded-md bg-[#07090e] px-3 py-2 text-xs font-semibold text-zinc-200 outline-none"
           >
-            <LinkIcon className="w-3.5 h-3.5 text-emerald-400" />
-            Referral Links & Offers ({liveOffers.length})
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('pending')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1.5 ${
-              activeAdminTab === 'pending'
-                ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Bot className="w-3.5 h-3.5" />
-            CashBot Queue
-            {pendingOffers.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-bold">
-                {pendingOffers.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('create')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
-              activeAdminTab === 'create'
-                ? 'bg-white/10 text-white font-bold'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
-            New Custom Offer
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('blasts')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
-              activeAdminTab === 'blasts'
-                ? 'bg-white/10 text-white font-bold'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Send className="w-3.5 h-3.5 text-[#00f2fe]" />
-            Blast Logs ({blastLogs.length})
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('copilot')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1.5 ${
-              activeAdminTab === 'copilot'
-                ? 'bg-amber-400/15 text-amber-200 font-bold border border-amber-400/30'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <MessageCircle className="w-3.5 h-3.5 text-amber-300" />
-            S4FC Copilot
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('assistant')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
-              activeAdminTab === 'assistant'
-                ? 'bg-cyan-400/15 text-cyan-200 font-bold border border-cyan-400/30'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-            Outreach Assistant
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('settings')}
-            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
-              activeAdminTab === 'settings'
-                ? 'bg-cyan-400/15 text-cyan-200 font-bold border border-cyan-400/30'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 text-cyan-300" />
-            Site Settings
-          </button>
-
-          {isOwnerAdmin && (
-            <button
-              onClick={() => setActiveAdminTab('accounts')}
-              className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
-                activeAdminTab === 'accounts'
-                  ? 'bg-cyan-400/15 text-cyan-200 font-bold border border-cyan-400/30'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              Accounts
-            </button>
-          )}
-        </div>
+            <option value="live">Referral Links & Offers ({liveOffers.length})</option>
+            <option value="pending">CashBot Queue{pendingOffers.length > 0 ? ` (${pendingOffers.length})` : ''}</option>
+            <option value="create">New Custom Offer</option>
+            <option value="blasts">Blast Logs ({blastLogs.length})</option>
+            <option value="copilot">S4FC Copilot</option>
+            <option value="assistant">Outreach Assistant</option>
+            <option value="settings">Site Settings</option>
+            {isOwnerAdmin && <option value="accounts">Accounts</option>}
+          </select>
+        </label>
       </div>
 
       {activeAdminTab === 'accounts' && isOwnerAdmin && (

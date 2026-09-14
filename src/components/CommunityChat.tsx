@@ -231,7 +231,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
         </section>
       )}
       {!open && (
-        <button type="button" onClick={() => setOpen(true)} className="retro-button flex items-center gap-2 rounded-md border border-white/15 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf]">
+        <button type="button" onClick={() => setOpen(true)} className="retro-button ml-1 flex min-w-[7.5rem] items-center justify-center gap-2 rounded-md border border-white/15 px-5 py-2 text-xs font-medium text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf] md:ml-3">
           <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
           Chat <span className="text-[#8bd3a7]">{activeCount}</span>
         </button>
