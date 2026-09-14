@@ -52,7 +52,7 @@ export const Hero: React.FC<HeroProps> = ({
             <span>{settings.siteName}</span>
             <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
           </div>
-          <div className="p-4 sm:p-6">
+          <div className="bg-[#141824] p-4 sm:p-6">
         
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
@@ -97,7 +97,7 @@ export const Hero: React.FC<HeroProps> = ({
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
 
-        <div className="mt-6 grid gap-2 border-y border-white/[0.06] py-4 sm:grid-cols-3">
+        <div className="mt-6 grid gap-2 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 sm:grid-cols-3">
           <div className="flex items-start gap-2">
             <span className="mt-0.5 text-emerald-400">✓</span>
             <div>
@@ -122,7 +122,7 @@ export const Hero: React.FC<HeroProps> = ({
         </div>
 
         {/* Search and Filters Bar */}
-        <div className="mt-8 pt-6 border-t border-white/[0.06] flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+        <div className="mt-8 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
           
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">

@@ -48,6 +48,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             aria-label={settings.brandName || settings.siteName}
           >
             <SfcCoinLogo />
+            <div className="min-w-0">
+              <span className="block max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">
+                {settings.brandName || settings.siteName}
+              </span>
+              <span className="block max-w-[calc(100vw-110px)] truncate text-[10px] font-mono text-emerald-300 sm:text-[11px]">
+                {settings.siteTagline || 'Rewards and cashback with clear terms'}
+              </span>
+            </div>
           </button>
         </div>
 
