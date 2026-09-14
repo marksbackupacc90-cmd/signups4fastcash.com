@@ -565,6 +565,12 @@ export default function App() {
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
+              <div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[0.04] px-4 py-3 text-xs leading-relaxed text-zinc-300">
+                <span className="font-semibold text-cyan-200">Affiliate disclosure:</span>{' '}
+                Some links below are referral or affiliate links. If you use one, the merchant may compensate
+                Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
+                so you can compare offers before applying.
+              </div>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
