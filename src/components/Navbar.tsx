@@ -45,18 +45,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('offers')}
             className="retro-button min-w-0 flex items-center gap-2.5 text-left group focus:outline-none"
             id="brand-logo-btn"
+            aria-label={settings.brandName || settings.siteName}
           >
             <SfcCoinLogo />
-            <div className="min-w-0">
-              <div>
-                <span className="block max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">
-                  {settings.brandName || settings.siteName}
-                </span>
-                <span className="block max-w-[calc(100vw-110px)] truncate text-[10px] font-mono text-emerald-300 sm:text-[11px]">
-                  {settings.siteTagline || 'Rewards and cashback with clear terms'}
-                </span>
-              </div>
-            </div>
           </button>
         </div>
 
