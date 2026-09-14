@@ -15,11 +15,13 @@ import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { SupportBot } from './components/SupportBot';
+import { CommunityChat } from './components/CommunityChat';
 
 interface AuthUser {
   id: string;
   email: string;
   username: string | null;
+  avatarUrl?: string | null;
   paypalEmail?: string | null;
   dateOfBirth?: string | null;
   sex?: string | null;
@@ -725,7 +727,12 @@ export default function App() {
       )}
 
       <main className="flex-1">
-        {activeTab === 'offers' && <SupportBot />}
+        {activeTab === 'offers' && (
+          <>
+            <CommunityChat username={authUser?.username} userId={authUser?.id} />
+            <SupportBot />
+          </>
+        )}
         {activeTab === 'offers' && (
           <div>
             <Hero

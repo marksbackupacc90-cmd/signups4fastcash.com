@@ -23,7 +23,7 @@ const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
 const appUrl = (env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
-const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
+const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const cpxTransactions = new Set<string>();
 const cpxBalances = new Map<string, number>();
@@ -71,19 +71,19 @@ async function getAuthenticatedUser(req: express.Request) {
   }
   if (session) authSessions.delete(token);
   if (!database) return null;
-  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null }>(
-    `SELECT users.id, users.google_sub, users.email, users.username, users.paypal_email, users.date_of_birth, users.sex, users.state
+  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null }>(
+    `SELECT users.id, users.google_sub, users.email, users.username, users.avatar_url, users.paypal_email, users.date_of_birth, users.sex, users.state
      FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.token = $1 AND auth_sessions.expires_at > NOW()`,
     [token],
   );
   return result.rows[0]
-    ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state }
+    ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username, avatarUrl: result.rows[0].avatar_url, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state }
     : null;
 }
 
-function authUserResponse(user: { id: string; email: string; username: string | null; paypalEmail?: string | null; dateOfBirth?: string | null; sex?: string | null; state?: string | null } | null) {
-  return user ? { id: user.id, email: user.email, username: user.username, paypalEmail: user.paypalEmail || null, dateOfBirth: user.dateOfBirth || null, sex: user.sex || null, state: user.state || null } : null;
+function authUserResponse(user: { id: string; email: string; username: string | null; avatarUrl?: string | null; paypalEmail?: string | null; dateOfBirth?: string | null; sex?: string | null; state?: string | null } | null) {
+  return user ? { id: user.id, email: user.email, username: user.username, avatarUrl: user.avatarUrl || null, paypalEmail: user.paypalEmail || null, dateOfBirth: user.dateOfBirth || null, sex: user.sex || null, state: user.state || null } : null;
 }
 
 app.get('/api/auth/me', async (req, res) => {
@@ -148,8 +148,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
       : undefined;
     if (database && !user) return res.status(500).send('Could not create your account.');
     const memoryUser = user
-      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, paypalEmail: null, dateOfBirth: null, sex: null, state: null }
-      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null };
+      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null }
+      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null };
     authUsers.set(memoryUser.id, memoryUser);
     const sessionToken = randomBytes(32).toString('hex');
     const expiresAt = Date.now() + AUTH_SESSION_MAX_AGE_SECONDS * 1000;
@@ -210,6 +210,9 @@ app.put('/api/auth/profile', async (req, res) => {
   const dateOfBirth = typeof req.body?.dateOfBirth === 'string' ? req.body.dateOfBirth : '';
   const sex = typeof req.body?.sex === 'string' ? req.body.sex : '';
   const state = typeof req.body?.state === 'string' ? req.body.state.trim().toUpperCase() : '';
+  const avatarUrl = typeof req.body?.avatarUrl === 'string' ? req.body.avatarUrl.trim() : '';
+  if (avatarUrl && !/^data:image\/(png|jpeg|jpg|webp);base64,[a-z0-9+/=\s]+$/i.test(avatarUrl)) return res.status(400).json({ error: 'Profile picture must be a PNG, JPG, or WEBP image.' });
+  if (avatarUrl.length > 180000) return res.status(400).json({ error: 'Profile picture is too large. Please choose a smaller image.' });
   if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-24 letters, numbers, or underscores.' });
   if (paypalEmail && !SURVEY_PAYOUT_EMAIL_PATTERN.test(paypalEmail)) return res.status(400).json({ error: 'Enter a valid PayPal email address.' });
   if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) return res.status(400).json({ error: 'Enter a valid date of birth.' });
@@ -224,12 +227,12 @@ app.put('/api/auth/profile', async (req, res) => {
       );
       if (taken.rowCount) return res.status(409).json({ error: 'Username taken. Please pick another.' });
       const result = await database.query(
-        `UPDATE users SET username = $1, paypal_email = NULLIF($2, ''), date_of_birth = NULLIF($3, '')::date,
-         sex = NULLIF($4, ''), state = NULLIF($5, ''), updated_at = NOW()
-         WHERE id = $6 RETURNING id, email, username, paypal_email, date_of_birth, sex, state`,
-        [username, paypalEmail, dateOfBirth, sex, state, user.id],
+        `UPDATE users SET username = $1, avatar_url = NULLIF($2, ''), paypal_email = NULLIF($3, ''), date_of_birth = NULLIF($4, '')::date,
+         sex = NULLIF($5, ''), state = NULLIF($6, ''), updated_at = NOW()
+         WHERE id = $7 RETURNING id, email, username, avatar_url, paypal_email, date_of_birth, sex, state`,
+        [username, avatarUrl, paypalEmail, dateOfBirth, sex, state, user.id],
       );
-      return res.json({ user: result.rows[0] ? { id: result.rows[0].id, email: result.rows[0].email, username: result.rows[0].username, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state } : null });
+      return res.json({ user: result.rows[0] ? { id: result.rows[0].id, email: result.rows[0].email, username: result.rows[0].username, avatarUrl: result.rows[0].avatar_url, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state } : null });
     }
     const memoryUser = authUsers.get(user.id);
     if (!memoryUser) return res.status(404).json({ error: 'Account not found.' });
@@ -291,6 +294,8 @@ let visitorAnalyticsStore = {
 };
 let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
+const communityMessages: Array<{ id: string; displayName: string; content: string; createdAt: string }> = [];
+const communityPresence = new Map<string, number>();
 
 function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>) {
   const lower = message.toLowerCase();
@@ -372,6 +377,7 @@ async function initializeOfferStore() {
   const adminAccessRows = await database.query<{ username: string }>('SELECT username FROM admin_access ORDER BY username');
   adminAccessRows.rows.forEach((row) => delegatedAdminUsernames.add(row.username.toLowerCase()));
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS paypal_email TEXT`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS state TEXT`);
@@ -425,6 +431,23 @@ async function initializeOfferStore() {
       id TEXT PRIMARY KEY,
       conversation_id TEXT NOT NULL,
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS community_chat_messages (
+      id TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS direct_messages (
+      id TEXT PRIMARY KEY,
+      sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipient_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       content TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -1063,6 +1086,94 @@ ${message}`,
       fallback: true,
     });
   }
+});
+
+app.get('/api/community-chat', async (req, res) => {
+  const visitorId = typeof req.query.visitorId === 'string' ? req.query.visitorId.trim().slice(0, 120) : '';
+  if (visitorId) communityPresence.set(visitorId, Date.now());
+  const cutoff = Date.now() - 90_000;
+  for (const [id, lastSeen] of communityPresence) {
+    if (lastSeen < cutoff) communityPresence.delete(id);
+  }
+
+  if (database) {
+    const result = await database.query<{ id: string; display_name: string; content: string; created_at: Date }>(
+      'SELECT id, display_name, content, created_at FROM community_chat_messages ORDER BY created_at DESC LIMIT 50',
+    );
+    return res.json({
+      messages: result.rows.reverse().map((message) => ({
+        id: message.id,
+        displayName: message.display_name,
+        content: message.content,
+        createdAt: new Date(message.created_at).toISOString(),
+      })),
+      activeCount: Math.max(communityPresence.size, 1),
+    });
+  }
+
+  return res.json({ messages: communityMessages.slice(-50), activeCount: Math.max(communityPresence.size, 1) });
+});
+
+app.post('/api/community-chat', async (req, res) => {
+  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.trim().slice(0, 120) : '';
+  const displayName = typeof req.body?.displayName === 'string' ? req.body.displayName.trim().slice(0, 40) : 'Guest';
+  const content = typeof req.body?.content === 'string' ? req.body.content.trim().slice(0, 280) : '';
+  if (!visitorId || !content) return res.status(400).json({ error: 'A visitor ID and message are required.' });
+  if (content.length < 1) return res.status(400).json({ error: 'Message cannot be empty.' });
+
+  communityPresence.set(visitorId, Date.now());
+  const message = { id: randomUUID(), displayName: displayName || 'Guest', content, createdAt: new Date().toISOString() };
+  communityMessages.push(message);
+  if (communityMessages.length > 200) communityMessages.splice(0, communityMessages.length - 200);
+  if (database) {
+    await database.query(
+      'INSERT INTO community_chat_messages (id, display_name, content) VALUES ($1, $2, $3)',
+      [message.id, message.displayName, message.content],
+    );
+  }
+  return res.status(201).json({ message });
+});
+
+app.get('/api/community-users', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to direct message other users.' });
+  if (!database) return res.json({ users: [...authUsers.values()].filter((entry) => entry.id !== user.id && entry.username).map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatarUrl })) });
+  const result = await database.query<{ id: string; username: string; avatar_url: string | null }>(
+    'SELECT id, username, avatar_url FROM users WHERE id <> $1 AND username IS NOT NULL ORDER BY LOWER(username) LIMIT 100',
+    [user.id],
+  );
+  return res.json({ users: result.rows.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })) });
+});
+
+app.get('/api/direct-messages', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const otherUserId = typeof req.query.userId === 'string' ? req.query.userId : '';
+  if (!user || !otherUserId) return res.status(401).json({ error: 'Sign in to use direct messages.' });
+  if (!database) return res.json({ messages: [] });
+  const result = await database.query(
+    `SELECT id, sender_id, recipient_id, content, created_at
+     FROM direct_messages
+     WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)
+     ORDER BY created_at ASC LIMIT 100`,
+    [user.id, otherUserId],
+  );
+  return res.json({ messages: result.rows });
+});
+
+app.post('/api/direct-messages', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const recipientId = typeof req.body?.recipientId === 'string' ? req.body.recipientId : '';
+  const content = typeof req.body?.content === 'string' ? req.body.content.trim().slice(0, 500) : '';
+  if (!user || !recipientId) return res.status(401).json({ error: 'Sign in to use direct messages.' });
+  if (!content) return res.status(400).json({ error: 'Message cannot be empty.' });
+  if (!database) return res.status(503).json({ error: 'Direct messages require the site database.' });
+  const recipient = await database.query('SELECT 1 FROM users WHERE id = $1', [recipientId]);
+  if (!recipient.rowCount) return res.status(404).json({ error: 'User not found.' });
+  const result = await database.query(
+    'INSERT INTO direct_messages (id, sender_id, recipient_id, content) VALUES ($1, $2, $3, $4) RETURNING id, sender_id, recipient_id, content, created_at',
+    [randomUUID(), user.id, recipientId, content],
+  );
+  return res.status(201).json({ message: result.rows[0] });
 });
 
 app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {

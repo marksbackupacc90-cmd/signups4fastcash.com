@@ -4,6 +4,7 @@ interface AccountUser {
   id: string;
   email: string;
   username: string | null;
+  avatarUrl?: string | null;
   paypalEmail?: string | null;
   dateOfBirth?: string | null;
   sex?: string | null;
@@ -19,6 +20,7 @@ interface AccountPanelProps {
 export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose }) => {
   const [form, setForm] = useState({
     username: user.username || '',
+    avatarUrl: user.avatarUrl || '',
     paypalEmail: user.paypalEmail || '',
     dateOfBirth: user.dateOfBirth ? user.dateOfBirth.slice(0, 10) : '',
     sex: user.sex || '',
@@ -28,6 +30,34 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+
+  const selectAvatar = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setError('Choose a PNG, JPG, or WEBP image.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const size = 160;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        const scale = Math.max(size / image.width, size / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+        update('avatarUrl', canvas.toDataURL('image/jpeg', 0.78));
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -66,6 +96,9 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
           <button onClick={onClose} className="text-xs text-zinc-400 hover:text-white">Close</button>
         </div>
         <form onSubmit={save} className="mt-5 space-y-4">
+          <label className="block text-xs font-semibold text-zinc-300">Profile picture
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectAvatar} className="mt-1 w-full text-xs text-zinc-400" />
+          </label>
           <label className="block text-xs font-semibold text-zinc-300">Username<input value={form.username} onChange={(e) => update('username', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" required /></label>
           <label className="block text-xs font-semibold text-zinc-300">PayPal email<input type="email" value={form.paypalEmail} onChange={(e) => update('paypalEmail', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" placeholder="For cash-out requests" /></label>
           <div className="grid gap-4 sm:grid-cols-2">
