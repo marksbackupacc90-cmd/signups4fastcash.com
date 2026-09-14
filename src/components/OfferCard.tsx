@@ -88,6 +88,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                     Top Pick
                   </span>
                 )}
+                {/\$0|no deposit|zero deposit/i.test(offer.depositRequired) && (
+                  <span className="inline-flex items-center rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-emerald-300">
+                    $0 DEPOSIT
+                  </span>
+                )}
               </div>
               <h2 className="text-lg sm:text-xl font-bold text-white group-hover:text-[#38bdf8] transition-colors leading-snug mt-1">
                 {offer.title}

@@ -515,6 +515,11 @@ export default function App() {
       return 0;
     });
 
+  const noDepositOffers = liveOffers
+    .filter((offer) => /\$0|no deposit|zero deposit/i.test(offer.depositRequired))
+    .sort((a, b) => b.incentiveValue - a.incentiveValue)
+    .slice(0, 3);
+
   return (
     <div className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}>
       <Navbar
@@ -571,6 +576,45 @@ export default function App() {
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
+              {noDepositOffers.length > 0 && selectedCategory === 'all' && !searchQuery.trim() && (
+                <section aria-labelledby="no-deposit-heading" className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.04] p-4 sm:p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-[11px] font-mono uppercase tracking-wider text-emerald-300">Start with $0 out of pocket</p>
+                      <h2 id="no-deposit-heading" className="mt-1 text-lg font-bold text-white">Best no-deposit offers</h2>
+                      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
+                        These offers currently show no deposit requirement in our catalog. Account approval, identity checks,
+                        and merchant eligibility can still apply.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSearchQuery('$0 deposit')}
+                      className="shrink-0 rounded-lg border border-emerald-300/25 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-300/10"
+                    >
+                      See all $0 offers
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {noDepositOffers.map((offer) => (
+                      <button
+                        key={offer.id}
+                        onClick={() => {
+                          void handleClaimClick(offer.id);
+                          window.open(offer.referralUrl || offer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
+                        }}
+                        className="rounded-xl border border-white/10 bg-[#0e121a]/80 p-3 text-left transition-colors hover:border-emerald-300/40"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-bold text-white">{offer.company}</span>
+                          <span className="text-xs font-mono font-bold text-emerald-300">{offer.incentiveAmount}</span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">{offer.title}</p>
+                        <span className="mt-3 inline-flex text-[11px] font-semibold text-cyan-200">View offer &rarr;</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
@@ -619,7 +663,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-y border-white/[0.08] py-5">
                 <div>
                   <h3 className="text-sm font-semibold text-white">Get new high-value offers by email</h3>
-                  <p className="text-xs text-zinc-500 mt-1">One useful alert at a time. No daily noise.</p>
+                  <p className="text-xs text-zinc-500 mt-1">One verified offer at a time. No daily noise or unverified hype.</p>
                 </div>
                 <button
                   onClick={() => setIsNewsletterOpen(true)}
