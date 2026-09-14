@@ -93,7 +93,13 @@ html {
 
 [data-site-theme="custom"] .bg-\[\#10141d\],
 [data-site-theme="custom"] .bg-\[\#0e121a\] {
-  background-color: var(--site-panel, #10141d) !important;
+  background-color: #14251f !important;
+}
+
+[data-site-theme="custom"] .bg-\[\#141824\],
+[data-site-theme="custom"] .bg-\[\#090d18\],
+[data-site-theme="custom"] .bg-\[\#07090e\] {
+  background-color: #141824 !important;
 }
 
 body,
@@ -151,6 +157,14 @@ select {
 .light-mode .bg-black {
   background-color: #fbfdf9 !important;
   border-color: #c6d8ca !important;
+}
+
+.light-mode [class*="bg-\\[\\#10141d\\]"],
+.light-mode [class*="bg-\\[\\#0e121a\\]"],
+.light-mode [class*="bg-\\[\\#141824\\]"],
+.light-mode [class*="bg-\\[\\#090d18\\]"],
+.light-mode [class*="bg-\\[\\#07090e\\]"] {
+  background-color: #eef2ee !important;
 }
 
 .light-mode .text-white,

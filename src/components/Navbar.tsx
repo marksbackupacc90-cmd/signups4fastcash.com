@@ -66,8 +66,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('offers')}
             className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
               activeTab === 'offers'
-                ? 'bg-blue-800 text-white font-semibold'
-                : 'text-zinc-200 hover:text-white'
+                ? 'border-[#9b7650]/60 bg-[#6eae89] text-[#102018] font-semibold'
+                : 'text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf]'
             }`}
           >
             Offers

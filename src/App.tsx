@@ -14,6 +14,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
+import { SupportBot } from './components/SupportBot';
 
 interface AuthUser {
   id: string;
@@ -719,11 +720,7 @@ export default function App() {
       )}
 
       <main className="flex-1">
-        {activeTab === 'offers' && (
-          <div aria-hidden="true" className="pointer-events-none fixed bottom-5 right-5 z-30 opacity-90">
-            <SfcCoinLogo size="md" />
-          </div>
-        )}
+        {activeTab === 'offers' && <SupportBot />}
         {activeTab === 'offers' && (
           <div>
             <Hero
@@ -742,15 +739,15 @@ export default function App() {
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
-              <div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[0.04] px-4 py-3 text-xs leading-relaxed text-zinc-300">
-                <span className="font-semibold text-cyan-200">Affiliate disclosure:</span>{' '}
+              <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
+                <span className="font-semibold text-[#d6a96d]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                  <span className="text-sm font-mono font-bold text-[#f1e6cf] uppercase tracking-wider">
                     Available Offers ({filteredOffers.length})
                   </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -780,7 +777,7 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="mx-auto max-w-5xl rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.03] p-3 sm:p-5">
+                <div className="mx-auto max-w-5xl rounded-2xl border border-[#8bd3a7]/20 bg-[#14251f] p-3 sm:p-5">
                   <div className="max-w-4xl mx-auto space-y-5">
                     {filteredOffers.map((offer) => (
                       <OfferCard
@@ -795,14 +792,14 @@ export default function App() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-y border-white/[0.08] py-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
                 <div>
                   <h3 className="text-sm font-semibold text-white">Get new high-value offers by email</h3>
                   <p className="text-xs text-zinc-500 mt-1">One verified offer at a time. No daily noise or unverified hype.</p>
                 </div>
                 <button
                   onClick={() => setIsNewsletterOpen(true)}
-                  className="px-3 py-2 rounded-lg bg-white text-black hover:bg-cyan-100 font-semibold text-xs transition-colors"
+                  className="px-3 py-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] text-[#102018] hover:bg-[#8bd3a7] font-semibold text-xs transition-colors"
                 >
                   Subscribe to alerts
                 </button>
