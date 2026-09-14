@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MessageCircle, Send, X } from 'lucide-react';
+import { MessageCircle, Send, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
 
 interface CommunityMessage {
   id: string;
@@ -32,11 +32,19 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   const [users, setUsers] = useState<Array<{ id: string; username: string; avatarUrl?: string | null }>>([]);
   const [directUserId, setDirectUserId] = useState('');
   const [directMessages, setDirectMessages] = useState<Array<{ id: string; sender_id: string; content: string }>>([]);
+  const [section, setSection] = useState<'community' | 'private'>('community');
+  const [friends, setFriends] = useState<typeof users>([]);
+  const [friendCandidates, setFriendCandidates] = useState<typeof users>([]);
+  const [friendName, setFriendName] = useState('');
   const displayName = username ? `@${username}` : 'Guest';
 
   useEffect(() => {
     if (!userId) return;
-    fetch('/api/community-users').then((response) => response.ok ? response.json() : Promise.reject(new Error())).then((data: { users?: typeof users }) => setUsers(data.users || [])).catch(() => undefined);
+    fetch('/api/friends').then((response) => response.ok ? response.json() : Promise.reject(new Error())).then((data: { friends?: typeof users; users?: typeof users }) => {
+      setFriends(data.friends || []);
+      setFriendCandidates(data.users || []);
+      setUsers(data.friends || []);
+    }).catch(() => undefined);
   }, [userId]);
 
   useEffect(() => {
@@ -89,8 +97,39 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
     minute: '2-digit',
   }).format(new Date(createdAt));
 
+  const refreshFriends = async () => {
+    const response = await fetch('/api/friends');
+    if (!response.ok) return;
+    const data = await response.json() as { friends?: typeof users; users?: typeof users };
+    setFriends(data.friends || []);
+    setFriendCandidates(data.users || []);
+    setUsers(data.friends || []);
+  };
+
+  const updateFriend = async (name: string, action: 'active' | 'block') => {
+    const response = await fetch('/api/friends', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: name, action }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      setError(data?.error || 'Could not update friend.');
+      return;
+    }
+    setFriendName('');
+    setError('');
+    await refreshFriends();
+  };
+
+  const removeFriend = async (friendId: string) => {
+    await fetch(`/api/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' });
+    if (directUserId === friendId) setDirectUserId('');
+    await refreshFriends();
+  };
+
   return (
-    <aside className="fixed right-4 top-24 z-30 w-[min(20rem,calc(100vw-2rem))]">
+    <aside className="absolute right-0 top-full z-50 w-[min(22rem,calc(100vw-2rem))] pt-2">
       {open && (
         <section className="overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
@@ -113,15 +152,30 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
               <X className="h-4 w-4" />
             </button>
           </div>
-          {userId && (
+          <div className="grid grid-cols-2 border-b border-white/[0.08] bg-[#0e121a] p-1">
+            <button type="button" onClick={() => setSection('community')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'community' ? 'bg-[#6eae89] font-semibold text-[#102018]' : 'text-zinc-400'}`}>Community</button>
+            <button type="button" onClick={() => setSection('private')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'private' ? 'bg-[#6eae89] font-semibold text-[#102018]' : 'text-zinc-400'}`}>Private</button>
+          </div>
+          {section === 'private' && userId && (
             <div className="border-b border-white/[0.08] bg-[#0e121a] p-2.5">
+              <div className="mb-2 flex gap-1.5">
+                <input value={friendName} onChange={(event) => setFriendName(event.target.value)} placeholder="Username to add or block" className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2 py-1.5 text-xs text-white" />
+                <button type="button" onClick={() => void updateFriend(friendName, 'active')} disabled={!friendName.trim()} className="rounded-md bg-[#6eae89] px-2 text-[#102018] disabled:opacity-50" title="Add friend"><UserPlus className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => void updateFriend(friendName, 'block')} disabled={!friendName.trim()} className="rounded-md border border-red-300/30 px-2 text-red-200 disabled:opacity-50" title="Block user"><ShieldBan className="h-3.5 w-3.5" /></button>
+              </div>
               <select value={directUserId} onChange={(event) => setDirectUserId(event.target.value)} className="w-full rounded-md border border-white/10 bg-[#090d18] px-2 py-2 text-xs text-zinc-200">
-                <option value="">Community chat</option>
-                {users.map((entry) => <option key={entry.id} value={entry.id}>Message @{entry.username}</option>)}
+                <option value="">Select a friend</option>
+                {friends.map((entry) => <option key={entry.id} value={entry.id}>@{entry.username}</option>)}
               </select>
+              <div className="mt-2 space-y-1">
+                {friends.map((entry) => <div key={entry.id} className="flex items-center justify-between rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300"><span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#8bd3a7]" />@{entry.username}</span><button type="button" onClick={() => void removeFriend(entry.id)} className="text-zinc-500 hover:text-red-200" title="Remove friend"><UserMinus className="h-3 w-3" /></button></div>)}
+                {friends.length === 0 && <div className="text-[10px] text-zinc-500">No friends yet. Add someone by username.</div>}
+              </div>
             </div>
           )}
-          {directUserId ? (
+          {section === 'private' && !userId ? (
+            <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-400">Sign in to add friends and send private messages.</div>
+          ) : section === 'private' && directUserId ? (
             <>
               <div className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
                 {directMessages.map((message) => <div key={message.id} className={`rounded-lg px-2.5 py-2 text-xs ${message.sender_id === userId ? 'ml-6 bg-[#6eae89] text-[#102018]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>{message.content}</div>)}
@@ -145,7 +199,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                 <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#6eae89] px-2.5 text-[#102018] disabled:opacity-50"><Send className="h-3.5 w-3.5" /></button>
               </form>
             </>
-          ) : (
+          ) : section === 'community' ? (
           <>
             <div className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
             {messages.length === 0 && <p className="py-5 text-center text-xs text-zinc-500">Be the first to say hello.</p>}
@@ -173,7 +227,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             </form>
             {error && <div className="px-3 pb-2 text-[10px] text-[#f2a7a7]">{error}</div>}
           </>
-          )}
+          ) : <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-500">Choose a friend to start a private conversation.</div>}
         </section>
       )}
       {!open && (

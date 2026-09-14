@@ -15,7 +15,6 @@ import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { SupportBot } from './components/SupportBot';
-import { CommunityChat } from './components/CommunityChat';
 
 interface AuthUser {
   id: string;
@@ -694,6 +693,7 @@ export default function App() {
         onInstallApp={handleInstallApp}
         installAvailable={Boolean(installPrompt)}
         username={authUser?.username}
+        userId={authUser?.id}
         onSignUp={() => {
           setAuthMode('signup');
           setAuthOpenRequest((request) => request + 1);
@@ -729,7 +729,6 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'offers' && (
           <>
-            <CommunityChat username={authUser?.username} userId={authUser?.id} />
             <SupportBot />
           </>
         )}

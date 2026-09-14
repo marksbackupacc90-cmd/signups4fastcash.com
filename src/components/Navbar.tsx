@@ -1,6 +1,7 @@
 import React from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
+import { CommunityChat } from './CommunityChat';
 
 interface NavbarProps {
   siteSettings?: SiteSettings;
@@ -16,6 +17,7 @@ interface NavbarProps {
   onSignOut: () => void;
   onAdminAccess: () => void;
   canAccessAdmin?: boolean;
+  userId?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -32,12 +34,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignOut,
   onAdminAccess,
   canAccessAdmin = false,
+  userId,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto flex min-h-16 flex-wrap items-center gap-y-2 px-4 py-2 sm:px-6 lg:px-8">
+      <div className="relative max-w-7xl mx-auto flex min-h-16 flex-wrap items-center gap-y-2 px-4 py-2 sm:px-6 lg:px-8">
         
         {/* Brand */}
         <div className="flex items-center gap-3">
@@ -87,6 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <CommunityChat username={username} userId={userId} />
           {username ? (
             <>
               <button onClick={onAccount} className="retro-button px-3 py-1.5 text-xs text-cyan-200 hover:text-white">

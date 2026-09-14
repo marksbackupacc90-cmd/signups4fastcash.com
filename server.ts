@@ -453,6 +453,15 @@ async function initializeOfferStore() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS friend_connections (
+      requester_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipient_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL CHECK (status IN ('active', 'blocked')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (requester_id, recipient_id)
+    )
+  `);
   await database.query(
     `INSERT INTO analytics_counters (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
   );
@@ -1157,6 +1166,59 @@ app.get('/api/community-users', async (req, res) => {
     [user.id],
   );
   return res.json({ users: result.rows.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })) });
+});
+
+app.get('/api/friends', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to manage friends.' });
+  if (!database) return res.json({ friends: [], users: [] });
+  const result = await database.query(
+    `SELECT u.id, u.username, u.avatar_url,
+      COALESCE(fc.status, 'none') AS relationship
+     FROM users u
+     LEFT JOIN friend_connections fc
+       ON ((fc.requester_id = $1 AND fc.recipient_id = u.id)
+        OR (fc.requester_id = u.id AND fc.recipient_id = $1))
+     WHERE u.id <> $1 AND u.username IS NOT NULL
+     ORDER BY LOWER(u.username)`,
+    [user.id],
+  );
+  const friends = result.rows.filter((entry) => entry.relationship === 'active');
+  return res.json({
+    friends: friends.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
+    users: result.rows.filter((entry) => entry.relationship === 'none').map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
+  });
+});
+
+app.post('/api/friends', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const action = req.body?.action === 'block' ? 'blocked' : 'active';
+  if (!user) return res.status(401).json({ error: 'Sign in to manage friends.' });
+  if (!username) return res.status(400).json({ error: 'Enter a username.' });
+  if (!database) return res.status(503).json({ error: 'Friends require the site database.' });
+  const target = await database.query<{ id: string }>('SELECT id FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1', [username]);
+  if (!target.rows[0] || target.rows[0].id === user.id) return res.status(404).json({ error: 'User not found.' });
+  await database.query(
+    `INSERT INTO friend_connections (requester_id, recipient_id, status)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (requester_id, recipient_id) DO UPDATE SET status = EXCLUDED.status`,
+    [user.id, target.rows[0].id, action],
+  );
+  return res.status(201).json({ ok: true });
+});
+
+app.delete('/api/friends/:userId', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to manage friends.' });
+  if (!database) return res.status(503).json({ error: 'Friends require the site database.' });
+  await database.query(
+    `DELETE FROM friend_connections
+     WHERE (requester_id = $1 AND recipient_id = $2)
+        OR (requester_id = $2 AND recipient_id = $1)`,
+    [user.id, req.params.userId],
+  );
+  return res.json({ ok: true });
 });
 
 app.get('/api/direct-messages', async (req, res) => {
