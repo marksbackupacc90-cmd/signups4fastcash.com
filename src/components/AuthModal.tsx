@@ -33,15 +33,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
       .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
       .then(({ user: currentUser }) => {
         onUserChange(currentUser);
-        setOpen(!currentUser || !currentUser.username);
+        setOpen(Boolean(currentUser && !currentUser.username));
       })
-      .catch(() => setOpen(true));
+      .catch(() => {
+        onUserChange(null);
+      });
     const handleAuthComplete = () => {
       fetch('/api/auth/me')
         .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
         .then(({ user: currentUser }) => {
           onUserChange(currentUser);
-          setOpen(!currentUser || !currentUser.username);
+          setOpen(Boolean(currentUser && !currentUser.username));
         })
         .catch(() => setError('Could not load your account.'));
     };
