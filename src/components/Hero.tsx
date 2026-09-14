@@ -63,7 +63,7 @@ export const Hero: React.FC<HeroProps> = ({
             <button
               type="button"
               onClick={onOpenFinder}
-              className="inline-flex items-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-200 transition-colors hover:bg-amber-300/20"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#141824] px-3 py-2 text-xs font-bold text-zinc-300 transition-colors hover:bg-white/[0.12]"
             >
               <Sparkles className="h-3.5 w-3.5" />
               Find my best offers
@@ -71,7 +71,7 @@ export const Hero: React.FC<HeroProps> = ({
             <button
               type="button"
               onClick={onShare}
-              className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-xs font-bold text-emerald-200 transition-colors hover:bg-emerald-300/20"
+              className="inline-flex items-center gap-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-2 text-xs font-bold text-[#102018] transition-colors hover:bg-[#8bd3a7]"
             >
               <Share2 className="h-3.5 w-3.5" />
               {shareCopied ? 'Message copied' : 'Share'}
@@ -153,62 +153,34 @@ export const Hero: React.FC<HeroProps> = ({
           {/* Sort Selector */}
           <div className="flex items-center gap-2 shrink-0">
             <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-500" />
-            <span className="text-xs font-mono text-zinc-400">SORT:</span>
-            <div className="flex items-center rounded-md bg-[#10141d] border border-white/10 p-0.5">
-              <button
-                id="sort-highest"
-                onClick={() => setSortBy('highest')}
-                className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
-                  sortBy === 'highest'
-                    ? 'bg-white/10 text-white font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Highest Cash
-              </button>
-              <button
-                id="sort-fastest"
-                onClick={() => setSortBy('fastest')}
-                className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
-                  sortBy === 'fastest'
-                    ? 'bg-white/10 text-white font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Fastest Payout
-              </button>
-              <button
-                id="sort-easiest"
-                onClick={() => setSortBy('easiest')}
-                className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
-                  sortBy === 'easiest'
-                    ? 'bg-white/10 text-white font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Lowest Deposit
-              </button>
-            </div>
+            <label htmlFor="sort-offers" className="text-xs font-mono text-zinc-400">SORT:</label>
+            <select
+              id="sort-offers"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as 'highest' | 'fastest' | 'easiest')}
+              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#6eae89]"
+            >
+              <option value="highest">Highest Cash</option>
+              <option value="fastest">Fastest Payout</option>
+              <option value="easiest">Lowest Deposit</option>
+            </select>
           </div>
 
         </div>
 
-        {/* Category Filter Chips */}
-        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              id={`filter-category-${cat.id}`}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`retro-button px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
-                  ? 'bg-blue-800 text-white font-semibold'
-                  : 'text-zinc-200 hover:text-white'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Category Filter */}
+        <div className="mt-4 flex items-center gap-2">
+          <label htmlFor="category-filter" className="text-xs font-mono text-zinc-400">CATEGORY:</label>
+          <select
+            id="category-filter"
+            value={selectedCategory}
+            onChange={(event) => setSelectedCategory(event.target.value)}
+            className="w-full max-w-xs rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#6eae89]"
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.label}</option>
+            ))}
+          </select>
         </div>
           </div>
         </div>
