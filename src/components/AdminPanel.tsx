@@ -139,6 +139,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
   const [draftUrls, setDraftUrls] = useState<Record<string, string>>({});
+  const [draftLogoUrls, setDraftLogoUrls] = useState<Record<string, string>>({});
   const [savedSuccessIds, setSavedSuccessIds] = useState<Record<string, boolean>>({});
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [liveSearchFilter, setLiveSearchFilter] = useState<string>('');
@@ -278,12 +279,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setDraftUrls((prev) => ({ ...prev, [offerId]: val }));
   };
 
+  const handleDraftLogoUrlChange = (offerId: string, val: string) => {
+    setDraftLogoUrls((prev) => ({ ...prev, [offerId]: val }));
+  };
+
   const handleSaveOfferReferral = (offer: Offer) => {
     const newCode = draftCodes[offer.id] !== undefined ? draftCodes[offer.id] : (offer.referralCode || '');
     const newUrl = draftUrls[offer.id] !== undefined ? draftUrls[offer.id] : (offer.referralUrl || '');
+    const newLogoUrl = draftLogoUrls[offer.id] !== undefined ? draftLogoUrls[offer.id] : (offer.logoUrl || '');
     onUpdateLiveOffer(offer.id, {
       referralCode: newCode.trim(),
       referralUrl: newUrl.trim(),
+      logoUrl: newLogoUrl.trim() || undefined,
     });
     setSavedSuccessIds((prev) => ({ ...prev, [offer.id]: true }));
     setTimeout(() => {
@@ -839,6 +846,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {filteredLiveOffers.map((offer) => {
               const draftCode = draftCodes[offer.id] !== undefined ? draftCodes[offer.id] : (offer.referralCode || '');
               const draftUrl = draftUrls[offer.id] !== undefined ? draftUrls[offer.id] : (offer.referralUrl || '');
+              const draftLogoUrl = draftLogoUrls[offer.id] !== undefined ? draftLogoUrls[offer.id] : (offer.logoUrl || '');
               const isSaved = !!savedSuccessIds[offer.id];
               const isCopied = copiedCodeId === offer.id;
 
@@ -855,7 +863,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {/* Top Bar: Company info & tags */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
                     <div className="flex items-center gap-3">
-                      <CompanyLogo companyName={offer.company} slug={offer.companySlug} size="md" />
+                      <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="md" />
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold font-mono text-white">{offer.company}</span>
@@ -964,6 +972,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           placeholder="https://..."
                           className="w-full px-3 py-2 rounded bg-[#090b0e] border border-white/10 text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400"
                         />
+                      </div>
+
+                      <div className="md:col-span-3">
+                        <label className="block text-[11px] font-mono text-zinc-400 mb-1">
+                          Custom Logo Image URL (optional):
+                        </label>
+                        <input
+                          type="url"
+                          value={draftLogoUrl}
+                          onChange={(e) => handleDraftLogoUrlChange(offer.id, e.target.value)}
+                          placeholder="https://your-site.com/logo.png"
+                          className="w-full px-3 py-2 rounded bg-[#090b0e] border border-white/10 text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400"
+                        />
+                        <p className="mt-1 text-[10px] text-zinc-500">Use a direct HTTPS image link. Leave blank to use the existing local logo.</p>
                       </div>
                     </div>
 

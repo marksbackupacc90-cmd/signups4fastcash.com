@@ -37,6 +37,7 @@ export interface Offer {
   
   // "Logo for each company its for displayed next to the offer title"
   logoSvgKey?: string;
+  logoUrl?: string;
   logoBgColor?: string;
   logoTextColor?: string;
 

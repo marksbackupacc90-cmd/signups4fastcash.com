@@ -3,6 +3,7 @@ import React from 'react';
 interface CompanyLogoProps {
   slug?: string;
   companyName: string;
+  logoUrl?: string;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -10,6 +11,7 @@ interface CompanyLogoProps {
 export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   slug,
   companyName,
+  logoUrl,
   size = 'md',
   className = '',
 }) => {
@@ -52,6 +54,20 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     .toUpperCase();
 
   const [imageFailed, setImageFailed] = React.useState(false);
+
+  if (!imageFailed && logoUrl) {
+    return (
+      <div className={`${sizeClasses} ${className} rounded-lg bg-white flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden select-none`}>
+        <img
+          src={logoUrl}
+          alt={`${companyName} logo`}
+          className="w-full h-full object-contain"
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+        />
+      </div>
+    );
+  }
 
   if (!imageFailed && localLogo) {
     return (
