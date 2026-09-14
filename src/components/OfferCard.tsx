@@ -65,7 +65,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
       </div>
 
-      <div className="bg-[#141824] p-4 sm:p-5 flex-1 flex flex-col">
+      <div className="bg-[#141824] p-3 sm:p-4 flex-1 flex flex-col">
         
         {/* Header: Company Logo next to Title + Incentive Badge */}
         <div className="flex items-start justify-between gap-3">
@@ -116,7 +116,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Key Quick-Specs Badges (Mobile-friendly, responsive) */}
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-mono bg-[#141824] p-2 rounded-lg">
+        <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[11px] font-mono bg-[#141824] p-1.5 rounded-lg">
           <div>
             <span className="text-zinc-500 block text-[10px]">DEPOSIT REQ</span>
             <span className="text-zinc-200 font-medium truncate block">{offer.depositRequired}</span>
@@ -161,13 +161,13 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         )}
 
         {/* Interactive Expanders: Omni-AI Council, Speedrun Hints & Honest Truth */}
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-1.5">
 
           {/* Speedrun Hints Toggle Button */}
           <button
             onClick={() => setShowHints(!showHints)}
             aria-expanded={showHints}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-white/15 text-[11px] font-mono text-zinc-300 transition-colors"
           >
             <span className="flex items-center gap-1.5 font-semibold">
               <Zap className="w-3.5 h-3.5 text-zinc-400" />
@@ -181,7 +181,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
           {/* Speedrun Hints Expanded Panel */}
           {showHints && (
-            <div className="p-3.5 rounded-lg bg-[#07090e] border border-blue-500/20 text-xs space-y-2.5 animate-in fade-in duration-200">
+            <div className="p-3 rounded-lg bg-[#07090e] border border-blue-500/20 text-xs space-y-2 animate-in fade-in duration-200">
               <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider font-semibold border-b border-white/[0.06] pb-1.5 flex items-center justify-between">
                 <span>Simplified Walkthrough</span>
                 <span className="text-emerald-400">Fast & Efficient</span>
@@ -210,7 +210,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           <button
             onClick={() => setShowTruth(!showTruth)}
             aria-expanded={showTruth}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#141824] border border-white/[0.06] hover:border-white/15 text-xs font-mono text-zinc-300 transition-colors"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#141824] border border-white/[0.06] hover:border-white/15 text-[11px] font-mono text-zinc-300 transition-colors"
           >
             <span className="flex items-center gap-1.5 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -224,7 +224,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
           {/* Honest Truth Expanded Panel */}
           {showTruth && (
-            <div className="p-3.5 rounded-lg bg-[#07090e] border border-white/10 text-xs space-y-2 animate-in fade-in duration-200">
+            <div className="p-3 rounded-lg bg-[#07090e] border border-white/10 text-xs space-y-2 animate-in fade-in duration-200">
               <div className="flex items-center gap-1.5 text-zinc-200 font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>{offer.honestTruth.summary}</span>
@@ -259,12 +259,12 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Claim Call to Action */}
-        <div className="mt-5 pt-3 border-t border-white/[0.06]">
+        <div className="mt-3 pt-2 border-t border-white/[0.06]">
           <button
             onClick={handleClaim}
             id={`claim-offer-btn-${offer.id}`}
             aria-label={`View ${offer.incentiveAmount} offer from ${offer.company}`}
-            className="w-full py-2.5 px-4 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] text-[#102018] font-semibold hover:bg-[#8bd3a7] transition-colors flex items-center justify-center gap-2 text-sm shadow-sm group/btn active:scale-[0.99]"
+            className="w-full py-2 px-3 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] text-[#102018] font-semibold hover:bg-[#8bd3a7] transition-colors flex items-center justify-center gap-2 text-xs shadow-sm group/btn active:scale-[0.99]"
           >
             <span>View {offer.incentiveAmount} offer on {offer.company}</span>
             <ExternalLink className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
