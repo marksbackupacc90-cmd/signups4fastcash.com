@@ -67,6 +67,30 @@ export const Hero: React.FC<HeroProps> = ({
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
 
+        <div className="mt-6 grid gap-2 border-y border-white/[0.06] py-4 sm:grid-cols-3">
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 text-emerald-400">✓</span>
+            <div>
+              <p className="text-xs font-semibold text-white">Requirements first</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">See deposits, purchases, and verification before leaving the site.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 text-emerald-400">✓</span>
+            <div>
+              <p className="text-xs font-semibold text-white">Official signup links</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">Applications and payments happen directly with the merchant.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 text-emerald-400">✓</span>
+            <div>
+              <p className="text-xs font-semibold text-white">No guaranteed-income claims</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">Terms can change, so we encourage a final official-terms check.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Search and Filters Bar */}
         <div className="mt-8 pt-6 border-t border-white/[0.06] flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
           
