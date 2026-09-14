@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Offer, NewsletterSubscriber, EmailBlastLog } from './types';
+import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -118,6 +118,30 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load site settings'))))
+      .then((data: { settings?: SiteSettings }) => {
+        if (data.settings) setSiteSettings(data.settings);
+      })
+      .catch(() => {
+        setSiteSettings(DEFAULT_SITE_SETTINGS);
+      });
+  }, []);
+
+  useEffect(() => {
+    const rootTitle = siteSettings.metaTitle || DEFAULT_SITE_SETTINGS.metaTitle;
+    document.title = rootTitle;
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'description';
+      document.head.appendChild(meta);
+    }
+    meta.content = siteSettings.metaDescription || DEFAULT_SITE_SETTINGS.metaDescription;
+  }, [siteSettings]);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_visitor_id';
@@ -541,9 +565,26 @@ export default function App() {
     window.setTimeout(() => document.getElementById(`offer-card-${offer.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
   };
 
+  const handleUpdateSiteSettings = async (updates: Partial<SiteSettings>) => {
+    const next = { ...siteSettings, ...updates };
+    setSiteSettings(next);
+    const response = await fetch('/api/site-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      setSiteSettings(siteSettings);
+      return;
+    }
+    const data = await response.json() as { settings?: SiteSettings };
+    if (data.settings) setSiteSettings(data.settings);
+  };
+
   return (
     <div className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}>
       <Navbar
+        siteSettings={siteSettings}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onInstallApp={handleInstallApp}
@@ -587,6 +628,7 @@ export default function App() {
         {activeTab === 'offers' && (
           <div>
             <Hero
+              siteSettings={siteSettings}
               searchQuery={searchQuery}
               setSearchQuery={handleSearchChange}
               onSearchSubmit={(query) => void handleSearchChange(query, true)}
@@ -723,7 +765,7 @@ export default function App() {
               </div>
             </div>
 
-            <TrustAndFaq />
+            <TrustAndFaq siteSettings={siteSettings} />
           </div>
         )}
 
@@ -740,6 +782,8 @@ export default function App() {
               onCreateCustomOffer={handleCreateCustomOffer}
               blastLogs={blastLogs}
               onLockAdmin={handleLockAdmin}
+              siteSettings={siteSettings}
+              onUpdateSiteSettings={handleUpdateSiteSettings}
             />
           </div>
         )}
@@ -767,6 +811,7 @@ export default function App() {
       )}
 
       <Footer
+        siteSettings={siteSettings}
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
         onTogglePush={handleTogglePush}
         pushEnabled={pushEnabled}

@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Pool } from 'pg';
 import { PUBLIC_OFFERS } from './src/data/initialOffers';
+import { DEFAULT_SITE_SETTINGS, SiteSettings } from './src/types';
 
 dotenv.config({ path: '.env.local' });
 
@@ -287,6 +288,7 @@ let visitorAnalyticsStore = {
   uniqueVisitors: new Set<string>(),
   sources: new Map<string, number>(),
 };
+let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 
 async function initializeOfferStore() {
   if (!database) {
@@ -453,9 +455,9 @@ async function initializeOfferStore() {
     }
     liveOffersStore = existing.rows.filter((row) => !['offer-stake-us', 'offer-acebet'].includes(row.offer.id)).map((row) => ({
       ...row.offer,
-      clicksCount: 0,
-      conversionsCount: 0,
-    })).concat(missingCatalogOffers);
+      clicksCount: Number.isFinite(Number(row.offer.clicksCount)) ? Number(row.offer.clicksCount) : 0,
+      conversionsCount: Number.isFinite(Number(row.offer.conversionsCount)) ? Number(row.offer.conversionsCount) : 0,
+    })).concat(missingCatalogOffers.map((offer) => ({ ...offer, clicksCount: 0, conversionsCount: 0 })));
     await saveLiveOffers();
   }
 }
@@ -482,58 +484,6 @@ async function saveLiveOffers() {
 // API: Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: database ? 'connected' : 'memory', timestamp: new Date().toISOString() });
-});
-
-app.post('/api/life-admin/analyze', async (req, res) => {
-  const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
-  if (!text || text.length > 12000) {
-    return res.status(400).json({ error: 'Paste a document or message up to 12,000 characters.' });
-  }
-  const ai = getGenAI();
-  if (!ai) {
-    return res.status(503).json({ error: 'AI analysis is not configured. Add GEMINI_API_KEY to enable ClearDay.' });
-  }
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `You are ClearDay, a careful life-admin assistant. Analyze the user's pasted bill, notice, email, or letter.
-Never give legal, medical, tax, or financial advice. Do not invent dates or amounts. If information is missing, say "Not stated".
-Return practical next steps, deadlines, money impact, and a polite draft reply. The user must approve any action.
-
-USER CONTENT:
-${text}`,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            summary: { type: Type.STRING },
-            urgency: { type: Type.STRING, enum: ['low', 'medium', 'high'] },
-            actionItems: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  action: { type: Type.STRING },
-                  deadline: { type: Type.STRING },
-                  reason: { type: Type.STRING },
-                },
-                required: ['action', 'deadline', 'reason'],
-              },
-            },
-            moneyImpact: { type: Type.STRING },
-            replyDraft: { type: Type.STRING },
-          },
-          required: ['summary', 'urgency', 'actionItems', 'moneyImpact', 'replyDraft'],
-        },
-      },
-    });
-    const result = JSON.parse(response.text || '{}');
-    return res.json({ result });
-  } catch (error) {
-    console.error('ClearDay analysis failed:', error);
-    return res.status(500).json({ error: 'Could not analyze that content. Please try again.' });
-  }
 });
 
 app.get('/api/cpx/balance', async (req, res) => {
@@ -744,6 +694,39 @@ app.get('/api/cpx/postback', async (req, res) => {
 
 app.get('/api/offers', (req, res) => {
   res.json({ offers: liveOffersStore });
+});
+
+app.get('/api/site-settings', (_req, res) => {
+  res.json({ settings: siteSettingsStore });
+});
+
+app.put('/api/site-settings', requireAdmin, (req, res) => {
+  const incoming = (req.body && typeof req.body === 'object' ? req.body : {}) as Partial<SiteSettings>;
+  const nextSettings: SiteSettings = {
+    ...siteSettingsStore,
+    ...Object.fromEntries(
+      Object.entries({
+        siteName: incoming.siteName,
+        siteTagline: incoming.siteTagline,
+        heroBadge: incoming.heroBadge,
+        mainHeadline: incoming.mainHeadline,
+        subHeadline: incoming.subHeadline,
+        brandName: incoming.brandName,
+        brandBadge: incoming.brandBadge,
+        footerBlurb: incoming.footerBlurb,
+        supportEmail: incoming.supportEmail,
+        footerDisclaimer: incoming.footerDisclaimer,
+        trustHeading: incoming.trustHeading,
+        trustParagraph: incoming.trustParagraph,
+        trustSubtext: incoming.trustSubtext,
+        metaTitle: incoming.metaTitle,
+        metaDescription: incoming.metaDescription,
+      }).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    ) as SiteSettings,
+  };
+
+  siteSettingsStore = nextSettings;
+  res.json({ settings: siteSettingsStore });
 });
 
 app.post('/api/admin/unlock', (req, res) => {
@@ -1340,7 +1323,15 @@ app.post('/api/analytics/track', (req, res) => {
     await saveLiveOffers();
   };
   persist()
-    .then(() => res.json({ success: true, stats: analyticsStore }))
+    .then(() => res.json({
+      success: true,
+      stats: analyticsStore,
+      offer: {
+        id: offer.id,
+        clicksCount: offer.clicksCount,
+        conversionsCount: offer.conversionsCount,
+      },
+    }))
     .catch(() => res.status(500).json({ error: 'Could not record analytics' }));
 });
 

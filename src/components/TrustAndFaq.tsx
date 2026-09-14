@@ -1,7 +1,14 @@
 import React from 'react';
 import { CircleHelp, ShieldCheck } from 'lucide-react';
+import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
-export const TrustAndFaq: React.FC = () => {
+interface TrustAndFaqProps {
+  siteSettings?: SiteSettings;
+}
+
+export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
+  const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+
   return (
     <section id="trust" className="border-t border-white/[0.08] pt-8 space-y-6">
       <div className="max-w-3xl">
@@ -10,13 +17,13 @@ export const TrustAndFaq: React.FC = () => {
           Transparent by design
         </div>
         <h2 className="mt-2 text-xl sm:text-2xl font-extrabold text-white">
-          Compare signup bonuses with confidence
+          {settings.trustHeading || 'Compare signup bonuses with confidence'}
         </h2>
         <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
-          We organize publicly available referral and promotional offers so you can compare signup bonuses, no-deposit rewards, cashback offers, requirements, timing, and fine print before visiting the official merchant. We do not hold your money, complete applications for you, or guarantee payment.
+          {settings.trustParagraph || 'We organize publicly available referral and promotional offers so you can compare signup bonuses, no-deposit rewards, cashback offers, requirements, timing, and fine print before visiting the official merchant. We do not hold your money, complete applications for you, or guarantee payment.'}
         </p>
         <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
-          Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.
+          {settings.trustSubtext || 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.'}
         </p>
       </div>
 

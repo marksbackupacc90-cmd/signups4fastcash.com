@@ -1,8 +1,10 @@
 import React from 'react';
 import { ShieldCheck, Lock, Bell, Moon, Sun } from 'lucide-react';
 import { SfcCoinLogo } from './SfcCoinLogo';
+import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
 interface FooterProps {
+  siteSettings?: SiteSettings;
   onOpenNewsletter: () => void;
   onSelectAdmin: () => void;
   onTogglePush?: () => void;
@@ -15,6 +17,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({
+  siteSettings,
   onOpenNewsletter,
   onSelectAdmin,
   onTogglePush,
@@ -25,6 +28,8 @@ export const Footer: React.FC<FooterProps> = ({
   onToggleTheme,
   onSelectOffers,
 }) => {
+  const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+
   return (
     <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -37,15 +42,15 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="flex items-center gap-2">
               <SfcCoinLogo size="sm" />
               <span className="font-mono font-bold text-white text-base">
-                signups4<span className="text-[#00f2fe]">fastcash.com</span>
+                {settings.brandName || settings.siteName}
               </span>
             </div>
             
             <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
-              Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.
+              {settings.footerBlurb || 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.'}
             </p>
             <p className="text-zinc-500 text-xs leading-relaxed max-w-md">
-              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href="mailto:support@signups4fastcash.com">support@signups4fastcash.com</a>. Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.
+              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href={`mailto:${settings.supportEmail || 'support@signups4fastcash.com'}`}>{settings.supportEmail || 'support@signups4fastcash.com'}</a>. {settings.footerDisclaimer || 'Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.'}
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
@@ -113,7 +118,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Bottom copyright & disclaimer */}
         <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-zinc-500">
           <div>
-            &copy; {new Date().getFullYear()} Signups4FastCash.com — All rights reserved.
+            &copy; {new Date().getFullYear()} {settings.brandName || settings.siteName} — All rights reserved.
           </div>
           <div className="flex items-center gap-4">
             <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How offers work</a>

@@ -1,7 +1,9 @@
 import React from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
+import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
 interface NavbarProps {
+  siteSettings?: SiteSettings;
   activeTab: 'offers' | 'admin';
   setActiveTab: (tab: 'offers' | 'admin') => void;
   onInstallApp: () => void;
@@ -15,6 +17,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  siteSettings,
   activeTab,
   setActiveTab,
   onInstallApp,
@@ -26,6 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onAccount,
   onSignOut,
 }) => {
+  const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto flex min-h-16 flex-wrap items-center gap-y-2 px-4 py-2 sm:px-6 lg:px-8">
@@ -41,11 +46,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">
-                  Signups4<span className="text-cyan-300">FastCash.com</span>
+                  {settings.brandName || settings.siteName}
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-300/20 text-[11px] font-mono text-emerald-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Verified terms shown
+                  {settings.brandBadge || 'Verified terms shown'}
                 </span>
               </div>
             </div>

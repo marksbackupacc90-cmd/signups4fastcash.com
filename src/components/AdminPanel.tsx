@@ -22,7 +22,7 @@ import {
   Save,
   ArrowUpRight
 } from 'lucide-react';
-import { Offer, NewsletterSubscriber, EmailBlastLog, SpeedrunStep } from '../types';
+import { Offer, NewsletterSubscriber, EmailBlastLog, SpeedrunStep, SiteSettings, DEFAULT_SITE_SETTINGS } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
 interface AdminPanelProps {
@@ -42,6 +42,8 @@ interface AdminPanelProps {
   onCreateCustomOffer: (newOffer: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>) => void;
   blastLogs: EmailBlastLog[];
   onLockAdmin?: () => void;
+  siteSettings: SiteSettings;
+  onUpdateSiteSettings: (updates: Partial<SiteSettings>) => void;
 }
 
 interface OutreachResult {
@@ -123,8 +125,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onCreateCustomOffer,
   blastLogs,
   onLockAdmin,
+  siteSettings,
+  onUpdateSiteSettings,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant'>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'settings'>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
@@ -138,6 +142,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [savedSuccessIds, setSavedSuccessIds] = useState<Record<string, boolean>>({});
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [liveSearchFilter, setLiveSearchFilter] = useState<string>('');
+  const [settingsDraft, setSettingsDraft] = useState<SiteSettings>(siteSettings || DEFAULT_SITE_SETTINGS);
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -168,6 +173,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   ]);
 
   const selectedPendingOffer = pendingOffers.find((o) => o.id === selectedPendingId);
+
+  useEffect(() => {
+    setSettingsDraft(siteSettings || DEFAULT_SITE_SETTINGS);
+  }, [siteSettings]);
 
   useEffect(() => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -430,8 +439,115 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
             Outreach Assistant
           </button>
+
+          <button
+            onClick={() => setActiveAdminTab('settings')}
+            className={`px-3 py-1.5 rounded transition-all flex items-center gap-1 ${
+              activeAdminTab === 'settings'
+                ? 'bg-cyan-400/15 text-cyan-200 font-bold border border-cyan-400/30'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5 text-cyan-300" />
+            Site Settings
+          </button>
         </div>
       </div>
+
+      {activeAdminTab === 'settings' && (
+        <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Branding & homepage</div>
+              <h3 className="text-lg font-bold text-white mt-1">Edit your live site content</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => onUpdateSiteSettings(settingsDraft)}
+              className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-400"
+            >
+              Save changes
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="text-xs text-zinc-400">
+              Site name
+              <input value={settingsDraft.siteName} onChange={(e) => setSettingsDraft({ ...settingsDraft, siteName: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400">
+              Site tagline
+              <input value={settingsDraft.siteTagline} onChange={(e) => setSettingsDraft({ ...settingsDraft, siteTagline: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Hero badge
+              <input value={settingsDraft.heroBadge} onChange={(e) => setSettingsDraft({ ...settingsDraft, heroBadge: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Main headline
+              <input value={settingsDraft.mainHeadline} onChange={(e) => setSettingsDraft({ ...settingsDraft, mainHeadline: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Sub-headline
+              <textarea value={settingsDraft.subHeadline} onChange={(e) => setSettingsDraft({ ...settingsDraft, subHeadline: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400">
+              Brand name
+              <input value={settingsDraft.brandName} onChange={(e) => setSettingsDraft({ ...settingsDraft, brandName: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400">
+              Brand badge
+              <input value={settingsDraft.brandBadge} onChange={(e) => setSettingsDraft({ ...settingsDraft, brandBadge: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Footer blurb
+              <textarea value={settingsDraft.footerBlurb} onChange={(e) => setSettingsDraft({ ...settingsDraft, footerBlurb: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400">
+              Support email
+              <input value={settingsDraft.supportEmail} onChange={(e) => setSettingsDraft({ ...settingsDraft, supportEmail: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-1">
+              Footer disclaimer
+              <textarea value={settingsDraft.footerDisclaimer} onChange={(e) => setSettingsDraft({ ...settingsDraft, footerDisclaimer: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Trust heading
+              <input value={settingsDraft.trustHeading} onChange={(e) => setSettingsDraft({ ...settingsDraft, trustHeading: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Trust paragraph
+              <textarea value={settingsDraft.trustParagraph} onChange={(e) => setSettingsDraft({ ...settingsDraft, trustParagraph: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Trust subtext
+              <textarea value={settingsDraft.trustSubtext} onChange={(e) => setSettingsDraft({ ...settingsDraft, trustSubtext: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              SEO title
+              <input value={settingsDraft.metaTitle} onChange={(e) => setSettingsDraft({ ...settingsDraft, metaTitle: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+
+            <label className="text-xs text-zinc-400 md:col-span-2">
+              Meta description
+              <textarea value={settingsDraft.metaDescription} onChange={(e) => setSettingsDraft({ ...settingsDraft, metaDescription: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" />
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Tab 1: Pending CashBot Findings & Approval */}
       {activeAdminTab === 'pending' && (

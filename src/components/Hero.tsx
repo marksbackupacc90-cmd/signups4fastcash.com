@@ -1,8 +1,9 @@
 import React from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import { OfferCategory } from '../types';
+import { DEFAULT_SITE_SETTINGS, OfferCategory, SiteSettings } from '../types';
 
 interface HeroProps {
+  siteSettings?: SiteSettings;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onSearchSubmit?: (query: string) => void;
@@ -23,6 +24,7 @@ const CATEGORIES: { id: string; label: string }[] = [
 ];
 
 export const Hero: React.FC<HeroProps> = ({
+  siteSettings,
   searchQuery,
   setSearchQuery,
   onSearchSubmit,
@@ -32,6 +34,8 @@ export const Hero: React.FC<HeroProps> = ({
   setSortBy,
   totalOffersCount,
 }) => {
+  const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+
   return (
     <section className="relative pt-8 pb-8 overflow-hidden">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_70%_0%,rgba(0,242,254,0.08),transparent_38%)]" />
@@ -39,23 +43,23 @@ export const Hero: React.FC<HeroProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="retro-window">
           <div className="retro-titlebar flex items-center justify-between text-xs">
-            <span>Welcome to Signups4FastCash.com!</span>
+            <span>{settings.siteName}</span>
             <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
           </div>
           <div className="p-4 sm:p-6">
         
         <div className="flex items-center gap-2 mb-5 text-xs font-mono text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Rewards and cashback with clear terms
+          {settings.heroBadge}
         </div>
 
         {/* Main Headline */}
         <div className="max-w-3xl">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.08]">
-            Find the offers worth your time.
+            {settings.mainHeadline}
           </h1>
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
-            Compare the best signup bonuses, no-deposit offers, cashback rewards, and referral incentives with the actual requirements, payout timing, and fine print visible before you click through.
+            {settings.subHeadline}
           </p>
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.

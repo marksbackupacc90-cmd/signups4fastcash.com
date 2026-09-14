@@ -27,6 +27,22 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
       ? 'topcashback'
       : normalized.replace(/[^a-z0-9]/g, '');
 
+  const localLogoMap: Record<string, string> = {
+    sofi: '/company-logos/sofi-logo.png',
+    chime: '/company-logos/chime-logo.jpg',
+    capitalone: '/company-logos/capital-one.png',
+    coinbase: '/company-logos/coinbase-logo.png',
+    robinhood: '/company-logos/robinhood.png',
+    revolut: '/company-logos/revolut-logo.jpg',
+    topcashback: '/company-logos/topcashback.jpg',
+    kraken: '/company-logos/kraken.png',
+    paypal: '/company-logos/paypal-logo.png',
+    freecash: '/company-logos/freecash.jpg',
+    rakuten: '/company-logos/rakuten.png',
+  };
+
+  const localLogo = localLogoMap[logoSlug] || (logoSlug === 'rakuten' ? '/company-logos/rakuten.jpg' : undefined);
+
   const initials = companyName
     .split(' ')
     .filter(Boolean)
@@ -36,6 +52,20 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     .toUpperCase();
 
   const [imageFailed, setImageFailed] = React.useState(false);
+
+  if (!imageFailed && localLogo) {
+    return (
+      <div className={`${sizeClasses} ${className} rounded-lg bg-white flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden select-none`}>
+        <img
+          src={localLogo}
+          alt={`${companyName} logo`}
+          className="w-full h-full object-contain"
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+        />
+      </div>
+    );
+  }
 
   if (!imageFailed) {
     return (
