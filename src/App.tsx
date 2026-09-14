@@ -694,6 +694,9 @@ export default function App() {
         installAvailable={Boolean(installPrompt)}
         username={authUser?.username}
         userId={authUser?.id}
+        onShare={() => void handleShare()}
+        shareCopied={shareCopied}
+        onOpenFinder={() => setOfferFinderOpen(true)}
         onSignUp={() => {
           setAuthMode('signup');
           setAuthOpenRequest((request) => request + 1);
@@ -744,9 +747,6 @@ export default function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
-              onShare={() => void handleShare()}
-              shareCopied={shareCopied}
-              onOpenFinder={() => setOfferFinderOpen(true)}
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5" id="offers">

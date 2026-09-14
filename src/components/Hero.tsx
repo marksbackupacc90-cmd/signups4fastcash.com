@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Share2, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, OfferCategory, SiteSettings } from '../types';
 
 interface HeroProps {
@@ -12,9 +12,6 @@ interface HeroProps {
   sortBy: 'highest' | 'fastest' | 'easiest';
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
   totalOffersCount: number;
-  onShare: () => void;
-  shareCopied: boolean;
-  onOpenFinder: () => void;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -36,9 +33,6 @@ export const Hero: React.FC<HeroProps> = ({
   sortBy,
   setSortBy,
   totalOffersCount,
-  onShare,
-  shareCopied,
-  onOpenFinder,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
@@ -62,24 +56,6 @@ export const Hero: React.FC<HeroProps> = ({
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2 self-start rounded-lg border border-white/[0.06] bg-[#14251f] p-2">
-            <button
-              type="button"
-              onClick={onOpenFinder}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#141824] px-3 py-2 text-xs font-bold text-zinc-300 transition-colors hover:bg-white/[0.12]"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Find my best offers
-            </button>
-            <button
-              type="button"
-              onClick={onShare}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-2 text-xs font-bold text-[#102018] transition-colors hover:bg-[#8bd3a7]"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              {shareCopied ? 'Message copied' : 'Share'}
-            </button>
           </div>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">

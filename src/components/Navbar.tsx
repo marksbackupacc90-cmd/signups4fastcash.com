@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 import { CommunityChat } from './CommunityChat';
+import { ChevronDown, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
   siteSettings?: SiteSettings;
@@ -18,6 +19,9 @@ interface NavbarProps {
   onAdminAccess: () => void;
   canAccessAdmin?: boolean;
   userId?: string;
+  onShare: () => void;
+  shareCopied: boolean;
+  onOpenFinder: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,8 +39,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   onAdminAccess,
   canAccessAdmin = false,
   userId,
+  onShare,
+  shareCopied,
+  onOpenFinder,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
@@ -87,24 +95,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Install App
           </button>
+          <CommunityChat username={username} userId={userId} />
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <CommunityChat username={username} userId={userId} />
           {username ? (
-            <>
-              <button onClick={onAccount} className="retro-button px-3 py-1.5 text-xs text-cyan-200 hover:text-white">
-                @{username}
+            <div className="relative">
+              <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-cyan-200 hover:text-white" aria-expanded={accountMenuOpen}>
+                @{username}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
               </button>
-              {canAccessAdmin && (
-                <button onClick={onAdminAccess} className="retro-button border border-amber-300/40 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-300/10">
-                  Admin
-                </button>
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
+                  <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
+                  <button onClick={() => { onOpenFinder(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Search className="h-3.5 w-3.5" /> Find my best offers</button>
+                  <button onClick={() => { onShare(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Share2 className="h-3.5 w-3.5" /> {shareCopied ? 'Message copied' : 'Share site'}</button>
+                  {canAccessAdmin && <button onClick={() => { onAdminAccess(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-amber-200 hover:bg-white/10">Admin panel</button>}
+                  <button onClick={() => { onSignOut(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-300 hover:bg-white/10">Sign out</button>
+                </div>
               )}
-              <button onClick={onSignOut} className="retro-button px-3 py-1.5 text-xs text-zinc-300 hover:text-white">
-                Sign out
-              </button>
-            </>
+            </div>
           ) : !hideSignIn ? (
             <div className="flex items-center gap-2">
               <button onClick={onSignUp} className="retro-button border border-cyan-300/50 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10">
