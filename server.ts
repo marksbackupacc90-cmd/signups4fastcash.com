@@ -924,6 +924,14 @@ app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
     return res.status(400).json({
       error: 'Do not enter passwords, login details, passcodes, or private account information.',
     });
+  }
+
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json({
+      answer: `Gemini is not configured for this server. Add a valid GEMINI_API_KEY in Render's Environment settings, redeploy, and try again. Until then, I can only provide the built-in manual guidance for: ${message}\n\nUse the Live Offers tab for offer links and codes, Site Settings for public copy and SEO, and the Outreach Assistant for a reviewed promotion plan.`,
+      fallback: true,
+    });
 
     app.post('/api/support-chat', async (req, res) => {
       const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
@@ -963,14 +971,6 @@ app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
           fallback: true,
         });
       }
-    });
-  }
-
-  const ai = getGenAI();
-  if (!ai) {
-    return res.json({
-      answer: `Gemini is not configured for this server. Add a valid GEMINI_API_KEY in Render's Environment settings, redeploy, and try again. Until then, I can only provide the built-in manual guidance for: ${message}\n\nUse the Live Offers tab for offer links and codes, Site Settings for public copy and SEO, and the Outreach Assistant for a reviewed promotion plan.`,
-      fallback: true,
     });
   }
 
