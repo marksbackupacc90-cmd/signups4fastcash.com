@@ -10,6 +10,18 @@ html {
   background: var(--site-background, #0b1020);
 }
 
+.retro-window {
+  border: 1px solid color-mix(in srgb, var(--site-accent, #8bd3a7) 28%, #806548 20%);
+  border-radius: 1rem;
+  background: var(--site-panel, #17251f);
+  box-shadow: 0 12px 28px rgba(5, 15, 10, 0.18);
+}
+
+.retro-titlebar {
+  border-bottom: 1px solid color-mix(in srgb, var(--site-accent, #8bd3a7) 20%, #806548 20%);
+  border-radius: 1rem 1rem 0 0;
+}
+
 [data-site-theme="custom"] {
   background: var(--site-background, #0b1020);
 }
@@ -26,6 +38,51 @@ html {
 [data-site-theme="custom"] .text-cyan-300,
 [data-site-theme="custom"] .text-cyan-400 {
   color: var(--site-accent, #00f2fe) !important;
+}
+
+[data-site-theme="custom"] .text-emerald-300,
+[data-site-theme="custom"] .text-emerald-400,
+[data-site-theme="custom"] .text-emerald-500 {
+  color: #9bd3ad !important;
+}
+
+[data-site-theme="custom"] .text-blue-200,
+[data-site-theme="custom"] .text-blue-300,
+[data-site-theme="custom"] .text-blue-400,
+[data-site-theme="custom"] .text-sky-300 {
+  color: #9abbd6 !important;
+}
+
+[data-site-theme="custom"] .text-amber-200,
+[data-site-theme="custom"] .text-amber-300,
+[data-site-theme="custom"] .text-amber-400 {
+  color: #d6a96d !important;
+}
+
+[data-site-theme="custom"] .bg-cyan-400,
+[data-site-theme="custom"] .bg-cyan-500,
+[data-site-theme="custom"] .bg-blue-500,
+[data-site-theme="custom"] .bg-emerald-500 {
+  background-color: #6eae89 !important;
+}
+
+[data-site-theme="custom"] .bg-amber-400,
+[data-site-theme="custom"] .bg-amber-500 {
+  background-color: #9b7650 !important;
+}
+
+[data-site-theme="custom"] .border-amber-300\/40,
+[data-site-theme="custom"] .border-amber-500\/30,
+[data-site-theme="custom"] .border-emerald-300\/20,
+[data-site-theme="custom"] .border-emerald-500\/40 {
+  border-color: color-mix(in srgb, #9b7650 45%, transparent) !important;
+}
+
+[data-site-theme="custom"] .bg-white\/\[0\.03\],
+[data-site-theme="custom"] .bg-white\/\[0\.04\],
+[data-site-theme="custom"] .bg-white\/\[0\.06\],
+[data-site-theme="custom"] .bg-white\/10 {
+  background-color: color-mix(in srgb, var(--site-panel, #17251f) 82%, white 18%) !important;
 }
 
 [data-site-theme="custom"] .bg-\[\#10141d\],
