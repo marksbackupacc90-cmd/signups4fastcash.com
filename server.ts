@@ -295,7 +295,7 @@ let visitorAnalyticsStore = {
 let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
 const communityMessages: Array<{ id: string; displayName: string; content: string; createdAt: string }> = [];
-const communityPresence = new Map<string, number>();
+const communityPresence = new Map<string, { lastSeen: number; displayName: string }>();
 
 function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>) {
   const lower = message.toLowerCase();
@@ -1090,11 +1090,18 @@ ${message}`,
 
 app.get('/api/community-chat', async (req, res) => {
   const visitorId = typeof req.query.visitorId === 'string' ? req.query.visitorId.trim().slice(0, 120) : '';
-  if (visitorId) communityPresence.set(visitorId, Date.now());
+  const displayName = typeof req.query.displayName === 'string'
+    ? req.query.displayName.trim().slice(0, 40) || 'Guest'
+    : 'Guest';
+  if (visitorId) communityPresence.set(visitorId, { lastSeen: Date.now(), displayName });
   const cutoff = Date.now() - 90_000;
-  for (const [id, lastSeen] of communityPresence) {
-    if (lastSeen < cutoff) communityPresence.delete(id);
+  for (const [id, presence] of communityPresence) {
+    if (presence.lastSeen < cutoff) communityPresence.delete(id);
   }
+  const activeUsers = [...communityPresence.values()]
+    .map((presence) => presence.displayName)
+    .filter((name, index, names) => names.indexOf(name) === index)
+    .sort((left, right) => left.localeCompare(right));
 
   if (database) {
     const result = await database.query<{ id: string; display_name: string; content: string; created_at: Date }>(
@@ -1107,11 +1114,12 @@ app.get('/api/community-chat', async (req, res) => {
         content: message.content,
         createdAt: new Date(message.created_at).toISOString(),
       })),
-      activeCount: Math.max(communityPresence.size, 1),
+      activeCount: communityPresence.size,
+      activeUsers,
     });
   }
 
-  return res.json({ messages: communityMessages.slice(-50), activeCount: Math.max(communityPresence.size, 1) });
+  return res.json({ messages: communityMessages.slice(-50), activeCount: communityPresence.size, activeUsers });
 });
 
 app.post('/api/community-chat', async (req, res) => {
@@ -1121,7 +1129,7 @@ app.post('/api/community-chat', async (req, res) => {
   if (!visitorId || !content) return res.status(400).json({ error: 'A visitor ID and message are required.' });
   if (content.length < 1) return res.status(400).json({ error: 'Message cannot be empty.' });
 
-  communityPresence.set(visitorId, Date.now());
+  communityPresence.set(visitorId, { lastSeen: Date.now(), displayName: displayName || 'Guest' });
   const message = { id: randomUUID(), displayName: displayName || 'Guest', content, createdAt: new Date().toISOString() };
   communityMessages.push(message);
   if (communityMessages.length > 200) communityMessages.splice(0, communityMessages.length - 200);

@@ -25,6 +25,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   });
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [activeCount, setActiveCount] = useState(0);
+  const [activeUsers, setActiveUsers] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<Array<{ id: string; username: string; avatarUrl?: string | null }>>([]);
@@ -43,11 +44,12 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   }, [directUserId]);
 
   const refresh = async () => {
-    const response = await fetch(`/api/community-chat?visitorId=${encodeURIComponent(visitorId)}`);
+    const response = await fetch(`/api/community-chat?visitorId=${encodeURIComponent(visitorId)}&displayName=${encodeURIComponent(displayName)}`);
     if (!response.ok) throw new Error('Could not load community chat.');
-    const data = await response.json() as { messages: CommunityMessage[]; activeCount: number };
+    const data = await response.json() as { messages: CommunityMessage[]; activeCount: number; activeUsers?: string[] };
     setMessages(data.messages);
     setActiveCount(data.activeCount);
+    setActiveUsers(data.activeUsers || []);
   };
 
   useEffect(() => {
@@ -88,6 +90,14 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                 Community chat
               </div>
               <div className="mt-0.5 text-[10px] text-[#8bd3a7]">{activeCount} active now</div>
+              <div className="mt-1 flex max-w-[15rem] flex-wrap gap-1">
+                {activeUsers.length > 0 ? activeUsers.map((activeUser) => (
+                  <span key={activeUser} className="inline-flex items-center gap-1 rounded-full bg-[#1c3329] px-1.5 py-0.5 text-[9px] text-[#d6eadb]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#8bd3a7]" />
+                    {activeUser}
+                  </span>
+                )) : <span className="text-[9px] text-zinc-500">No one is active yet</span>}
+              </div>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf]" aria-label="Close community chat">
               <X className="h-4 w-4" />
