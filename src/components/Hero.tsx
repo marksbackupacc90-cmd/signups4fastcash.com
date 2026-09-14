@@ -48,17 +48,9 @@ export const Hero: React.FC<HeroProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="retro-window">
-          <div className="retro-titlebar flex items-center justify-between text-xs">
-            <span>{settings.siteName}</span>
-            <span aria-hidden="true" className="text-cyan-200">● ● ●</span>
-          </div>
           <div className="bg-[#141824] p-4 sm:p-6">
         
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            {settings.heroBadge}
-          </div>
+        <div className="mb-5 flex flex-wrap items-center justify-end gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"

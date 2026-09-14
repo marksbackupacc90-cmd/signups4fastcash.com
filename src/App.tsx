@@ -738,7 +738,7 @@ export default function App() {
               onOpenFinder={() => setOfferFinderOpen(true)}
             />
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5" id="offers">
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#d6a96d]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
@@ -777,8 +777,8 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="mx-auto max-w-5xl rounded-2xl border border-[#8bd3a7]/20 bg-[#14251f] p-3 sm:p-5">
-                  <div className="max-w-4xl mx-auto space-y-5">
+                <div className="mx-auto max-w-5xl rounded-2xl border border-[#8bd3a7]/20 bg-[#14251f] p-2 sm:p-3">
+                  <div className="max-w-4xl mx-auto space-y-3">
                     {filteredOffers.map((offer) => (
                       <OfferCard
                         key={offer.id}

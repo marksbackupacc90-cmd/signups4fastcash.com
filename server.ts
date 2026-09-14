@@ -924,6 +924,46 @@ app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
     return res.status(400).json({
       error: 'Do not enter passwords, login details, passcodes, or private account information.',
     });
+
+    app.post('/api/support-chat', async (req, res) => {
+      const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+      if (!message || message.length > 1000) {
+        return res.status(400).json({ error: 'Enter a question up to 1,000 characters.' });
+      }
+      if (containsSensitiveCredentials(message)) {
+        return res.status(400).json({ error: 'Please do not share passwords, account details, API keys, or financial information.' });
+      }
+
+      const ai = getGenAI();
+      if (!ai) {
+        return res.json({
+          answer: 'I can help you compare the listed offers, but the live AI service is not configured right now. Open an offer to review its deposit, payout speed, steps, and fine print before using the official signup link.',
+          fallback: true,
+        });
+      }
+
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: `You are S4FC Support, a friendly public customer-support assistant for Signups4FastCash.com.
+    Help visitors compare signup bonuses and understand offer requirements, payout timing, steps, risks, and affiliate disclosures.
+    Do not promise approval, payment, earnings, or eligibility. Do not provide financial, legal, tax, or identity-verification advice beyond telling users to review official merchant terms.
+    Never ask for or repeat passwords, API keys, bank details, government IDs, or private account information.
+    Keep answers concise and direct users to the official merchant terms and links when needed.
+
+    VISITOR QUESTION:
+    ${message}`,
+          config: { temperature: 0.3 },
+        });
+        return res.json({ answer: response.text?.trim() || 'Please open the offer details and review the official terms before signing up.' });
+      } catch (error) {
+        console.error('Support chatbot failed:', error);
+        return res.json({
+          answer: 'The support assistant is temporarily unavailable. You can still compare each offer’s requirements, payout speed, easy steps, and fine print directly on this page.',
+          fallback: true,
+        });
+      }
+    });
   }
 
   const ai = getGenAI();
