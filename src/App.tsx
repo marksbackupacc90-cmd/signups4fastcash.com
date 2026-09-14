@@ -13,6 +13,7 @@ import { SfcCoinLogo } from './components/SfcCoinLogo';
 import { CheckCircle2 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
+import { OfferFinder } from './components/OfferFinder';
 
 interface AuthUser {
   id: string;
@@ -115,6 +116,7 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
   const [shareCopied, setShareCopied] = useState(false);
+  const [offerFinderOpen, setOfferFinderOpen] = useState(false);
 
   useEffect(() => {
     const storageKey = 'signups4fastcash_visitor_id';
@@ -532,6 +534,11 @@ export default function App() {
     setShareCopied(true);
     window.setTimeout(() => setShareCopied(false), 2500);
   };
+  const handleFinderOffer = (offer: Offer) => {
+    setOfferFinderOpen(false);
+    setSearchQuery(offer.company);
+    window.setTimeout(() => document.getElementById(`offer-card-${offer.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  };
 
   return (
     <div className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}>
@@ -583,6 +590,10 @@ export default function App() {
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="offers">
+              <button onClick={() => setOfferFinderOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-purple-300/20 bg-purple-300/[0.05] p-4 text-left hover:border-purple-300/40">
+                <span><span className="block text-[11px] font-mono uppercase tracking-wider text-purple-200">Personalized recommendations</span><strong className="mt-1 block text-base text-white">Not sure where to start? Find your best-fit offers.</strong><span className="mt-1 block text-xs text-zinc-400">Filter out completed offers, deposits you cannot make, and requirements you prefer to avoid.</span></span>
+                <span className="ml-3 shrink-0 rounded-lg bg-purple-300 px-3 py-2 text-xs font-bold text-black">Start finder</span>
+              </button>
               <section className="rounded-2xl border border-blue-300/20 bg-blue-300/[0.05] p-4 sm:p-5" aria-labelledby="share-heading">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -767,6 +778,7 @@ export default function App() {
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
+      {offerFinderOpen && <OfferFinder offers={liveOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
     </div>
   );
 }
