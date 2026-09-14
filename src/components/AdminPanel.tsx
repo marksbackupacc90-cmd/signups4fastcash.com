@@ -22,7 +22,8 @@ import {
   Save,
   ArrowUpRight,
   MessageCircle,
-  User
+  User,
+  ChevronDown
 } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SpeedrunStep, SiteSettings, DEFAULT_SITE_SETTINGS } from '../types';
 import { CompanyLogo } from './CompanyLogo';
@@ -178,6 +179,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [savedSuccessIds, setSavedSuccessIds] = useState<Record<string, boolean>>({});
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [liveSearchFilter, setLiveSearchFilter] = useState<string>('');
+  const [expandedLiveOfferId, setExpandedLiveOfferId] = useState<string | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<SiteSettings>(siteSettings || DEFAULT_SITE_SETTINGS);
   const [adminUsernamesDraft, setAdminUsernamesDraft] = useState(adminUsernames.join(', '));
 
@@ -1037,7 +1039,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   {/* Top Bar: Company info & tags */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLiveOfferId((current) => current === offer.id ? null : offer.id)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      aria-expanded={expandedLiveOfferId === offer.id}
+                    >
                       <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="md" />
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1054,7 +1061,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                         <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-xl">{offer.title}</div>
                       </div>
-                    </div>
+                      <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${expandedLiveOfferId === offer.id ? 'rotate-180' : ''}`} />
+                    </button>
 
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       {draftUrl && (
@@ -1085,7 +1093,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* Inline Referral Code & Link Input Fields */}
+                  {expandedLiveOfferId === offer.id && (
                   <div className="p-4 rounded-lg bg-[#141824] border border-white/[0.06] space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -1194,6 +1202,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               );
             })}
