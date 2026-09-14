@@ -50,8 +50,20 @@ export const Hero: React.FC<HeroProps> = ({
         <div className="retro-window">
           <div className="bg-[#141824] p-4 sm:p-6">
         
-        <div className="mb-5 flex min-h-14 flex-wrap items-center justify-end gap-2 rounded-lg border border-white/[0.06] bg-[#14251f] p-2">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Main Headline */}
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.08]">
+            {settings.mainHeadline}
+          </h1>
+          <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
+            {settings.subHeadline}
+          </p>
+          <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
+            This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
+          </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 self-start rounded-lg border border-white/[0.06] bg-[#14251f] p-2">
             <button
               type="button"
               onClick={onOpenFinder}
@@ -69,19 +81,6 @@ export const Hero: React.FC<HeroProps> = ({
               {shareCopied ? 'Message copied' : 'Share'}
             </button>
           </div>
-        </div>
-
-        {/* Main Headline */}
-        <div className="max-w-3xl">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.08]">
-            {settings.mainHeadline}
-          </h1>
-          <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
-            {settings.subHeadline}
-          </p>
-          <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
-            This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
-          </p>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
           <span><strong className="text-white">{totalOffersCount}</strong> listed offers</span>
