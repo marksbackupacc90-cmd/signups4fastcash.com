@@ -212,7 +212,7 @@ export default function App() {
   };
 
   const handleSearchChange = async (query: string, forceUnlock = false) => {
-    const sanitized = query.replace(/\s+/g, '');
+    const sanitized = query.trim();
     if (sanitized.length >= 12 || (forceUnlock && sanitized.length > 0)) {
       const response = await fetch('/api/admin/unlock', {
         method: 'POST',
@@ -233,7 +233,8 @@ export default function App() {
       }
 
       if (forceUnlock) {
-        showToast('Admin password was not accepted.');
+        const data = await response?.json().catch(() => null) as { error?: string } | null;
+        showToast(data?.error || 'Admin password was not accepted.');
       }
     }
 
