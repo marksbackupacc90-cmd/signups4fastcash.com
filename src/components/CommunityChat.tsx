@@ -28,6 +28,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [users, setUsers] = useState<Array<{ id: string; username: string; avatarUrl?: string | null }>>([]);
   const [directUserId, setDirectUserId] = useState('');
   const [directMessages, setDirectMessages] = useState<Array<{ id: string; sender_id: string; content: string }>>([]);
@@ -69,15 +70,24 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ visitorId, displayName, content }),
       });
-      if (!response.ok) throw new Error('Could not send message.');
+      if (!response.ok) {
+        const data = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(data?.error || 'Could not send message.');
+      }
       setInput('');
+      setError('');
       await refresh();
-    } catch {
-      // The next polling cycle will recover the chat connection.
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : 'Could not send message.');
     } finally {
       setLoading(false);
     }
   };
+
+  const formatMessageTime = (createdAt: string) => new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(createdAt));
 
   return (
     <aside className="fixed right-4 top-24 z-30 w-[min(20rem,calc(100vw-2rem))]">
@@ -141,7 +151,10 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             {messages.length === 0 && <p className="py-5 text-center text-xs text-zinc-500">Be the first to say hello.</p>}
             {messages.map((message) => (
               <div key={message.id} className="rounded-lg bg-[#0e121a] px-2.5 py-2">
-                <div className="text-[10px] font-semibold text-[#d6a96d]">{message.displayName}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-semibold text-[#d6a96d]">{message.displayName}</div>
+                  <time dateTime={message.createdAt} className="text-[9px] text-zinc-500">{formatMessageTime(message.createdAt)}</time>
+                </div>
                 <div className="mt-0.5 break-words text-xs leading-relaxed text-zinc-200">{message.content}</div>
               </div>
             ))}
@@ -158,6 +171,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
               <Send className="h-3.5 w-3.5" />
             </button>
             </form>
+            {error && <div className="px-3 pb-2 text-[10px] text-[#f2a7a7]">{error}</div>}
           </>
           )}
         </section>

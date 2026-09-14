@@ -296,6 +296,7 @@ let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
 const communityMessages: Array<{ id: string; displayName: string; content: string; createdAt: string }> = [];
 const communityPresence = new Map<string, { lastSeen: number; displayName: string }>();
+const communityMessageRates = new Map<string, number[]>();
 
 function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>) {
   const lower = message.toLowerCase();
@@ -1129,6 +1130,11 @@ app.post('/api/community-chat', async (req, res) => {
   if (!visitorId || !content) return res.status(400).json({ error: 'A visitor ID and message are required.' });
   if (content.length < 1) return res.status(400).json({ error: 'Message cannot be empty.' });
 
+  const now = Date.now();
+  const recentMessages = (communityMessageRates.get(visitorId) || []).filter((timestamp) => timestamp > now - 30_000);
+  if (recentMessages.length >= 5) return res.status(429).json({ error: 'Please wait a moment before sending more messages.' });
+  recentMessages.push(now);
+  communityMessageRates.set(visitorId, recentMessages);
   communityPresence.set(visitorId, { lastSeen: Date.now(), displayName: displayName || 'Guest' });
   const message = { id: randomUUID(), displayName: displayName || 'Guest', content, createdAt: new Date().toISOString() };
   communityMessages.push(message);
