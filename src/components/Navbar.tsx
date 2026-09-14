@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Center / Navigation Links */}
-        <nav className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto px-1 py-1 md:order-none md:w-auto md:flex-1">
+        <nav className="order-3 flex w-full items-center justify-center gap-2 overflow-visible px-1 py-1 md:order-none md:w-auto md:flex-1">
           <button
             id="nav-offers-tab"
             onClick={() => setActiveTab('offers')}

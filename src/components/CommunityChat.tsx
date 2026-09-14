@@ -129,9 +129,9 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   };
 
   return (
-    <aside className="absolute right-0 top-full z-50 w-[min(22rem,calc(100vw-2rem))] pt-2">
+    <aside className="relative inline-block shrink-0">
       {open && (
-        <section className="overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
+        <section className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
@@ -231,7 +231,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
         </section>
       )}
       {!open && (
-        <button type="button" onClick={() => setOpen(true)} className="ml-auto flex items-center gap-2 rounded-full border border-[#9b7650]/70 bg-[#14251f] px-3 py-2 text-xs font-semibold text-[#f1e6cf] shadow-xl hover:bg-[#1c3329]">
+        <button type="button" onClick={() => setOpen(true)} className="retro-button flex items-center gap-2 rounded-md border border-white/15 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf]">
           <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
           Chat <span className="text-[#8bd3a7]">{activeCount}</span>
         </button>
