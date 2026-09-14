@@ -269,6 +269,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!response.ok || !data?.answer) throw new Error(data?.error || 'Copilot could not answer that question.');
       setCopilotMessages((previous) => [...previous, { role: 'assistant', content: data.answer as string }]);
     } catch (error) {
+      setCopilotMessages((previous) => [...previous, { role: 'assistant', content: 'I could not complete that request.' }]);
       setCopilotError(error instanceof Error ? error.message : 'Copilot could not answer that question.');
     } finally {
       setCopilotLoading(false);

@@ -880,7 +880,7 @@ app.post('/api/admin/copilot', requireAdmin, async (req, res) => {
   if (!message || message.length > 4000) {
     return res.status(400).json({ error: 'Enter a question up to 4,000 characters.' });
   }
-  if (containsSensitiveCredentials(message) || containsSensitiveCredentials(context)) {
+  if (containsSensitiveCredentials(message)) {
     return res.status(400).json({
       error: 'Do not enter passwords, login details, passcodes, or private account information.',
     });
