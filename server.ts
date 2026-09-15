@@ -56,6 +56,12 @@ function isPublishableOffer(offer: Record<string, unknown>) {
 }
 
 app.use(express.json());
+app.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 function getSessionToken(req: express.Request) {
   const cookie = req.headers.cookie?.split(';').find((part) => part.trim().startsWith('sfc_session='));
@@ -521,21 +527,24 @@ async function initializeOfferStore() {
     }
     liveOffersStore = PUBLIC_OFFERS;
   } else {
-    const existingIds = new Set(existing.rows.map((row) => row.offer.id));
-    const missingCatalogOffers = PUBLIC_OFFERS.filter(
-      (offer) => offer.status === 'live' && !existingIds.has(offer.id),
-    );
-    for (const offer of missingCatalogOffers) {
-      await database.query(
-        `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
-        [offer.id, offer.status, offer, offer.updatedAt],
-      );
-    }
-    liveOffersStore = existing.rows.filter((row) => !['offer-stake-us', 'offer-acebet'].includes(row.offer.id)).map((row) => ({
+    const catalogMap = new Map(PUBLIC_OFFERS.map((offer) => [offer.id, offer]));
+    const existingOffers = existing.rows.map((row) => ({
       ...row.offer,
       clicksCount: Number.isFinite(Number(row.offer.clicksCount)) ? Number(row.offer.clicksCount) : 0,
       conversionsCount: Number.isFinite(Number(row.offer.conversionsCount)) ? Number(row.offer.conversionsCount) : 0,
-    })).concat(missingCatalogOffers.map((offer) => ({ ...offer, clicksCount: 0, conversionsCount: 0 })));
+    }));
+
+    const mergedOffers = PUBLIC_OFFERS.map((offer) => {
+      const existingOffer = existingOffers.find((row) => row.id === offer.id);
+      return {
+        ...offer,
+        clicksCount: Number.isFinite(Number(existingOffer?.clicksCount)) ? Number(existingOffer.clicksCount) : 0,
+        conversionsCount: Number.isFinite(Number(existingOffer?.conversionsCount)) ? Number(existingOffer.conversionsCount) : 0,
+      };
+    });
+
+    const extraOffers = existingOffers.filter((offer) => !catalogMap.has(offer.id));
+    liveOffersStore = [...mergedOffers, ...extraOffers];
     await saveLiveOffers();
   }
 }

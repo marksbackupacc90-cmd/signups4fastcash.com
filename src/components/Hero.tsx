@@ -60,13 +60,12 @@ export const Hero: React.FC<HeroProps> = ({
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
           </div>
-          <div className="w-full max-w-xs self-start lg:w-64">
-            <p className="mb-2 text-center text-[10px] font-mono uppercase tracking-[0.16em] text-zinc-500">Proud of who we refer</p>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="w-full max-w-xs self-start lg:w-72">
+            <div className="grid grid-cols-2 gap-3">
             {featuredOffers.slice(0, 4).map((offer) => (
               <div
                 key={offer.id}
-                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0e121a] p-2 transition-colors hover:border-[#8bd3a7]/40 hover:bg-[#14251f]"
+                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0e121a] p-3 transition-colors hover:border-[#8bd3a7]/40 hover:bg-[#14251f]"
               >
                 <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="lg" className="!h-full !w-full rounded-md" />
               </div>

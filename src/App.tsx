@@ -61,29 +61,36 @@ export default function App() {
     if (saved) {
       try {
         const parsed: Offer[] = JSON.parse(saved);
-        const availableOffers = parsed.filter(isAvailableOffer);
-        const existingIds = new Set(availableOffers.map((o) => o.id));
-        const missing = PUBLIC_OFFERS.filter((o) => !existingIds.has(o.id));
-
-        const synced = availableOffers.map((o) => {
-          if (o.company.toLowerCase().includes('sofi') && o.referralCode === 'SOFI-CASH2026') {
+        const availableOffers = parsed.filter(isAvailableOffer).map((offer) => {
+          if (offer.company.toLowerCase().includes('sofi') && offer.referralCode === 'SOFI-CASH2026') {
             return {
-              ...o,
+              ...offer,
               referralCode: '72836365',
               referralUrl: 'https://www.sofi.com/invite/coach?gcp=72836365-7180-469f-bfe5-42d8c2578a99&isAliasGcp=false&siid=e2c1795c-e596-4927-a73f-cfe51c7ea3d7',
             };
           }
-          if (o.company.toLowerCase().includes('chime') && o.referralCode === 'CHIME100FREE') {
+          if (offer.company.toLowerCase().includes('chime') && offer.referralCode === 'CHIME100FREE') {
             return {
-              ...o,
+              ...offer,
               referralCode: 'markwinters39',
               referralUrl: 'https://www.chime.com/r/markwinters39/',
             };
           }
-          return o;
+          return offer;
         });
 
-        return [...synced, ...missing];
+        const catalogMap = new Map(PUBLIC_OFFERS.map((offer) => [offer.id, offer]));
+        const merged = PUBLIC_OFFERS.map((offer) => {
+          const savedOffer = availableOffers.find((item) => item.id === offer.id);
+          return {
+            ...offer,
+            ...(savedOffer || {}),
+            clicksCount: Number.isFinite(Number(savedOffer?.clicksCount)) ? Number(savedOffer.clicksCount) : (offer.clicksCount ?? 0),
+            conversionsCount: Number.isFinite(Number(savedOffer?.conversionsCount)) ? Number(savedOffer.conversionsCount) : (offer.conversionsCount ?? 0),
+          };
+        });
+
+        return [...merged, ...availableOffers.filter((offer) => !catalogMap.has(offer.id))];
       } catch (error) {
         console.error('Failed to parse saved offers', error);
       }
@@ -612,7 +619,14 @@ export default function App() {
     showToast(`Subscribed ${email} to ${frequency} earning alerts.`);
   };
 
-  const filteredOffers = liveOffers
+  const orderedLiveOffers = [...liveOffers].sort((a, b) => {
+    if (Number(b.featured ?? false) !== Number(a.featured ?? false)) {
+      return Number(b.featured ?? false) - Number(a.featured ?? false);
+    }
+    return b.incentiveValue - a.incentiveValue;
+  });
+
+  const filteredOffers = orderedLiveOffers
     .filter((offer) => {
       if (selectedCategory !== 'all' && offer.category !== selectedCategory) {
         return false;
@@ -748,7 +762,7 @@ export default function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
-              featuredOffers={liveOffers.slice(0, 4)}
+              featuredOffers={orderedLiveOffers.slice(0, 4)}
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5" id="offers">

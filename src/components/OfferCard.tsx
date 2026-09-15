@@ -58,7 +58,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="retro-window group relative bg-[#0e121a] transition-colors duration-200 overflow-hidden flex flex-col"
+      className="retro-window group relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)] flex flex-col"
     >
       <div className="bg-[#141824] p-3 sm:p-4 flex-1 flex flex-col">
         
@@ -75,25 +75,25 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             />
             <div className="min-w-0">
               <div className="flex items-center flex-wrap gap-2">
-                <span className="text-base sm:text-lg font-mono uppercase tracking-wider text-zinc-200 font-bold truncate">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-base sm:text-lg font-mono uppercase tracking-wider text-zinc-200 font-bold truncate">
                   {offer.company}
                 </span>
                 {offer.featured && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-white/[0.06] text-[10px] font-mono text-zinc-300">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300">
                     <Sparkles className="w-2.5 h-2.5" />
                     Top Pick
                   </span>
                 )}
                 {/\$0|no deposit|zero deposit/i.test(offer.depositRequired) && (
-                  <span className="inline-flex items-center rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-emerald-300">
+                  <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-emerald-300">
                     $0 DEPOSIT
                   </span>
                 )}
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white group-hover:text-[#38bdf8] transition-colors leading-snug mt-1">
+              <h2 className="mt-1 text-lg sm:text-xl font-bold text-white transition-colors group-hover:text-[#8bd3a7] leading-snug">
                 {offer.title}
               </h2>
-              <span className="inline-flex mt-2 px-2 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-[10px] font-mono uppercase tracking-wide text-zinc-400">
+              <span className="mt-2 inline-flex rounded-full border border-[#8bd3a7]/20 bg-[#14251f] px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide text-[#8bd3a7]">
                 {offer.category}
               </span>
             </div>
@@ -111,7 +111,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Key Quick-Specs Badges (Mobile-friendly, responsive) */}
-        <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[11px] font-mono bg-[#141824] p-1.5 rounded-lg">
+        <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-lg border border-white/[0.06] bg-[#141824] p-1.5 text-center text-[11px] font-mono">
           <div>
             <span className="text-zinc-500 block text-[10px]">DEPOSIT REQ</span>
             <span className="text-zinc-200 font-medium truncate block">{offer.depositRequired}</span>
@@ -128,16 +128,16 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
         {/* Referral Code Box (if present) */}
         {offer.referralCode && (
-          <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-[#141824] text-xs font-mono">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-zinc-500 text-[11px]">PROMO CODE:</span>
-              <span className="text-zinc-200 font-bold tracking-wider select-all truncate">
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-[#8bd3a7]/20 bg-[#14251f] p-2 text-xs font-mono">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="text-[11px] text-[#8bd3a7]">PROMO CODE:</span>
+              <span className="truncate font-bold tracking-wider text-zinc-200 select-all">
                 {offer.referralCode}
               </span>
             </div>
             <button
               onClick={handleCopy}
-              className="px-2 py-1 rounded bg-white/[0.06] hover:bg-white/10 text-zinc-300 hover:text-white transition-colors flex items-center gap-1 shrink-0 ml-2"
+              className="ml-2 shrink-0 rounded bg-white/[0.06] px-2 py-1 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
               title="Copy referral code"
             >
               {copied ? (

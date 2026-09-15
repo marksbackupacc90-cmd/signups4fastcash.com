@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
 
 interface CommunityMessage {
@@ -38,7 +38,23 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   const [friendName, setFriendName] = useState('');
   const [contextUser, setContextUser] = useState<{ name: string; x: number; y: number } | null>(null);
   const [mutedUsers, setMutedUsers] = useState<string[]>(() => JSON.parse(localStorage.getItem('s4fc_muted_chat_users') || '[]') as string[]);
+  const communityMessagesRef = useRef<HTMLDivElement | null>(null);
+  const directMessagesRef = useRef<HTMLDivElement | null>(null);
   const displayName = username ? `@${username}` : 'Guest';
+
+  const scrollToLatest = () => {
+    const container = section === 'private' ? directMessagesRef.current : communityMessagesRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      container.scrollTop = container.scrollHeight;
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    scrollToLatest();
+  }, [open, section, messages.length, directMessages.length]);
 
   useEffect(() => {
     if (!userId) return;
@@ -204,7 +220,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-400">Sign in to add friends and send private messages.</div>
           ) : section === 'private' && directUserId ? (
             <>
-              <div className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
+              <div ref={directMessagesRef} className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
                 {directMessages.map((message) => <div key={message.id} className={`rounded-lg px-2.5 py-2 text-xs ${message.sender_id === userId ? 'ml-6 bg-[#6eae89] text-[#102018]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>{message.content}</div>)}
               </div>
               <form onSubmit={async (event) => {
@@ -217,7 +233,11 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                   if (!response.ok) throw new Error();
                   setInput('');
                   const refreshed = await fetch(`/api/direct-messages?userId=${encodeURIComponent(directUserId)}`);
-                  if (refreshed.ok) setDirectMessages((await refreshed.json() as { messages: typeof directMessages }).messages || []);
+                  if (refreshed.ok) {
+                    const nextMessages = (await refreshed.json() as { messages: typeof directMessages }).messages || [];
+                    setDirectMessages(nextMessages);
+                    setTimeout(scrollToLatest, 0);
+                  }
                 } finally {
                   setLoading(false);
                 }
@@ -228,7 +248,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             </>
           ) : section === 'community' ? (
           <>
-            <div className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
+            <div ref={communityMessagesRef} className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
             {messages.length === 0 && <p className="py-5 text-center text-xs text-zinc-500">Be the first to say hello.</p>}
             {messages.map((message) => (
               <div key={message.id} onContextMenu={(event) => { event.preventDefault(); setContextUser({ name: message.displayName, x: event.clientX, y: event.clientY }); }} className={`rounded-lg bg-[#0e121a] px-2.5 py-2 ${mutedUsers.includes(message.displayName) ? 'opacity-40' : ''}`}>
@@ -258,7 +278,10 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
         </section>
       )}
       {!open && (
-        <button type="button" onClick={() => setOpen(true)} className="retro-button ml-1 flex min-w-[7.5rem] items-center justify-center gap-2 rounded-md border border-white/15 px-5 py-2 text-xs font-medium text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf] md:ml-3">
+        <button type="button" onClick={() => {
+          setOpen(true);
+          requestAnimationFrame(() => scrollToLatest());
+        }} className="retro-button ml-1 flex min-w-[7.5rem] items-center justify-center gap-2 rounded-md border border-white/15 px-5 py-2 text-xs font-medium text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf] md:ml-3">
           <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
           Chat <span className="text-[#8bd3a7]">{activeCount}</span>
         </button>
