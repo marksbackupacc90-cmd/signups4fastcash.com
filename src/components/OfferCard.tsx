@@ -60,7 +60,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       id={`offer-card-${offer.id}`}
       className="offer-card retro-window group relative flex flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
     >
-      <div className="flex flex-1 flex-col bg-[#141824] p-2.5 sm:p-3">
+      <div className="flex flex-col bg-[#141824] p-2 sm:p-2.5">
         
         {/* Header: Company Logo next to Title + Incentive Badge */}
         <div className="grid grid-cols-[auto,minmax(0,1fr),auto] items-start gap-2">
@@ -101,10 +101,10 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                   </span>
                 )}
               </div>
-              <h2 className="mt-1 text-base sm:text-lg font-bold text-white transition-colors group-hover:text-[#8bd3a7] leading-snug">
+              <h2 className="mt-0.5 text-base sm:text-lg font-bold text-white transition-colors group-hover:text-[#8bd3a7] leading-snug">
                 {offer.title}
               </h2>
-              <span className="mt-1.5 inline-flex rounded-full border border-[#8bd3a7]/20 bg-[#14251f] px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide text-[#8bd3a7]">
+              <span className="mt-1 inline-flex rounded-full border border-[#8bd3a7]/20 bg-[#14251f] px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide text-[#8bd3a7]">
                 {offer.category}
               </span>
             </div>
@@ -121,16 +121,16 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Key Quick-Specs Badges (Mobile-friendly, responsive) */}
-        <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-lg border border-white/[0.06] bg-[#141824] p-1.5 text-center text-[10px] font-mono">
-          <div className="rounded border border-white/[0.04] bg-white/[0.02] px-1 py-1.5">
+        <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-white/[0.06] bg-[#141824] p-1 text-center text-[10px] font-mono">
+          <div className="rounded border border-white/[0.04] bg-white/[0.02] px-1 py-1">
             <span className="text-zinc-500 block text-[9px]">DEPOSIT</span>
             <span className="text-zinc-200 font-medium truncate block">{offer.depositRequired}</span>
           </div>
-          <div className="rounded border border-white/[0.04] bg-white/[0.02] px-1 py-1.5">
+          <div className="rounded border border-white/[0.04] bg-white/[0.02] px-1 py-1">
             <span className="text-zinc-500 block text-[9px]">PAYOUT</span>
             <span className="text-zinc-200 font-medium truncate block">{offer.payoutSpeed}</span>
           </div>
-          <div className="rounded border border-white/[0.04] bg-white/[0.02] px-1 py-1.5">
+          <div className="rounded border border-white/[0.04] bg-white/[0.02] px-1 py-1">
             <span className="text-zinc-500 block text-[9px]">EFFORT</span>
             <span className="text-emerald-400 font-medium truncate block">{offer.difficulty}</span>
           </div>
@@ -167,13 +167,13 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         )}
 
         {/* Interactive Expanders: Omni-AI Council, Speedrun Hints & Honest Truth */}
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-1.5 space-y-1">
 
           {/* Speedrun Hints Toggle Button */}
           <button
             onClick={() => setShowHints(!showHints)}
             aria-expanded={showHints}
-            className="focus-ring flex w-full items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-[10px] font-mono text-zinc-300 transition-colors hover:border-white/15"
+            className="focus-ring flex w-full items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.03] px-2 py-1 text-[10px] font-mono text-zinc-300 transition-colors hover:border-white/15"
           >
             <span className="flex items-center gap-1.5 font-semibold">
               <Zap className="w-3.5 h-3.5 text-zinc-400" />
@@ -216,7 +216,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           <button
             onClick={() => setShowTruth(!showTruth)}
             aria-expanded={showTruth}
-            className="focus-ring flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-[#141824] px-2.5 py-1.5 text-[10px] font-mono text-zinc-300 transition-colors hover:border-white/15"
+            className="focus-ring flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-[#141824] px-2 py-1 text-[10px] font-mono text-zinc-300 transition-colors hover:border-white/15"
           >
             <span className="flex items-center gap-1.5 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -265,7 +265,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Claim Call to Action */}
-        <div className="mt-auto border-t border-white/[0.06] pt-2">
+        <div className="mt-2 border-t border-white/[0.06] pt-1.5">
           <button
             onClick={handleClaim}
             id={`claim-offer-btn-${offer.id}`}
