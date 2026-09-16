@@ -138,7 +138,7 @@ summary:focus-visible {
 
 .offer-card {
   content-visibility: auto;
-  contain-intrinsic-size: 28rem;
+  contain-intrinsic-size: 22rem;
 }
 
 button:disabled,
