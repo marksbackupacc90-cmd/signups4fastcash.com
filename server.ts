@@ -104,6 +104,8 @@ const seoPageRoutes: Record<string, string> = {
   '/best-no-deposit-bonuses-this-month': 'best-no-deposit-bonuses-this-month.html',
   '/how-to-compare-referral-bonuses-safely': 'how-to-compare-referral-bonuses-safely.html',
   '/best-cashback-apps': 'best-cashback-apps.html',
+  '/best-fintech-bonuses': 'best-fintech-bonuses.html',
+  '/best-rewards-apps': 'best-rewards-apps.html',
 };
 
 const legacySeoRedirects: Record<string, string> = {
