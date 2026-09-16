@@ -79,6 +79,12 @@ interface AdminAccount {
   createdAt: string | null;
 }
 
+interface ProviderAccountLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
 export interface UserReferralPreset {
   company: string;
   code: string;
@@ -262,6 +268,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedLiveOfferId, setExpandedLiveOfferId] = useState<string | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<SiteSettings>(siteSettings || DEFAULT_SITE_SETTINGS);
   const [adminUsernamesDraft, setAdminUsernamesDraft] = useState(adminUsernames.join(', '));
+  const [providerAccountLinks, setProviderAccountLinks] = useState<ProviderAccountLink[]>([]);
+  const [providerLinkLabel, setProviderLinkLabel] = useState('');
+  const [providerLinkUrl, setProviderLinkUrl] = useState('');
+  const [providerLinkMessage, setProviderLinkMessage] = useState<string | null>(null);
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -303,6 +313,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     setAdminUsernamesDraft(adminUsernames.join(', '));
   }, [adminUsernames]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('s4fc_provider_account_links') || '[]') as ProviderAccountLink[];
+      if (Array.isArray(saved)) setProviderAccountLinks(saved.filter((link) => link && typeof link.label === 'string' && typeof link.url === 'string'));
+    } catch {
+      setProviderAccountLinks([]);
+    }
+  }, []);
+
+  const saveProviderAccountLinks = (links: ProviderAccountLink[]) => {
+    setProviderAccountLinks(links);
+    localStorage.setItem('s4fc_provider_account_links', JSON.stringify(links));
+  };
+
+  const handleAddProviderAccountLink = () => {
+    const label = providerLinkLabel.trim();
+    const url = providerLinkUrl.trim();
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+    } catch {
+      setProviderLinkMessage('Enter a valid http or https account link.');
+      return;
+    }
+    if (!label) return;
+    saveProviderAccountLinks([...providerAccountLinks, { id: crypto.randomUUID(), label, url }]);
+    setProviderLinkLabel('');
+    setProviderLinkUrl('');
+    setProviderLinkMessage(null);
+  };
 
   useEffect(() => {
     if (activeAdminTab !== 'accounts' || !isOwnerAdmin) return;
@@ -1106,6 +1147,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[#141824] border border-white/10 text-xs font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-400"
                 />
               </div>
+            </div>
+
+            <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.05] p-3 space-y-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-amber-100">
+                  <Lock className="h-3.5 w-3.5 text-amber-300" />
+                  Provider account links
+                </div>
+                <p className="mt-1 text-[11px] text-zinc-400">
+                  Save links to the provider dashboards where you check referral activity. Links are stored in this browser only. Never paste passwords or login details here.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_auto]">
+                <input
+                  value={providerLinkLabel}
+                  onChange={(event) => setProviderLinkLabel(event.target.value)}
+                  placeholder="Account name (e.g. Shuffle)"
+                  className="rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white placeholder:text-zinc-600"
+                />
+                <input
+                  type="url"
+                  value={providerLinkUrl}
+                  onChange={(event) => setProviderLinkUrl(event.target.value)}
+                  placeholder="https://provider.com/affiliate/dashboard"
+                  className="rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white placeholder:text-zinc-600"
+                />
+                <button type="button" onClick={handleAddProviderAccountLink} className="rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-black hover:bg-amber-300">
+                  Save link
+                </button>
+              </div>
+              {providerLinkMessage && <p className="text-[11px] text-red-200">{providerLinkMessage}</p>}
+              {providerAccountLinks.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {providerAccountLinks.map((link) => (
+                    <div key={link.id} className="flex items-center gap-1 rounded-lg border border-white/10 bg-[#090d12] pl-3 text-xs text-zinc-200">
+                      <a href={link.url} target="_blank" rel="noreferrer" className="py-2 hover:text-amber-200">{link.label}</a>
+                      <button
+                        type="button"
+                        onClick={() => saveProviderAccountLinks(providerAccountLinks.filter((candidate) => candidate.id !== link.id))}
+                        aria-label={`Remove ${link.label} account link`}
+                        className="px-2 py-2 text-zinc-500 hover:text-red-300"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Referral Vault Quick-Pill Bar */}

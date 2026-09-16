@@ -31,6 +31,41 @@ const SURVEY_POINTS_PER_DOLLAR = 100;
 const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
 const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const delegatedAdminUsernames = new Set<string>();
+const temporarilyHiddenOfferIds = new Set(['offer-acebet']);
+const temporarilyHiddenOfferTerms = ['triumph', 'polymarket'];
+
+function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?: string }) {
+  const searchable = `${offer.company || ''} ${offer.title || ''}`.toLowerCase();
+  return temporarilyHiddenOfferIds.has(offer.id || '') || temporarilyHiddenOfferTerms.some((term) => searchable.includes(term));
+}
+
+function applyCoinsBackTerms<T extends Record<string, any>>(offer: T): T {
+  if (!`${offer.company || ''} ${offer.title || ''}`.toLowerCase().includes('coinsback')) return offer;
+  return {
+    ...offer,
+    title: 'CoinsBack Casino: Free $2 Welcome Coin Pack + 50% CoinsBack',
+    incentiveAmount: 'Free $2 welcome coin pack + 50% CoinsBack on every spin',
+    incentiveValue: 2,
+    payoutSpeed: 'CoinsBack timing depends on the current program terms',
+    depositRequired: '$0 (no purchase necessary)',
+    verificationStatus: 'reviewed',
+    verifiedAt: new Date().toISOString(),
+    honestTruth: {
+      summary: 'CoinsBack Casino advertises a free $2 welcome coin pack after account verification and 50% CoinsBack on every spin.',
+      theCatch: 'The welcome coin pack requires account verification. Review the current CoinsBack terms for eligibility, gameplay, and redemption rules.',
+      minimumHoldTime: 'No purchase is required for the advertised welcome coin pack; redemption timing depends on the current terms.',
+      idVerificationRequired: true,
+      hiddenFeesWarning: 'Confirm the current eligibility and redemption terms before playing or relying on any reward.',
+      trustScore: 95,
+    },
+    speedrunHints: [
+      { step: 1, instruction: 'Open the CoinsBack Casino referral link and create an account.', proTip: 'Use accurate information so verification can be completed.' },
+      { step: 2, instruction: 'Verify your account to receive the free $2 welcome coin pack.', proTip: 'The welcome pack is advertised as requiring verification, not a purchase.' },
+      { step: 3, instruction: 'Review the account for 50% CoinsBack on every spin and the current redemption terms.', proTip: 'Program terms and eligibility can change.' },
+    ],
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 function isHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2048) return false;
@@ -331,7 +366,7 @@ function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ r
 async function initializeOfferStore() {
   if (!database) {
     delegatedAdminUsernames.add('modmark');
-    liveOffersStore = PUBLIC_OFFERS;
+    liveOffersStore = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
     return;
   }
 
@@ -532,13 +567,13 @@ async function initializeOfferStore() {
     liveOffersStore = PUBLIC_OFFERS;
   } else {
     const catalogMap = new Map(PUBLIC_OFFERS.map((offer) => [offer.id, offer]));
-    const existingOffers = existing.rows.map((row) => ({
+    const existingOffers = existing.rows.map((row) => applyCoinsBackTerms({
       ...row.offer,
       clicksCount: Number.isFinite(Number(row.offer.clicksCount)) ? Number(row.offer.clicksCount) : 0,
       conversionsCount: Number.isFinite(Number(row.offer.conversionsCount)) ? Number(row.offer.conversionsCount) : 0,
-    }));
+    })).filter((offer) => !isTemporarilyHiddenOffer(offer));
 
-    const mergedOffers = PUBLIC_OFFERS.map((offer) => {
+    const mergedOffers = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer)).map((offer) => {
       const existingOffer = existingOffers.find((row) => row.id === offer.id);
       return {
         ...offer,
