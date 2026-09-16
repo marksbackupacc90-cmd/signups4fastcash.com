@@ -62,6 +62,13 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     heycash: '/company-logos/heycash-logo.png',
     stake: '/company-logos/stake-logo.png',
     rakuten: '/company-logos/rakuten.png',
+    kalshi: '/company-logos/kalshi-logo.png',
+    verb: '/company-logos/verb-logo.png',
+    joko: '/company-logos/joko-logo.png',
+    acebet: '/company-logos/acebet-logo.jpg',
+    coinsbackcasino: '/company-logos/coinsbackcasino-logo.jpg',
+    polymarket: '/company-logos/polymarket-logo.png',
+    debbie: '/company-logos/debbie-logo.png',
   };
 
   const localLogo = localLogoMap[logoSlug] || (logoSlug === 'rakuten' ? '/company-logos/rakuten.jpg' : undefined);
