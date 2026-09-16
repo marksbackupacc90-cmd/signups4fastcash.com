@@ -58,12 +58,12 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="offer-card retro-window group relative flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
+      className="offer-card retro-window group relative flex min-h-[17.5rem] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
     >
-      <div className="flex flex-1 flex-col bg-[#141824] p-3 sm:p-3.5">
+      <div className="flex flex-1 flex-col bg-[#141824] p-2.5 sm:p-3">
         
         {/* Header: Company Logo next to Title + Incentive Badge */}
-        <div className="grid grid-cols-[auto,minmax(0,1fr),auto] items-start gap-2.5">
+        <div className="grid grid-cols-[auto,minmax(0,1fr),auto] items-start gap-2">
           <div className="contents">
             {/* Company Logo next to offer title */}
             <CompanyLogo 
@@ -138,28 +138,28 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
         {/* Referral Code Box (if present) */}
         {offer.referralCode && (
-          <div className="mt-3 flex items-center justify-between rounded-lg border border-[#8bd3a7]/20 bg-[#14251f] p-1.5 text-[10px] font-mono">
+          <div className="mt-2 flex items-center justify-between rounded-lg border border-[#8bd3a7]/20 bg-[#14251f] p-1.25 text-[9px] font-mono">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="text-[9px] text-[#8bd3a7]">CODE:</span>
+              <span className="text-[8px] text-[#8bd3a7]">CODE:</span>
               <span className="truncate font-bold tracking-wider text-zinc-200 select-all">
                 {offer.referralCode}
               </span>
             </div>
             <button
               onClick={handleCopy}
-              className="focus-ring ml-2 shrink-0 rounded bg-white/[0.06] px-2 py-1 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+              className="focus-ring ml-2 shrink-0 rounded bg-white/[0.06] px-1.5 py-0.75 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
               title="Copy referral code"
               aria-label={`Copy referral code ${offer.referralCode}`}
             >
               {copied ? (
                 <>
                   <Check className="w-3 h-3 text-emerald-400" />
-                  <span className="text-[10px] text-emerald-400 font-bold">COPIED</span>
+                  <span className="text-[9px] text-emerald-400 font-bold">COPIED</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3 h-3" />
-                  <span className="text-[10px]">COPY</span>
+                  <span className="text-[9px]">COPY</span>
                 </>
               )}
             </button>
@@ -167,7 +167,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         )}
 
         {/* Interactive Expanders: Omni-AI Council, Speedrun Hints & Honest Truth */}
-        <div className="mt-3 space-y-1.5">
+        <div className="mt-2 space-y-1.5">
 
           {/* Speedrun Hints Toggle Button */}
           <button
@@ -265,26 +265,26 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </div>
 
         {/* Claim Call to Action */}
-        <div className="mt-auto border-t border-white/[0.06] pt-2.5">
+        <div className="mt-auto border-t border-white/[0.06] pt-2">
           <button
             onClick={handleClaim}
             id={`claim-offer-btn-${offer.id}`}
             aria-label={`View ${offer.incentiveAmount} offer from ${offer.company}`}
-            className="focus-ring group/btn flex w-full items-center justify-center gap-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-2 text-[11px] font-semibold text-[#102018] shadow-sm transition-colors hover:bg-[#8bd3a7] active:scale-[0.99]"
+            className="focus-ring group/btn flex w-full items-center justify-center gap-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-1.5 text-[10px] font-semibold text-[#102018] shadow-sm transition-colors hover:bg-[#8bd3a7] active:scale-[0.99]"
           >
             <span>View {offer.incentiveAmount} offer on {offer.company}</span>
-            <ExternalLink className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
+            <ExternalLink className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
           </button>
           
-          <div className="mt-2 text-center text-[9px] font-mono text-zinc-500 flex items-center justify-center gap-1.5">
+          <div className="mt-1.5 text-center text-[8px] font-mono text-zinc-500 flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             <span>Direct partner link • payout by {offer.company}</span>
           </div>
-          <div className="mt-1 text-center text-[9px] text-zinc-600">
-            Referral commission at no extra cost to you.
+          <div className="mt-0.5 text-center text-[8px] text-zinc-600">
+            Referral commission at no extra cost.
           </div>
-          <div className="mt-1 text-center text-[9px] text-zinc-600">
-            {isReviewed ? `Terms last reviewed ${reviewLabel}.` : `Updated ${updatedLabel}.`}
+          <div className="mt-0.5 text-center text-[8px] text-zinc-600">
+            {isReviewed ? `Reviewed ${reviewLabel}.` : `Updated ${updatedLabel}.`}
             {' '}Confirm current terms on the merchant site.
           </div>
         </div>
