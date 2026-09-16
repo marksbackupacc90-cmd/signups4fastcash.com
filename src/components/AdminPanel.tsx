@@ -292,6 +292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   ]);
   const [offerBotInput, setOfferBotInput] = useState('');
   const [offerBotMessage, setOfferBotMessage] = useState<string | null>(null);
+  const [offerBotVerifying, setOfferBotVerifying] = useState(false);
 
   const selectedPendingOffer = pendingOffers.find((o) => o.id === selectedPendingId);
 
@@ -454,6 +455,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const match = input.match(new RegExp(`(?:^|\\n)\\s*(?:${pattern})\\s*[:\\-]\\s*(.+)`, 'i'));
       return match?.[1]?.trim() || '';
     };
+
     const company = read(['company', 'merchant', 'brand']);
     const title = read(['title', 'headline', 'offer']);
     const incentive = read(['incentive', 'bonus', 'reward', 'payout']);
@@ -489,6 +491,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (steps.length > 0) setNewSpeedrunSteps(steps);
     const parsedCount = [company, title, incentive, category, deposit, payoutSpeed, referralCode, referralUrl, catchText].filter(Boolean).length + steps.length;
     setOfferBotMessage(parsedCount > 0 ? `Draft filled from ${parsedCount} detail${parsedCount === 1 ? '' : 's'}. Review it below before publishing.` : 'No recognizable fields found. Use labels such as Company, Title, Bonus, Link, and Requirements.');
+  };
+
+  const handleVerifyOfferBot = async () => {
+    if (!offerBotInput.trim() || offerBotVerifying) return;
+    setOfferBotVerifying(true);
+    setOfferBotMessage('Checking the public offer page and confirming the terms...');
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token');
+      const response = await fetch('/api/admin/verify-offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({ pasted: offerBotInput }),
+      });
+      const data = await response.json().catch(() => null) as { result?: { confirmed: boolean; confidence: number; summary: string; warnings: string[]; edits?: Record<string, unknown> }; error?: string } | null;
+      if (!response.ok || !data?.result) throw new Error(data?.error || 'The offer could not be verified.');
+      const edits = data.result.edits || {};
+      if (typeof edits.company === 'string' && edits.company) setNewCompany(edits.company);
+      if (typeof edits.title === 'string' && edits.title) setNewTitle(edits.title);
+      if (typeof edits.incentive === 'string' && edits.incentive) setNewIncentive(edits.incentive);
+      if (typeof edits.payoutSpeed === 'string' && edits.payoutSpeed) setNewPayoutSpeed(edits.payoutSpeed);
+      if (typeof edits.deposit === 'string' && edits.deposit) setNewDeposit(edits.deposit);
+      if (typeof edits.referralCode === 'string' && edits.referralCode) setNewRefCode(edits.referralCode);
+      if (typeof edits.referralUrl === 'string' && edits.referralUrl) setNewRefUrl(edits.referralUrl);
+      if (typeof edits.catchText === 'string' && edits.catchText) {
+        setNewHonestCatch(edits.catchText);
+        setNewHonestSummary(edits.catchText);
+      }
+      if (Array.isArray(edits.steps) && edits.steps.length) {
+        setNewSpeedrunSteps(edits.steps.filter((step): step is string => typeof step === 'string').map((instruction, index) => ({ step: index + 1, instruction })));
+      }
+      const warnings = data.result.warnings?.length ? ` Warnings: ${data.result.warnings.join(' ')}` : '';
+      setOfferBotMessage(`${data.result.confirmed ? 'Offer confirmed' : 'Offer not fully confirmed'} (${Math.round(data.result.confidence * 100)}% confidence). ${data.result.summary}${warnings}`);
+    } catch (error) {
+      setOfferBotMessage(error instanceof Error ? error.message : 'The offer could not be verified.');
+    } finally {
+      setOfferBotVerifying(false);
+    }
   };
 
   const handleDraftCodeChange = (offerId: string, val: string) => {
@@ -1400,6 +1439,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button type="button" onClick={handleOfferBot} className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300">
                 <Sparkles className="h-3.5 w-3.5" />
                 Fill offer form
+              </button>
+              <button type="button" onClick={() => void handleVerifyOfferBot()} disabled={offerBotVerifying || !offerBotInput.trim()} className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {offerBotVerifying ? 'Checking offer...' : 'Confirm & update from internet'}
               </button>
               {offerBotMessage && <span className="text-xs text-emerald-200">{offerBotMessage}</span>}
             </div>

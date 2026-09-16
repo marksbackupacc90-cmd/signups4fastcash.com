@@ -281,6 +281,14 @@ function containsSensitiveCredentials(value: string) {
     || /(?:facebook|instagram|google|gmail|outlook|yahoo)\s+\S+@\S+/i.test(value);
 }
 
+function extractPublicUrl(value: string) {
+  const match = value.match(/https?:\/\/[^\s<>"')]+/i);
+  if (!match || !isHttpUrl(match[0])) return null;
+  const url = new URL(match[0]);
+  if (['localhost', '127.0.0.1', '::1'].includes(url.hostname) || url.hostname.endsWith('.local')) return null;
+  return url.toString();
+}
+
 // In-memory / server state for demo & persistence
 let liveOffersStore: any[] = [];
 let pendingOffersStore: any[] = [];
@@ -1256,6 +1264,70 @@ app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
   if (containsSensitiveCredentials(task) || containsSensitiveCredentials(context)) {
     return res.status(400).json({
       error: 'Do not enter passwords, login details, passcodes, or private account information. Review the text and try again.',
+    });
+
+    app.post('/api/admin/verify-offer', requireAdmin, async (req, res) => {
+      const pasted = typeof req.body?.pasted === 'string' ? req.body.pasted.trim() : '';
+      if (!pasted || pasted.length > 12000) return res.status(400).json({ error: 'Paste offer details up to 12,000 characters.' });
+      if (containsSensitiveCredentials(pasted)) return res.status(400).json({ error: 'Do not paste passwords, login details, or private account information.' });
+      const ai = getGenAI();
+      if (!ai) return res.status(503).json({ error: 'Offer verification requires GEMINI_API_KEY to be configured.' });
+
+      const sourceUrl = extractPublicUrl(pasted);
+      let sourceText = 'No public URL was found in the pasted text.';
+      if (sourceUrl) {
+        try {
+          const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Signups4FastCash-offer-verifier/1.0' } });
+          if (response.ok) sourceText = (await response.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 24000);
+          else sourceText = `The public page returned HTTP ${response.status}.`;
+        } catch (error) {
+          sourceText = `The public page could not be fetched: ${error instanceof Error ? error.message : 'request failed'}.`;
+        }
+      }
+
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: `You verify a promotional offer for an admin who will manually review it. Use only claims supported by the pasted text or fetched public page. Do not invent missing terms. Prefer the fetched page when it conflicts with pasted claims. Return conservative edits, a confirmation summary, confidence as a decimal from 0 to 1, and unresolved warnings. Never mark an offer verified merely because a URL exists.
+
+    PASTED OFFER:
+    ${pasted}
+
+    FETCHED PUBLIC PAGE (${sourceUrl || 'none'}):
+    ${sourceText}`,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                confirmed: { type: Type.BOOLEAN },
+                confidence: { type: Type.NUMBER },
+                summary: { type: Type.STRING },
+                warnings: { type: Type.ARRAY, items: { type: Type.STRING } },
+                edits: {
+                  type: Type.OBJECT,
+                  properties: {
+                    company: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    incentive: { type: Type.STRING },
+                    payoutSpeed: { type: Type.STRING },
+                    deposit: { type: Type.STRING },
+                    referralCode: { type: Type.STRING },
+                    referralUrl: { type: Type.STRING },
+                    catchText: { type: Type.STRING },
+                    steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  },
+                },
+              },
+              required: ['confirmed', 'confidence', 'summary', 'warnings', 'edits'],
+            },
+          },
+        });
+        return res.json({ sourceUrl, result: JSON.parse(response.text || '{}') });
+      } catch (error) {
+        console.error('Offer verification failed:', error);
+        return res.status(502).json({ error: 'The offer could not be verified right now. Review the official terms manually.' });
+      }
     });
   }
 
