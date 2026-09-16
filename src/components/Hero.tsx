@@ -1,6 +1,6 @@
 import React from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { DEFAULT_SITE_SETTINGS, Offer, OfferCategory, SiteSettings } from '../types';
+import { ArrowRight, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
 interface HeroProps {
@@ -14,6 +14,7 @@ interface HeroProps {
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
   totalOffersCount: number;
   featuredOffers: Offer[];
+  onOpenFinder?: () => void;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -36,16 +37,15 @@ export const Hero: React.FC<HeroProps> = ({
   setSortBy,
   totalOffersCount,
   featuredOffers,
+  onOpenFinder,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
   return (
-    <section className="relative pt-8 pb-8 overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_70%_0%,rgba(0,242,254,0.08),transparent_38%)]" />
-
+    <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="retro-window">
-          <div className="bg-[#141824] p-4 sm:p-6">
+          <div className="bg-[#141824] p-4 sm:p-6 lg:p-7">
         
         {/* Main Headline */}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -59,15 +59,35 @@ export const Hero: React.FC<HeroProps> = ({
           <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="focus-ring inline-flex items-center gap-2 rounded-lg bg-[#6eae89] px-4 py-2.5 text-xs font-bold text-[#102018] shadow-sm transition-colors hover:bg-[#8bd3a7]"
+            >
+              Browse offers
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            {onOpenFinder && (
+              <button
+                type="button"
+                onClick={onOpenFinder}
+                className="focus-ring inline-flex items-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-xs font-semibold text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
+                Find my best match
+              </button>
+            )}
           </div>
-          <div className="w-full max-w-xs self-start lg:w-72">
+          </div>
+          <div className="w-full max-w-[13rem] self-start sm:max-w-[15rem] lg:w-64">
             <div className="grid grid-cols-2 gap-3">
             {featuredOffers.slice(0, 4).map((offer) => (
               <div
                 key={offer.id}
-                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0e121a] p-3 transition-colors hover:border-[#8bd3a7]/40 hover:bg-[#14251f]"
+                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0e121a] p-2 transition-colors hover:border-[#8bd3a7]/40 hover:bg-[#14251f] sm:p-3"
               >
-                <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="lg" className="!h-full !w-full rounded-md" />
+                <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" loading="eager" className="!h-14 !w-14 rounded-md sm:!h-16 sm:!w-16" />
               </div>
             ))}
             </div>
@@ -79,32 +99,8 @@ export const Hero: React.FC<HeroProps> = ({
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
 
-        <div className="mt-6 grid gap-2 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 sm:grid-cols-3">
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 text-emerald-400">✓</span>
-            <div>
-              <p className="text-xs font-semibold text-white">Requirements first</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">See deposits, purchases, and verification before leaving the site.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 text-emerald-400">✓</span>
-            <div>
-              <p className="text-xs font-semibold text-white">Official signup links</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">Applications and payments happen directly with the merchant.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 text-emerald-400">✓</span>
-            <div>
-              <p className="text-xs font-semibold text-white">No guaranteed-income claims</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">Terms can change, so we encourage a final official-terms check.</p>
-            </div>
-          </div>
-        </div>
-
         {/* Search and Filters Bar */}
-        <div className="mt-8 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+        <div className="mt-6 flex flex-col items-stretch justify-between gap-4 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 md:flex-row md:items-center">
           
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">
@@ -120,12 +116,14 @@ export const Hero: React.FC<HeroProps> = ({
                 }
               }}
               placeholder="Search companies, cash bonuses, or $0 deposit..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#10141d] border border-white/10 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#00f2fe]/50 focus:ring-1 focus:ring-[#00f2fe]/50 font-sans transition-colors"
+              className="w-full rounded-lg border border-white/10 bg-[#10141d] py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-zinc-500 transition-colors focus:border-[#00f2fe]/50 focus:outline-none focus:ring-1 focus:ring-[#00f2fe]/50 font-sans"
+              aria-label="Search offers"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-white"
+                className="focus-ring absolute right-3 top-1/2 -translate-y-1/2 rounded px-1 text-xs text-zinc-400 hover:text-white"
+                aria-label="Clear offer search"
               >
                 Clear
               </button>
@@ -150,19 +148,28 @@ export const Hero: React.FC<HeroProps> = ({
 
         </div>
 
-        {/* Category Filter */}
-        <div className="mt-4 flex items-center gap-2">
-          <label htmlFor="category-filter" className="text-xs font-mono text-zinc-400">CATEGORY:</label>
-          <select
-            id="category-filter"
-            value={selectedCategory}
-            onChange={(event) => setSelectedCategory(event.target.value)}
-            className="w-full max-w-xs rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#6eae89]"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.label}</option>
-            ))}
-          </select>
+        {/* Quick category filters */}
+        <div className="mt-4" aria-label="Filter offers by category">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  aria-pressed={isSelected}
+                  className={`focus-ring shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isSelected
+                      ? 'border-emerald-300/60 bg-emerald-300 text-[#102018]'
+                      : 'border-white/10 bg-[#10141d] text-zinc-300 hover:border-emerald-300/40 hover:text-white'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
           </div>
         </div>

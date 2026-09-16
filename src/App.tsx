@@ -15,6 +15,7 @@ import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { SupportBot } from './components/SupportBot';
+import { HowItWorks } from './components/HowItWorks';
 
 interface AuthUser {
   id: string;
@@ -757,6 +758,7 @@ export default function App() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               onSearchSubmit={(query) => void handleSearchChange(query, true)}
+              onOpenFinder={() => setOfferFinderOpen(true)}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
               sortBy={sortBy}
@@ -765,16 +767,17 @@ export default function App() {
               featuredOffers={orderedLiveOffers.slice(0, 4)}
             />
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5" id="offers">
+            <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">
+              <HowItWorks />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#d6a96d]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
-              <div className="flex items-center justify-between mb-5">
+              <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono font-bold text-[#f1e6cf] uppercase tracking-wider">
+                  <span className="text-sm font-mono font-bold uppercase tracking-wider text-[#f1e6cf]" aria-live="polite">
                     Available Offers ({filteredOffers.length})
                   </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -804,8 +807,8 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="mx-auto max-w-5xl rounded-2xl border border-[#8bd3a7]/20 bg-[#14251f] p-2 sm:p-3">
-                  <div className="max-w-4xl mx-auto space-y-3">
+                <div className="mx-auto max-w-5xl space-y-4">
+                  <div className="space-y-4">
                     {filteredOffers.map((offer) => (
                       <OfferCard
                         key={offer.id}

@@ -62,22 +62,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
-      <div className="relative max-w-7xl mx-auto flex min-h-16 flex-wrap items-center gap-y-2 px-4 py-2 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-8">
         
         {/* Brand */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveTab('offers')}
-            className="retro-button min-w-0 flex items-center gap-2.5 text-left group focus:outline-none"
+            className="retro-button focus-ring min-w-0 flex items-center gap-2.5 text-left group focus:outline-none"
             id="brand-logo-btn"
             aria-label={settings.brandName || settings.siteName}
           >
             <SfcCoinLogo />
             <div className="min-w-0">
-              <span className="block max-w-[calc(100vw-110px)] truncate font-mono font-bold tracking-tight text-sm sm:text-lg text-white">
+              <span className="block max-w-[calc(100vw-125px)] truncate font-mono text-sm font-bold tracking-tight text-white sm:text-lg">
                 {settings.brandName || settings.siteName}
               </span>
-              <span className="block max-w-[calc(100vw-110px)] truncate text-[10px] font-mono text-emerald-300 sm:text-[11px]">
+              <span className="hidden max-w-[calc(100vw-125px)] truncate text-[10px] font-mono text-emerald-300 sm:block sm:text-[11px]">
                 {settings.siteTagline || 'Rewards and cashback with clear terms'}
               </span>
             </div>
@@ -85,11 +85,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Center / Navigation Links */}
-        <nav className="order-3 flex w-full items-center justify-center gap-2 overflow-visible px-1 py-1 md:order-none md:w-auto md:flex-1">
+        <nav className="hidden flex-1 items-center justify-center gap-2 overflow-visible px-1 py-1 md:flex">
           <button
             id="nav-offers-tab"
             onClick={() => setActiveTab('offers')}
-            className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
+            className={`retro-button focus-ring shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
               activeTab === 'offers'
                 ? 'border-[#9b7650]/60 bg-[#6eae89] text-[#102018] font-semibold'
                 : 'text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf]'
@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-install-app"
             onClick={onInstallApp}
-            className={`retro-button shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
+            className={`retro-button focus-ring hidden shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all md:inline-flex ${
               installAvailable
                 ? 'text-blue-800'
                 : 'text-zinc-200 hover:text-white'
@@ -111,16 +111,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <CommunityChat username={username} userId={userId} />
           {username ? (
             <div ref={accountMenuRef} className="relative">
-              <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-cyan-200 hover:text-white" aria-expanded={accountMenuOpen}>
+              <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[8rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>
                 @{username}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {accountMenuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
-                  <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
+                  <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="focus-ring block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
                   <button onClick={() => { onOpenNewsletter(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Bell className="h-3.5 w-3.5" /> Subscribe to alerts</button>
                   <button onClick={() => { onOpenFinder(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Search className="h-3.5 w-3.5" /> Find my best offers</button>
                   <button onClick={() => { onShare(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Share2 className="h-3.5 w-3.5" /> {shareCopied ? 'Message copied' : 'Share site'}</button>
@@ -131,10 +131,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           ) : !hideSignIn ? (
             <div className="flex items-center gap-2">
-              <button onClick={onSignUp} className="retro-button border border-cyan-300/50 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10">
+              <button onClick={onSignUp} className="retro-button focus-ring border border-cyan-300/50 px-2.5 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10 sm:px-3">
                 Sign up
               </button>
-              <button onClick={onSignIn} className="retro-button border border-[#9b7650]/60 bg-[#6eae89] px-3 py-1.5 text-xs font-bold text-[#102018] hover:bg-[#8bd3a7]">
+              <button onClick={onSignIn} className="retro-button focus-ring border border-white/15 bg-transparent px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 sm:px-3">
                 Sign in
               </button>
             </div>

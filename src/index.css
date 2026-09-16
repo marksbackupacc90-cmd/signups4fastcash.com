@@ -116,6 +116,31 @@ button,
   cursor: pointer;
 }
 
+button,
+a,
+select,
+input,
+textarea,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.focus-ring:focus-visible,
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--site-accent, #8bd3a7) 85%, white 15%);
+  outline-offset: 2px;
+}
+
+.offer-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 28rem;
+}
+
 button:disabled,
 input:disabled,
 select:disabled,

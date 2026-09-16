@@ -10,7 +10,7 @@ export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
   return (
-    <section id="trust" className="border-t border-white/[0.08] pt-8 space-y-6">
+    <section id="trust" className="mx-auto max-w-7xl space-y-6 border-t border-white/[0.08] px-4 pb-8 pt-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl">
         <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs uppercase tracking-wider">
           <ShieldCheck className="w-4 h-4" />
@@ -25,21 +25,6 @@ export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
         <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
           {settings.trustSubtext || 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.'}
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="p-4 rounded-lg bg-[#0e121a] border border-white/[0.08]">
-          <h3 className="text-sm font-bold text-white">1. Compare the terms</h3>
-          <p className="mt-2 text-xs text-zinc-400 leading-relaxed">Check eligibility, deposits, purchases, identity checks, and payout timing before you click through.</p>
-        </div>
-        <div className="p-4 rounded-lg bg-[#0e121a] border border-white/[0.08]">
-          <h3 className="text-sm font-bold text-white">2. Apply directly</h3>
-          <p className="mt-2 text-xs text-zinc-400 leading-relaxed">Applications and payments happen on the official merchant website, never through us.</p>
-        </div>
-        <div className="p-4 rounded-lg bg-[#0e121a] border border-white/[0.08]">
-          <h3 className="text-sm font-bold text-white">3. Confirm the payout</h3>
-          <p className="mt-2 text-xs text-zinc-400 leading-relaxed">Meet the merchant's requirements and keep your confirmation emails until the reward arrives.</p>
-        </div>
       </div>
 
       <div className="space-y-2">

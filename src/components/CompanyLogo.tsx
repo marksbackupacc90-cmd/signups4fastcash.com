@@ -5,6 +5,7 @@ interface CompanyLogoProps {
   companyName: string;
   logoUrl?: string;
   size?: 'sm' | 'md' | 'lg';
+  loading?: 'lazy' | 'eager';
   className?: string;
 }
 
@@ -13,6 +14,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   companyName,
   logoUrl,
   size = 'md',
+  loading = 'lazy',
   className = '',
 }) => {
   const sizeClasses = {
@@ -62,7 +64,8 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
           src={logoUrl}
           alt={`${companyName} logo`}
           className="w-full h-full object-contain"
-          loading="lazy"
+          loading={loading}
+          decoding="async"
           onError={() => setImageFailed(true)}
         />
       </div>
@@ -76,7 +79,8 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
           src={localLogo}
           alt={`${companyName} logo`}
           className="w-full h-full object-contain"
-          loading="lazy"
+          loading={loading}
+          decoding="async"
           onError={() => setImageFailed(true)}
         />
       </div>
@@ -90,7 +94,8 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
           src={`https://cdn.simpleicons.org/${logoSlug}`}
           alt={`${companyName} logo`}
           className="w-full h-full object-contain"
-          loading="lazy"
+          loading={loading}
+          decoding="async"
           onError={() => setImageFailed(true)}
         />
       </div>
