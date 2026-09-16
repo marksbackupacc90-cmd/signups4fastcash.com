@@ -807,8 +807,8 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="mx-auto max-w-5xl space-y-4">
-                  <div className="space-y-4">
+                <div className="mx-auto max-w-6xl">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {filteredOffers.map((offer) => (
                       <OfferCard
                         key={offer.id}

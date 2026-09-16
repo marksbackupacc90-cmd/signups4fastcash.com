@@ -58,7 +58,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="offer-card retro-window group relative flex min-h-[17.5rem] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
+      className="offer-card retro-window group relative flex flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
     >
       <div className="flex flex-1 flex-col bg-[#141824] p-2.5 sm:p-3">
         
