@@ -70,7 +70,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               companyName={offer.company} 
               slug={offer.companySlug} 
               logoUrl={offer.logoUrl}
-              size="md"
+              size="sm"
               className="mt-0.5" 
             />
             <div className="min-w-0">
