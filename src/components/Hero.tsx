@@ -138,7 +138,7 @@ export const Hero: React.FC<HeroProps> = ({
               id="sort-offers"
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value as 'highest' | 'fastest' | 'easiest')}
-              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#6eae89]"
+              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#2dd4ee]"
             >
               <option value="highest">Highest Cash</option>
               <option value="fastest">Fastest Payout</option>

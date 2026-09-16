@@ -207,18 +207,18 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   return (
     <aside ref={chatMenuRef} className="fixed bottom-5 right-5 z-40 inline-block">
       {open && (
-        <section className="absolute bottom-full right-0 z-50 mb-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
+        <section className="absolute bottom-full right-0 z-50 mb-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
-                <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
+                <MessageCircle className="h-4 w-4 text-[#2dd4ee]" />
                 Community chat
               </div>
-              <div className="mt-0.5 text-[10px] text-[#8bd3a7]">{activeCount} active now</div>
+              <div className="mt-0.5 text-[10px] text-[#2dd4ee]">{activeCount} active now</div>
               <div className="mt-1 flex max-w-[15rem] flex-wrap gap-1">
                 {activeUsers.length > 0 ? activeUsers.map((activeUser) => (
                   <span key={activeUser} className="inline-flex items-center gap-1 rounded-full bg-[#1c3329] px-1.5 py-0.5 text-[9px] text-[#d6eadb]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#8bd3a7]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#2dd4ee]" />
                     {activeUser}
                   </span>
                 )) : <span className="text-[9px] text-zinc-500">No one is active yet</span>}
@@ -229,14 +229,14 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             </button>
           </div>
           <div className="grid grid-cols-2 border-b border-white/[0.08] bg-[#0e121a] p-1">
-            <button type="button" onClick={() => setSection('community')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'community' ? 'bg-[#6eae89] font-semibold text-[#102018]' : 'text-zinc-400'}`}>Community</button>
-            <button type="button" onClick={() => setSection('private')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'private' ? 'bg-[#6eae89] font-semibold text-[#102018]' : 'text-zinc-400'}`}>Private</button>
+            <button type="button" onClick={() => setSection('community')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'community' ? 'bg-[#2dd4ee] font-semibold text-[#06131a]' : 'text-zinc-400'}`}>Community</button>
+            <button type="button" onClick={() => setSection('private')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'private' ? 'bg-[#2dd4ee] font-semibold text-[#06131a]' : 'text-zinc-400'}`}>Private</button>
           </div>
           {section === 'private' && userId && (
             <div className="border-b border-white/[0.08] bg-[#0e121a] p-2.5">
               <div className="mb-2 flex gap-1.5">
                 <input value={friendName} onChange={(event) => setFriendName(event.target.value)} placeholder="Add friend by username" className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2 py-1.5 text-xs text-white" />
-                <button type="button" onClick={() => void updateFriend(friendName, 'active')} disabled={!friendName.trim()} className="rounded-md bg-[#6eae89] px-2 text-[#102018] disabled:opacity-50" title="Add friend"><UserPlus className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => void updateFriend(friendName, 'active')} disabled={!friendName.trim()} className="rounded-md bg-[#2dd4ee] px-2 text-[#06131a] disabled:opacity-50" title="Add friend"><UserPlus className="h-3.5 w-3.5" /></button>
                 <button type="button" onClick={() => void updateFriend(friendName, 'block')} disabled={!friendName.trim()} className="rounded-md border border-red-300/30 px-2 text-red-200 disabled:opacity-50" title="Block user"><ShieldBan className="h-3.5 w-3.5" /></button>
               </div>
               <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
@@ -245,7 +245,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                   const online = activeUsers.includes(`@${entry.username}`);
                   return <div key={entry.id} className="flex items-center gap-1 rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300">
                     <button type="button" onClick={() => setDirectUserId(entry.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#8bd3a7] shadow-[0_0_7px_#8bd3a7]' : 'bg-red-400'}`} />
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#2dd4ee] shadow-[0_0_7px_#2dd4ee]' : 'bg-red-400'}`} />
                       <span className="min-w-0">
                         <span className="block truncate">@{entry.username}</span>
                         {!online && <span className="block text-[9px] text-zinc-500">{formatLastOnline(entry.lastOnline)}</span>}
@@ -256,7 +256,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                 })}
                 {friends.length === 0 && <div className="text-[10px] text-zinc-500">No friends yet. Add someone by username.</div>}
                 <div className="pt-2 text-[9px] uppercase tracking-wider text-zinc-500">Blocked</div>
-                {blockedUsers.map((entry) => <div key={entry.id} className="flex items-center justify-between rounded bg-[#141824] px-2 py-1.5 text-[10px] text-red-200"><span>@{entry.username}</span><button type="button" onClick={() => void removeFriend(entry.id)} className="text-zinc-500 hover:text-[#8bd3a7]" title="Unblock user">Unblock</button></div>)}
+                {blockedUsers.map((entry) => <div key={entry.id} className="flex items-center justify-between rounded bg-[#141824] px-2 py-1.5 text-[10px] text-red-200"><span>@{entry.username}</span><button type="button" onClick={() => void removeFriend(entry.id)} className="text-zinc-500 hover:text-[#2dd4ee]" title="Unblock user">Unblock</button></div>)}
                 {blockedUsers.length === 0 && <div className="text-[10px] text-zinc-500">No blocked users.</div>}
               </div>
             </div>
@@ -266,7 +266,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
           ) : section === 'private' && directUserId ? (
             <>
               <div ref={directMessagesRef} className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
-                {directMessages.map((message) => <div key={message.id} className={`rounded-lg px-2.5 py-2 text-xs ${message.sender_id === userId ? 'ml-6 bg-[#6eae89] text-[#102018]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>{message.content}</div>)}
+                {directMessages.map((message) => <div key={message.id} className={`rounded-lg px-2.5 py-2 text-xs ${message.sender_id === userId ? 'ml-6 bg-[#2dd4ee] text-[#06131a]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>{message.content}</div>)}
               </div>
               <form onSubmit={async (event) => {
                 event.preventDefault();
@@ -288,7 +288,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                 }
               }} className="flex gap-2 border-t border-white/[0.08] bg-[#0e121a] p-2.5">
                 <input value={input} onChange={(event) => setInput(event.target.value)} maxLength={500} placeholder="Direct message..." className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2.5 py-2 text-xs text-white" />
-                <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#6eae89] px-2.5 text-[#102018] disabled:opacity-50"><Send className="h-3.5 w-3.5" /></button>
+                <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#2dd4ee] px-2.5 text-[#06131a] disabled:opacity-50"><Send className="h-3.5 w-3.5" /></button>
               </form>
             </>
           ) : section === 'community' ? (
@@ -311,9 +311,9 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
               onChange={(event) => setInput(event.target.value)}
               maxLength={280}
               placeholder="Say hello..."
-              className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2.5 py-2 text-xs text-white outline-none focus:border-[#8bd3a7]"
+              className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2.5 py-2 text-xs text-white outline-none focus:border-[#2dd4ee]"
             />
-            <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#6eae89] px-2.5 text-[#102018] disabled:opacity-50" aria-label="Send community message">
+            <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#2dd4ee] px-2.5 text-[#06131a] disabled:opacity-50" aria-label="Send community message">
               <Send className="h-3.5 w-3.5" />
             </button>
             </form>
@@ -326,10 +326,10 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
         <button type="button" onClick={() => {
           setOpen(true);
           requestAnimationFrame(() => scrollToLatest());
-        }} className="retro-button focus-ring flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-white/15 bg-[#14251f] px-3 py-3 text-xs font-medium text-zinc-200 shadow-xl hover:bg-[#1b352b] hover:text-[#f1e6cf] sm:gap-2 sm:px-4" aria-label={`Open community chat (${activeCount} active)`}>
-          <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
+        }} className="retro-button focus-ring flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[#2dd4ee]/30 bg-[#0d1724] px-3 py-3 text-xs font-medium text-zinc-200 shadow-xl hover:bg-[#12263a] hover:text-[#edf6ff] sm:gap-2 sm:px-4" aria-label={`Open community chat (${activeCount} active)`}>
+          <MessageCircle className="h-4 w-4 text-[#2dd4ee]" />
           <span className="hidden sm:inline">Chat</span>
-          <span className="text-[#8bd3a7]">{activeCount}</span>
+          <span className="text-[#2dd4ee]">{activeCount}</span>
         </button>
       )}
       {contextUser && (

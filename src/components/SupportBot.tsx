@@ -64,10 +64,10 @@ export const SupportBot: React.FC = () => {
   return (
     <div ref={supportMenuRef} className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
       {open && (
-        <section className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
+        <section className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-4 py-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
-              <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
+              <MessageCircle className="h-4 w-4 text-[#2dd4ee]" />
               S4FC Support
             </div>
             <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf]" aria-label="Close support chat">
@@ -76,7 +76,7 @@ export const SupportBot: React.FC = () => {
           </div>
           <div className="max-h-72 space-y-3 overflow-y-auto bg-[#141824] p-3">
             {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={`rounded-lg px-3 py-2 text-xs leading-relaxed ${message.role === 'user' ? 'ml-6 bg-[#6eae89] text-[#102018]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>
+              <div key={`${message.role}-${index}`} className={`rounded-lg px-3 py-2 text-xs leading-relaxed ${message.role === 'user' ? 'ml-6 bg-[#2dd4ee] text-[#06131a]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>
                 {message.content}
               </div>
             ))}
@@ -88,9 +88,9 @@ export const SupportBot: React.FC = () => {
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ask about an offer..."
               maxLength={1000}
-              className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-3 py-2 text-xs text-white outline-none focus:border-[#8bd3a7]"
+              className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-3 py-2 text-xs text-white outline-none focus:border-[#2dd4ee]"
             />
-            <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#6eae89] px-3 text-[#102018] disabled:cursor-not-allowed disabled:opacity-50" aria-label="Send message">
+            <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#2dd4ee] px-3 text-[#06131a] disabled:cursor-not-allowed disabled:opacity-50" aria-label="Send message">
               <Send className="h-3.5 w-3.5" />
             </button>
           </form>
