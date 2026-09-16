@@ -294,7 +294,11 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
           ) : section === 'community' ? (
           <>
             <div ref={communityMessagesRef} className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
-            {messages.length === 0 && <p className="py-5 text-center text-xs text-zinc-500">Be the first to say hello.</p>}
+            {messages.length === 0 && (
+              <div className="rounded-lg border border-[#2dd4ee]/20 bg-[#0d1724] px-3 py-3 text-center text-xs leading-relaxed text-zinc-300">
+                Welcome! Drop a quick hello and tell the community which signup bonus or cashback deal you’re looking at.
+              </div>
+            )}
             {messages.map((message) => (
               <div key={message.id} onContextMenu={(event) => { event.preventDefault(); setContextUser({ name: message.displayName, x: event.clientX, y: event.clientY }); }} className={`rounded-lg bg-[#0e121a] px-2.5 py-2 ${mutedUsers.includes(message.displayName) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center justify-between gap-2">
@@ -310,7 +314,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
               value={input}
               onChange={(event) => setInput(event.target.value)}
               maxLength={280}
-              placeholder="Say hello..."
+              placeholder="Say hi — what are you comparing?"
               className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2.5 py-2 text-xs text-white outline-none focus:border-[#2dd4ee]"
             />
             <button type="submit" disabled={loading || !input.trim()} className="rounded-md bg-[#2dd4ee] px-2.5 text-[#06131a] disabled:opacity-50" aria-label="Send community message">

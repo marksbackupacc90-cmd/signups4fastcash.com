@@ -531,6 +531,8 @@ async function initializeOfferStore() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query('DELETE FROM community_chat_messages');
+  communityMessages.length = 0;
   await database.query(`
     CREATE TABLE IF NOT EXISTS direct_messages (
       id TEXT PRIMARY KEY,
