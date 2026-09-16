@@ -96,7 +96,7 @@ export const SupportBot: React.FC = () => {
           </form>
         </section>
       )}
-      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#9b7650]/70 bg-[#14251f] p-1 shadow-xl transition-transform hover:scale-105" aria-label="Open S4FC customer support">
+      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#2dd4ee]/70 bg-[#0d1724] p-1 shadow-xl transition-transform hover:scale-105" aria-label="Open S4FC customer support">
         <SfcCoinLogo size="md" />
       </button>
     </div>

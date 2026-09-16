@@ -53,36 +53,42 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="offer-card retro-window group relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
+      className="offer-card retro-window group relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a1220] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#2dd4ee]/30 hover:shadow-[0_0_18px_rgba(45,212,238,0.12)]"
     >
-      <div className="flex flex-1 flex-col bg-[#141824] p-5">
+      <div className="flex flex-1 flex-col bg-[#0d1724] p-5">
         
         {/* Header: Company Logo next to Title + Incentive Badge */}
         <div className="flex items-center gap-3">
-          {/* Company Logo next to offer title */}
-          <CompanyLogo
-            companyName={offer.company}
-            slug={offer.companySlug}
-            logoUrl={offer.logoUrl}
-            size="md"
-            className="shrink-0"
-          />
-          <div className="min-w-0 flex-1">
-              <div className="flex items-center flex-wrap gap-1.5">
-                <span className="inline-flex rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-mono font-bold text-emerald-300">
-                  {offer.incentiveAmount}
-                </span>
-              </div>
-              <h2 className="mt-0.5 text-base sm:text-lg font-bold text-white transition-colors group-hover:text-[#8bd3a7] leading-snug">
-                {offer.title}
-              </h2>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-[9px] font-mono text-zinc-400">
-                  {offer.difficulty}
-                </span>
-              </div>
-              <p className="mt-1 line-clamp-1 text-xs text-zinc-400">{offer.honestTruth.summary}</p>
-          </div>
+          <button
+            type="button"
+            onClick={handleClaim}
+            aria-label={`Open ${offer.title} offer from ${offer.company}`}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
+          >
+            <CompanyLogo
+              companyName={offer.company}
+              slug={offer.companySlug}
+              logoUrl={offer.logoUrl}
+              size="md"
+              className="shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center flex-wrap gap-1.5">
+                  <span className="inline-flex rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-mono font-bold text-emerald-300">
+                    {offer.incentiveAmount}
+                  </span>
+                </div>
+                <h2 className="mt-0.5 text-base sm:text-lg font-bold text-white transition-colors group-hover:text-[#2dd4ee] leading-snug">
+                  {offer.title}
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-[9px] font-mono text-zinc-400">
+                    {offer.difficulty}
+                  </span>
+                </div>
+                <p className="mt-1 line-clamp-1 text-xs text-zinc-400">{offer.honestTruth.summary}</p>
+            </div>
+          </button>
 
           <div className="flex shrink-0 items-center gap-2">
             <button
@@ -117,9 +123,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
             {/* Referral Code Box (if present) */}
             {offer.referralCode && (
-              <div className="mt-2 flex items-center justify-between rounded-lg border border-[#8bd3a7]/20 bg-[#14251f] p-1.25 text-[9px] font-mono">
+              <div className="mt-2 flex items-center justify-between rounded-lg border border-[#2dd4ee]/20 bg-[#0f1d2d] p-1.25 text-[9px] font-mono">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="text-[8px] text-[#8bd3a7]">CODE:</span>
+              <span className="text-[8px] text-[#2dd4ee]">CODE:</span>
               <span className="truncate font-bold tracking-wider text-zinc-200 select-all">
                 {offer.referralCode}
               </span>
@@ -241,7 +247,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               onClick={handleClaim}
               id={`claim-offer-btn-${offer.id}`}
               aria-label={`Get ${offer.incentiveAmount} offer from ${offer.company}`}
-              className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-2.5 text-xs font-semibold text-[#102018] shadow-sm transition-colors hover:bg-[#8bd3a7] active:scale-[0.99]"
+              className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-sm transition-colors hover:bg-[#67e8f9] active:scale-[0.99]"
             >
               <span>Get {offer.incentiveAmount} offer from {offer.company}</span>
               <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />

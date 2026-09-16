@@ -76,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="block max-w-[calc(100vw-125px)] truncate font-mono text-sm font-bold tracking-tight text-white sm:text-lg">
                 {settings.brandName || settings.siteName}
               </span>
-              <span className="hidden max-w-[calc(100vw-125px)] truncate text-[10px] font-mono text-emerald-300 sm:block sm:text-[11px]">
+              <span className="hidden max-w-[calc(100vw-125px)] truncate text-[10px] font-mono text-cyan-300 sm:block sm:text-[11px]">
                 {settings.siteTagline || 'Rewards and cashback with clear terms'}
               </span>
             </div>
@@ -90,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('offers')}
             className={`retro-button focus-ring shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
               activeTab === 'offers'
-                ? 'border-[#9b7650]/60 bg-[#6eae89] text-[#102018] font-semibold'
+                ? 'border-[#2dd4ee]/60 bg-[#2dd4ee] text-[#06131a] font-semibold'
                 : 'text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf]'
             }`}
           >

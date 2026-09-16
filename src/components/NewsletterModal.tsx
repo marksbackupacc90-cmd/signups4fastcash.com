@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Send, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 interface NewsletterModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md rounded-2xl bg-[#0c1017] border border-white/[0.12] p-6 shadow-2xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#2dd4ee]/25 bg-[#0d1724] p-6 shadow-2xl shadow-black/40">
         
         {/* Close button */}
         <button
@@ -46,7 +46,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
 
         {submitted ? (
           <div className="py-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-white">You're On The VIP List!</h3>
@@ -57,7 +57,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
         ) : (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#00f2fe]/10 border border-[#00f2fe]/20 flex items-center justify-center text-[#00f2fe]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2dd4ee]/25 bg-[#2dd4ee]/10 text-[#2dd4ee]">
                 <Send className="w-4 h-4" />
               </div>
               <div>
@@ -83,7 +83,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-[#141824] border border-white/10 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#00f2fe]/50 font-sans"
+                  className="w-full rounded-lg border border-white/10 bg-[#0a1220] px-3.5 py-2.5 text-sm font-sans text-white placeholder:text-zinc-500 focus:border-[#2dd4ee]/60 focus:outline-none"
                 />
               </div>
 
@@ -97,8 +97,8 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                     onClick={() => setFrequency('instant')}
                     className={`py-1.5 px-2 rounded-md text-xs font-mono transition-colors border ${
                       frequency === 'instant'
-                        ? 'bg-[#00f2fe]/10 border-[#00f2fe]/40 text-[#00f2fe] font-bold'
-                        : 'bg-[#141824] border-white/10 text-zinc-400 hover:text-zinc-200'
+                        ? 'border-[#2dd4ee]/40 bg-[#2dd4ee]/10 font-bold text-[#2dd4ee]'
+                        : 'border-white/10 bg-[#0a1220] text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     ⚡ Instant Drops
@@ -108,8 +108,8 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                     onClick={() => setFrequency('daily')}
                     className={`py-1.5 px-2 rounded-md text-xs font-mono transition-colors border ${
                       frequency === 'daily'
-                        ? 'bg-[#00f2fe]/10 border-[#00f2fe]/40 text-[#00f2fe] font-bold'
-                        : 'bg-[#141824] border-white/10 text-zinc-400 hover:text-zinc-200'
+                        ? 'border-[#2dd4ee]/40 bg-[#2dd4ee]/10 font-bold text-[#2dd4ee]'
+                        : 'border-white/10 bg-[#0a1220] text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     Daily Digest
@@ -119,8 +119,8 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                     onClick={() => setFrequency('weekly')}
                     className={`py-1.5 px-2 rounded-md text-xs font-mono transition-colors border ${
                       frequency === 'weekly'
-                        ? 'bg-[#00f2fe]/10 border-[#00f2fe]/40 text-[#00f2fe] font-bold'
-                        : 'bg-[#141824] border-white/10 text-zinc-400 hover:text-zinc-200'
+                        ? 'border-[#2dd4ee]/40 bg-[#2dd4ee]/10 font-bold text-[#2dd4ee]'
+                        : 'border-white/10 bg-[#0a1220] text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     Weekly Best
@@ -130,7 +130,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-lg bg-[#00f2fe] hover:bg-[#38bdf8] text-black font-semibold text-xs font-mono transition-all shadow-[0_0_20px_rgba(0,242,254,0.2)] active:scale-[0.99] mt-2"
+                className="mt-2 w-full rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] py-2.5 text-xs font-mono font-semibold text-[#06131a] shadow-sm transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
               >
                 Subscribe to alerts
               </button>

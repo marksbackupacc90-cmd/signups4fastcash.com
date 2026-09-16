@@ -135,7 +135,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   // Chime logo
   if (normalized.includes('chime')) {
     return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-[#25c974] flex items-center justify-center text-[#063319] font-black shrink-0 select-none`}>
+      <div className={`${sizeClasses} ${className} rounded-lg bg-[#2dd4ee] flex items-center justify-center text-[#06131a] font-black shrink-0 select-none`}>
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5h-2v-2h2v2zm0-4h-2V7h2v5.5z"/>
         </svg>
@@ -146,7 +146,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   // Robinhood logo
   if (normalized.includes('robinhood')) {
     return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-[#00c805] flex items-center justify-center p-1.5 text-black shrink-0 select-none shadow-sm`}>
+      <div className={`${sizeClasses} ${className} rounded-lg bg-[#2dd4ee] flex items-center justify-center p-1.5 text-black shrink-0 select-none shadow-sm`}>
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
           <path d="M18.8 4c-.7 0-1.3.4-1.6 1L12 17l-3.2-6.5c-.3-.6-.9-1-1.6-1-.9 0-1.7.8-1.7 1.7 0 .4.1.7.3 1L11 21.2c.4.6 1 1 1.7 1s1.3-.4 1.7-1l7.4-15c.2-.3.3-.6.3-1 0-.9-.8-1.7-1.7-1.7z"/>
         </svg>
@@ -178,7 +178,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   // Acorns logo
   if (normalized.includes('acorns')) {
     return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-[#70be44] flex items-center justify-center p-1.5 text-white shrink-0 select-none`}>
+      <div className={`${sizeClasses} ${className} rounded-lg bg-[#2dd4ee] flex items-center justify-center p-1.5 text-white shrink-0 select-none`}>
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
           <path d="M12 2C7 2 4 5 4 8c0 1.5.5 3 1.5 4.2C6.5 13.5 8 16 10 20c.5 1 1.5 2 2 2s1.5-1 2-2c2-4 3.5-6.5 4.5-7.8 1-1.2 1.5-2.7 1.5-4.2 0-3-3-6-8-6z"/>
         </svg>
@@ -216,7 +216,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   // Freecash logo
   if (normalized.includes('freecash')) {
     return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-[#00e700] flex items-center justify-center text-black font-black shrink-0 select-none shadow-sm`}>
+      <div className={`${sizeClasses} ${className} rounded-lg bg-[#2dd4ee] flex items-center justify-center text-black font-black shrink-0 select-none shadow-sm`}>
         <span className="text-[11px] font-black tracking-tight font-mono">FC</span>
       </div>
     );

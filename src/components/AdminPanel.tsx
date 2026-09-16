@@ -530,7 +530,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {isOwnerAdmin && (
             <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#9b7650]/35 bg-[#10131d] p-4">
               <div>
-                <div className="text-xs font-semibold text-[#d6a96d]">Analytics controls</div>
+                <div className="text-xs font-semibold text-[#8ad7f5]">Analytics controls</div>
                 <p className="mt-1 text-[11px] text-zinc-500">Reset visits, clicks, conversions, and offer counters to zero.</p>
               </div>
               <button
@@ -556,11 +556,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setResettingAnalytics(false);
                   }
                 }}
-                className="rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-3 py-2 text-xs font-bold text-[#102018] hover:bg-[#8bd3a7] disabled:cursor-wait disabled:opacity-60"
+                className="rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2 text-xs font-bold text-[#06131a] hover:bg-[#67e8f9] disabled:cursor-wait disabled:opacity-60"
               >
                 {resettingAnalytics ? 'Resetting...' : 'Reset analytics'}
               </button>
-              {analyticsResetMessage && <span className="text-xs text-[#d6a96d]">{analyticsResetMessage}</span>}
+              {analyticsResetMessage && <span className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</span>}
             </div>
           )}
         </div>

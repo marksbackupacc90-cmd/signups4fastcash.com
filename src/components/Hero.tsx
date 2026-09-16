@@ -45,7 +45,7 @@ export const Hero: React.FC<HeroProps> = ({
     <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="retro-window">
-          <div className="bg-[#141824] p-4 sm:p-6 lg:p-7">
+          <div className="bg-[#0d1724] p-4 sm:p-6 lg:p-7">
         
         {/* Main Headline */}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -63,7 +63,7 @@ export const Hero: React.FC<HeroProps> = ({
             <button
               type="button"
               onClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="focus-ring inline-flex items-center gap-2 rounded-lg bg-[#6eae89] px-4 py-2.5 text-xs font-bold text-[#102018] shadow-sm transition-colors hover:bg-[#8bd3a7]"
+              className="focus-ring inline-flex items-center gap-2 rounded-lg bg-[#2dd4ee] px-4 py-2.5 text-xs font-bold text-[#06131a] shadow-sm transition-colors hover:bg-[#67e8f9]"
             >
               Browse offers
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -85,7 +85,7 @@ export const Hero: React.FC<HeroProps> = ({
             {featuredOffers.slice(0, 4).map((offer) => (
               <div
                 key={offer.id}
-                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0e121a] p-2 transition-colors hover:border-[#8bd3a7]/40 hover:bg-[#14251f] sm:p-3"
+                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0a1220] p-2 transition-colors hover:border-[#2dd4ee]/40 hover:bg-[#0f1d2d] sm:p-3"
               >
                 <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" loading="eager" className="!h-14 !w-14 rounded-md sm:!h-16 sm:!w-16" />
               </div>
@@ -161,8 +161,8 @@ export const Hero: React.FC<HeroProps> = ({
                   aria-pressed={isSelected}
                   className={`focus-ring shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                     isSelected
-                      ? 'border-emerald-300/60 bg-emerald-300 text-[#102018]'
-                      : 'border-white/10 bg-[#10141d] text-zinc-300 hover:border-emerald-300/40 hover:text-white'
+                      ? 'border-cyan-300/60 bg-cyan-300 text-[#06131a]'
+                      : 'border-white/10 bg-[#10141d] text-zinc-300 hover:border-cyan-300/40 hover:text-white'
                   }`}
                 >
                   {cat.label}

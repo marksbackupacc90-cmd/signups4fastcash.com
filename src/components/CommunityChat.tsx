@@ -298,7 +298,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             {messages.map((message) => (
               <div key={message.id} onContextMenu={(event) => { event.preventDefault(); setContextUser({ name: message.displayName, x: event.clientX, y: event.clientY }); }} className={`rounded-lg bg-[#0e121a] px-2.5 py-2 ${mutedUsers.includes(message.displayName) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-[10px] font-semibold text-[#d6a96d]">{message.displayName}</div>
+                  <div className="text-[10px] font-semibold text-[#8ad7f5]">{message.displayName}</div>
                   <time dateTime={message.createdAt} className="text-[9px] text-zinc-500">{formatMessageTime(message.createdAt)}</time>
                 </div>
                 <div className="mt-0.5 break-words text-xs leading-relaxed text-zinc-200">{message.content}</div>
