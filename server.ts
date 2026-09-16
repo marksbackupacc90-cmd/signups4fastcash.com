@@ -106,6 +106,8 @@ const seoPageRoutes: Record<string, string> = {
   '/best-cashback-apps': 'best-cashback-apps.html',
   '/best-fintech-bonuses': 'best-fintech-bonuses.html',
   '/best-rewards-apps': 'best-rewards-apps.html',
+  '/best-free-stock-offers-for-beginners': 'best-free-stock-offers-for-beginners.html',
+  '/best-fintech-bonuses-without-deposit': 'best-fintech-bonuses-without-deposit.html',
 };
 
 const legacySeoRedirects: Record<string, string> = {

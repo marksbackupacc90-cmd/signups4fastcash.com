@@ -107,6 +107,8 @@ export const Hero: React.FC<HeroProps> = ({
           <a href="/how-to-compare-referral-bonuses-safely" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Referral safety guide</a>
           <a href="/best-fintech-bonuses" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Fintech bonuses</a>
           <a href="/best-rewards-apps" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Rewards apps</a>
+          <a href="/best-free-stock-offers-for-beginners" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Free stock for beginners</a>
+          <a href="/best-fintech-bonuses-without-deposit" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit fintech</a>
         </div>
 
         {/* Search and Filters Bar */}
