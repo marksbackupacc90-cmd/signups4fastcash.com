@@ -220,6 +220,13 @@ export const USER_REFERRAL_PRESETS: UserReferralPreset[] = [
     bonus: 'Signup bonus',
     matchKeys: ['verb', 'verb-data'],
   },
+  {
+    company: 'Shuffle',
+    code: 'Dz1S2aFLk9',
+    url: 'https://shuffle.us?r=Dz1S2aFLk9',
+    bonus: 'Referral bonus',
+    matchKeys: ['shuffle', 'shuffle.us'],
+  },
 ];
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -290,8 +297,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newPayoutSpeed, setNewPayoutSpeed] = useState('Instant');
   const [newDifficulty, setNewDifficulty] = useState<'Easy (2 min)' | 'Fast (5 min)' | 'Standard (10 min)'>('Easy (2 min)');
   const [newDeposit, setNewDeposit] = useState('$1 deposit');
-  const [newRefCode, setNewRefCode] = useState('MYCODE2026');
-  const [newRefUrl, setNewRefUrl] = useState('https://partner.com/r/MYCODE2026');
+  const [newRefCode, setNewRefCode] = useState('Dz1S2aFLk9');
+  const [newRefUrl, setNewRefUrl] = useState('https://shuffle.us?r=Dz1S2aFLk9');
   const [newHonestSummary, setNewHonestSummary] = useState('');
   const [newHonestCatch, setNewHonestCatch] = useState('');
   const [newMinHold, setNewMinHold] = useState('None');
