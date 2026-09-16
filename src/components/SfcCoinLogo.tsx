@@ -5,7 +5,7 @@ interface SfcCoinLogoProps {
 }
 
 export const SfcCoinLogo: React.FC<SfcCoinLogoProps> = ({ size = 'md' }) => {
-  const dimension = size === 'sm' ? 40 : 52;
+  const dimension = size === 'sm' ? 48 : 64;
   const id = `sfc-coin-${size}`;
   return (
     <svg
