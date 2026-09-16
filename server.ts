@@ -87,11 +87,43 @@ function isPublishableOffer(offer: Record<string, unknown>) {
 }
 
 app.use(express.json());
+app.use(express.static(path.join(process.cwd(), 'public')));
 app.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   next();
+});
+
+const seoPageRoutes: Record<string, string> = {
+  '/cashback-offers': 'cashback-offers.html',
+  '/signup-bonus-sites': 'signup-bonus-sites.html',
+  '/free-stock-bonuses': 'free-stock-bonuses.html',
+  '/banking-signup-offers': 'banking-signup-offers.html',
+  '/crypto-signup-bonuses': 'crypto-signup-bonuses.html',
+};
+
+const legacySeoRedirects: Record<string, string> = {
+  '/best-cashback-offers.html': '/cashback-offers',
+  '/best-referral-bonuses.html': '/signup-bonus-sites',
+  '/best-free-stock-bonuses.html': '/free-stock-bonuses',
+  '/banking-fintech-signup-bonuses.html': '/banking-signup-offers',
+  '/crypto-signup-bonuses.html': '/crypto-signup-bonuses',
+};
+
+Object.entries(seoPageRoutes).forEach(([route, fileName]) => {
+  app.get(route, (_req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', fileName));
+  });
+  app.get(`${route}.html`, (_req, res) => {
+    res.redirect(301, route);
+  });
+});
+
+Object.entries(legacySeoRedirects).forEach(([route, target]) => {
+  app.get(route, (_req, res) => {
+    res.redirect(301, target);
+  });
 });
 
 function getSessionToken(req: express.Request) {
