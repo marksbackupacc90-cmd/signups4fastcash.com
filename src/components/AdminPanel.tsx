@@ -1506,15 +1506,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 3: Create Custom Offer */}
       {activeAdminTab === 'create' && (
         <form onSubmit={handleCreateSubmit} className="p-6 rounded-xl bg-[#0e121a] border border-white/[0.08] space-y-4">
-          <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Bot className="h-4 w-4 text-emerald-300" />
+          <div className="rounded-xl border border-emerald-300/35 bg-[#101d1b] p-5 space-y-4 shadow-lg shadow-black/10">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-lg bg-emerald-300/15 p-2">
+                <Bot className="h-5 w-5 text-emerald-200" />
+              </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Offer Builder Bot</h3>
-                <p className="text-[11px] text-zinc-400">Paste offer details and I will fill the form for you. Nothing publishes until you review and click publish.</p>
+                <h3 className="text-base font-bold text-white">Offer Builder Bot</h3>
+                <p className="mt-1 max-w-2xl text-sm leading-5 text-zinc-300">Paste the offer details below. The bot can fill the form or check the public link for current terms. Nothing publishes until you review and click publish.</p>
               </div>
             </div>
+            <label htmlFor="offer-builder-input" className="block text-xs font-semibold uppercase tracking-wide text-emerald-100">
+              Offer information
+            </label>
             <textarea
+              id="offer-builder-input"
               rows={5}
               value={offerBotInput}
               onChange={(event) => {
@@ -1522,19 +1528,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 setOfferBotMessage(null);
               }}
               placeholder={'Company: Example Bank\nTitle: $100 signup bonus\nBonus: $100 cash\nLink: https://example.com/ref/yourcode\nRequirements: Receive a qualifying direct deposit\n1. Register through the link\n2. Complete the qualifying action'}
-              className="w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white placeholder:text-zinc-600"
+              className="w-full rounded-lg border border-white/20 bg-[#080d12] px-3 py-3 text-sm leading-6 text-white placeholder:text-zinc-500 outline-none transition-colors focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/20"
             />
-            <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={handleOfferBot} className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300">
+            <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-3">
+              <button type="button" onClick={handleOfferBot} className="inline-flex items-center gap-2 rounded-lg bg-emerald-300 px-4 py-2.5 text-sm font-bold text-[#07100d] hover:bg-emerald-200">
                 <Sparkles className="h-3.5 w-3.5" />
                 Fill offer form
               </button>
-              <button type="button" onClick={() => void handleVerifyOfferBot()} disabled={offerBotVerifying || !offerBotInput.trim()} className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={() => void handleVerifyOfferBot()} disabled={offerBotVerifying || !offerBotInput.trim()} className="inline-flex items-center gap-2 rounded-lg border border-cyan-200/50 bg-cyan-300/15 px-4 py-2.5 text-sm font-bold text-cyan-50 hover:bg-cyan-300/25 disabled:cursor-not-allowed disabled:opacity-50">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 {offerBotVerifying ? 'Checking offer...' : 'Confirm & update from internet'}
               </button>
-              {offerBotMessage && <span className="text-xs text-emerald-200">{offerBotMessage}</span>}
             </div>
+            {offerBotMessage && (
+              <div className="rounded-lg border border-emerald-200/25 bg-[#07110f] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-200">Bot status</p>
+                <p className="mt-1 break-words text-sm leading-6 text-white">{offerBotMessage}</p>
+              </div>
+            )}
           </div>
           <h3 className="text-base font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
             <PlusCircle className="w-4 h-4 text-emerald-400" />
