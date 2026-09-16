@@ -16,9 +16,9 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   className = '',
 }) => {
   const sizeClasses = {
-    sm: 'w-7 h-7 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base',
+    sm: 'w-10 h-10 text-sm',
+    md: 'w-16 h-16 text-base',
+    lg: 'w-24 h-24 text-lg',
   }[size];
 
   const normalized = (slug || companyName).toLowerCase();

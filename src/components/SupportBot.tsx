@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 
@@ -17,11 +17,23 @@ export const SupportBot: React.FC = () => {
     return created;
   });
   const [open, setOpen] = useState(false);
+  const supportMenuRef = useRef<HTMLDivElement | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<SupportMessage[]>([
     { role: 'assistant', content: 'Hi! I can help you compare offers, understand requirements, and find the right place to start.' },
   ]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (supportMenuRef.current && !supportMenuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [open]);
 
   const sendMessage = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -50,7 +62,7 @@ export const SupportBot: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+    <div ref={supportMenuRef} className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
       {open && (
         <section className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-4 py-3">

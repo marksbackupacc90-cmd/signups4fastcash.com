@@ -43,7 +43,20 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   const [mutedUsers, setMutedUsers] = useState<string[]>(() => JSON.parse(localStorage.getItem('s4fc_muted_chat_users') || '[]') as string[]);
   const communityMessagesRef = useRef<HTMLDivElement | null>(null);
   const directMessagesRef = useRef<HTMLDivElement | null>(null);
+  const chatMenuRef = useRef<HTMLElement | null>(null);
   const displayName = username ? `@${username}` : 'Guest';
+
+  useEffect(() => {
+    if (!open && !contextUser) return;
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setContextUser(null);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [open, contextUser]);
 
   const scrollToLatest = () => {
     const container = section === 'private' ? directMessagesRef.current : communityMessagesRef.current;
@@ -192,7 +205,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   };
 
   return (
-    <aside className="relative inline-block shrink-0">
+    <aside ref={chatMenuRef} className="relative inline-block shrink-0">
       {open && (
         <section className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">

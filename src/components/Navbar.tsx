@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 import { CommunityChat } from './CommunityChat';
@@ -47,6 +47,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [accountMenuOpen]);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
@@ -102,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <CommunityChat username={username} userId={userId} />
           {username ? (
-            <div className="relative">
+            <div ref={accountMenuRef} className="relative">
               <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-cyan-200 hover:text-white" aria-expanded={accountMenuOpen}>
                 @{username}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
               </button>
