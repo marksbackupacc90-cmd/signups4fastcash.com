@@ -17,17 +17,18 @@ interface AuthModalProps {
   openRequest?: number;
   mode?: 'signin' | 'signup';
   disabled?: boolean;
+  requiredAuth?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', disabled = false }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', disabled = false, requiredAuth = false }) => {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const needsUsername = Boolean(user && !user.username);
 
   useEffect(() => {
-    if (!disabled && openRequest > 0) setOpen(true);
-  }, [disabled, openRequest]);
+    if (!disabled && (openRequest > 0 || (requiredAuth && !user))) setOpen(true);
+  }, [disabled, openRequest, requiredAuth, user]);
 
   useEffect(() => {
     if (disabled) return;
@@ -83,14 +84,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
       <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Your rewards account</p>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Cancel sign in"
-            className="rounded-md p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
+          {!requiredAuth && (
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Cancel sign in"
+              className="rounded-md p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          )}
         </div>
         <h2 id="account-title" className="mt-2 text-2xl font-bold text-white">
           {needsUsername ? 'Choose your username' : mode === 'signup' ? 'Create your account' : 'Sign in to your account'}

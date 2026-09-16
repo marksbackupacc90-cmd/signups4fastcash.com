@@ -15,12 +15,12 @@ const env = process.env as unknown as Record<string, string | undefined>;
 const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
-const adminPasscode = env.ADMIN_PASSCODE?.trim();
 const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
 const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
 const appUrl = (env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+const ownerEmail = (env.OWNER_EMAIL || 'winters.mark1990@gmail.com').trim().toLowerCase();
 const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
 const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
@@ -30,10 +30,6 @@ const cpxBalances = new Map<string, number>();
 const SURVEY_POINTS_PER_DOLLAR = 100;
 const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
 const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const adminUnlockAttempts = new Map<string, { failures: number; windowStartedAt: number; blockedUntil: number }>();
-const ADMIN_UNLOCK_WINDOW_MS = 15 * 60 * 1000;
-const ADMIN_UNLOCK_MAX_FAILURES = 5;
-const ADMIN_UNLOCK_BLOCK_MS = 15 * 60 * 1000;
 const delegatedAdminUsernames = new Set<string>();
 
 function isHttpUrl(value: unknown): value is string {
@@ -825,57 +821,24 @@ app.put('/api/site-settings', requireAdmin, (req, res) => {
   res.json({ settings: siteSettingsStore });
 });
 
-app.post('/api/admin/unlock', (req, res) => {
-  if (!adminPasscode) {
-    return res.status(503).json({ error: 'Admin access is not configured on this server.' });
-  }
-  const clientKey = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const attempt = adminUnlockAttempts.get(clientKey);
-  if (attempt?.blockedUntil > now) {
-    return res.status(429).json({ error: 'Too many admin unlock attempts. Try again later.' });
-  }
-  if (attempt && now - attempt.windowStartedAt >= ADMIN_UNLOCK_WINDOW_MS) {
-    adminUnlockAttempts.delete(clientKey);
-  }
-  const suppliedPasscode = typeof req.body?.passcode === 'string' ? req.body.passcode : '';
-  const expected = Buffer.from(adminPasscode);
-  const supplied = Buffer.from(suppliedPasscode);
-  const validPasscode = expected.length === supplied.length && timingSafeEqual(expected, supplied);
-  if (!validPasscode) {
-    const current = adminUnlockAttempts.get(clientKey);
-    const failures = (current?.failures || 0) + 1;
-    adminUnlockAttempts.set(clientKey, {
-      failures,
-      windowStartedAt: current?.windowStartedAt || now,
-      blockedUntil: failures >= ADMIN_UNLOCK_MAX_FAILURES ? now + ADMIN_UNLOCK_BLOCK_MS : 0,
-    });
-    if (failures >= ADMIN_UNLOCK_MAX_FAILURES) {
-      return res.status(429).json({ error: 'Too many admin unlock attempts. Try again later.' });
-    }
-    return res.status(401).json({ error: 'Invalid admin passcode' });
-  }
-  adminUnlockAttempts.delete(clientKey);
-  const token = randomUUID();
-  adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role: 'owner' });
-  res.json({ token, role: 'owner' });
-});
-
 app.post('/api/admin/unlock-user', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   const username = user?.username?.trim().toLowerCase();
-  if (!user || !username || !delegatedAdminUsernames.has(username)) {
+  const isOwner = Boolean(user && user.email.trim().toLowerCase() === ownerEmail);
+  if (!user || (!isOwner && (!username || !delegatedAdminUsernames.has(username)))) {
     return res.status(403).json({ error: 'This account has not been granted admin access.' });
   }
   const token = randomUUID();
-  adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role: 'delegated' });
-  res.json({ token, role: 'delegated' });
+  const role = isOwner ? 'owner' : 'delegated';
+  adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role });
+  res.json({ token, role });
 });
 
 app.get('/api/admin/can-access', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   const username = user?.username?.trim().toLowerCase();
-  res.json({ canAccess: Boolean(username && delegatedAdminUsernames.has(username)) });
+  const canAccess = Boolean(user && (user.email.trim().toLowerCase() === ownerEmail || (username && delegatedAdminUsernames.has(username))));
+  res.json({ canAccess, role: user?.email.trim().toLowerCase() === ownerEmail ? 'owner' : 'delegated' });
 });
 
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {

@@ -290,6 +290,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     { step: 2, instruction: 'Fund minimum $1 using debit or checking.', proTip: 'Instant deposit unlocks bonus.' },
     { step: 3, instruction: 'Bonus posts to account. Withdraw back to bank.', proTip: 'Zero withdrawal fees.' },
   ]);
+  const [offerBotInput, setOfferBotInput] = useState('');
+  const [offerBotMessage, setOfferBotMessage] = useState<string | null>(null);
 
   const selectedPendingOffer = pendingOffers.find((o) => o.id === selectedPendingId);
 
@@ -439,6 +441,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewCompany('');
     setNewTitle('');
     setActiveAdminTab('live');
+  };
+
+  const handleOfferBot = () => {
+    const input = offerBotInput.trim();
+    if (!input) {
+      setOfferBotMessage('Paste the offer details first.');
+      return;
+    }
+    const read = (labels: string[]) => {
+      const pattern = labels.join('|');
+      const match = input.match(new RegExp(`(?:^|\\n)\\s*(?:${pattern})\\s*[:\\-]\\s*(.+)`, 'i'));
+      return match?.[1]?.trim() || '';
+    };
+    const company = read(['company', 'merchant', 'brand']);
+    const title = read(['title', 'headline', 'offer']);
+    const incentive = read(['incentive', 'bonus', 'reward', 'payout']);
+    const category = read(['category', 'type']).toLowerCase();
+    const deposit = read(['deposit', 'requirement', 'spend requirement']);
+    const payoutSpeed = read(['payout speed', 'payout timing', 'when paid']);
+    const referralCode = read(['referral code', 'promo code', 'code']);
+    const referralUrl = read(['referral url', 'referral link', 'official url', 'link', 'url']);
+    const catchText = read(['catch', 'fine print', 'requirements', 'terms']);
+    const steps = input
+      .split('\n')
+      .map((line) => line.match(/^\s*(?:\d+[.)]|[-*])\s+(.+)$/)?.[1]?.trim())
+      .filter((step): step is string => Boolean(step))
+      .slice(0, 6)
+      .map((instruction, index) => ({ step: index + 1, instruction }));
+
+    if (company) setNewCompany(company);
+    if (title) setNewTitle(title);
+    if (incentive) setNewIncentive(incentive);
+    if (category && ['fintech', 'brokerage', 'cashback', 'apps', 'crypto'].includes(category)) {
+      setNewCategory(category as typeof newCategory);
+    }
+    if (deposit) setNewDeposit(deposit);
+    if (payoutSpeed) setNewPayoutSpeed(payoutSpeed);
+    if (referralCode) setNewRefCode(referralCode);
+    if (referralUrl) {
+      setNewRefUrl(referralUrl);
+    }
+    if (catchText) {
+      setNewHonestCatch(catchText);
+      setNewHonestSummary(catchText);
+    }
+    if (steps.length > 0) setNewSpeedrunSteps(steps);
+    const parsedCount = [company, title, incentive, category, deposit, payoutSpeed, referralCode, referralUrl, catchText].filter(Boolean).length + steps.length;
+    setOfferBotMessage(parsedCount > 0 ? `Draft filled from ${parsedCount} detail${parsedCount === 1 ? '' : 's'}. Review it below before publishing.` : 'No recognizable fields found. Use labels such as Company, Title, Bonus, Link, and Requirements.');
   };
 
   const handleDraftCodeChange = (offerId: string, val: string) => {
@@ -1328,6 +1378,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 3: Create Custom Offer */}
       {activeAdminTab === 'create' && (
         <form onSubmit={handleCreateSubmit} className="p-6 rounded-xl bg-[#0e121a] border border-white/[0.08] space-y-4">
+          <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Bot className="h-4 w-4 text-emerald-300" />
+              <div>
+                <h3 className="text-sm font-bold text-white">Offer Builder Bot</h3>
+                <p className="text-[11px] text-zinc-400">Paste offer details and I will fill the form for you. Nothing publishes until you review and click publish.</p>
+              </div>
+            </div>
+            <textarea
+              rows={5}
+              value={offerBotInput}
+              onChange={(event) => {
+                setOfferBotInput(event.target.value);
+                setOfferBotMessage(null);
+              }}
+              placeholder={'Company: Example Bank\nTitle: $100 signup bonus\nBonus: $100 cash\nLink: https://example.com/ref/yourcode\nRequirements: Receive a qualifying direct deposit\n1. Register through the link\n2. Complete the qualifying action'}
+              className="w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white placeholder:text-zinc-600"
+            />
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" onClick={handleOfferBot} className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300">
+                <Sparkles className="h-3.5 w-3.5" />
+                Fill offer form
+              </button>
+              {offerBotMessage && <span className="text-xs text-emerald-200">{offerBotMessage}</span>}
+            </div>
+          </div>
           <h3 className="text-base font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
             <PlusCircle className="w-4 h-4 text-emerald-400" />
             Add Custom Referral Offer

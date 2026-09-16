@@ -224,33 +224,7 @@ export default function App() {
     return token ? { 'x-admin-token': token } : {};
   };
 
-  const handleSearchChange = async (query: string, forceUnlock = false) => {
-    const sanitized = query.trim();
-    if (sanitized.length >= 12 || (forceUnlock && sanitized.length > 0)) {
-      const response = await fetch('/api/admin/unlock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passcode: sanitized }),
-      }).catch(() => null);
-
-      if (response?.ok) {
-        const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
-        setIsAdminUnlocked(true);
-        setIsOwnerAdmin(data.role === 'owner');
-        localStorage.setItem('signups4fastcash_admin_token', data.token);
-        setSearchQuery('');
-        setActiveTab('admin');
-        if (data.role === 'owner') void loadAdminUsernames(data.token);
-        showToast('Admin access enabled for this browser session.');
-        return;
-      }
-
-      if (forceUnlock) {
-        const data = await response?.json().catch(() => null) as { error?: string } | null;
-        showToast(data?.error || 'Admin password was not accepted.');
-      }
-    }
-
+  const handleSearchChange = (query: string) => {
     setSearchQuery(query);
   };
 
@@ -276,12 +250,13 @@ export default function App() {
       showToast(data?.error || 'This account does not have admin access.');
       return;
     }
-    const data = await response.json() as { token: string; role?: 'delegated' };
+    const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
     localStorage.setItem('signups4fastcash_admin_token', data.token);
     setIsAdminUnlocked(true);
-    setIsOwnerAdmin(false);
+    setIsOwnerAdmin(data.role === 'owner');
     setActiveTab('admin');
-    showToast('Delegated admin access enabled for this browser session.');
+    if (data.role === 'owner') void loadAdminUsernames(data.token);
+    showToast(data.role === 'owner' ? 'Owner admin access enabled.' : 'Delegated admin access enabled.');
   };
 
   const handleUpdateAdminUsernames = async (usernames: string[]) => {
@@ -727,7 +702,39 @@ export default function App() {
       )}
 
       <main className="flex-1">
-        {activeTab === 'offers' && (
+        {!authUser ? (
+          <section className="mx-auto flex min-h-[70vh] max-w-xl items-center justify-center px-4 py-16 text-center">
+            <div className="rounded-2xl border border-[#8bd3a7]/25 bg-[#14251f] p-8 shadow-2xl">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#8bd3a7]/25 bg-[#8bd3a7]/10 text-[#8bd3a7]">
+                <SfcCoinLogo />
+              </div>
+              <h1 className="mt-5 text-2xl font-bold text-white">Create an account to view offers</h1>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                Sign in or create your free account to compare offers, save your preferences, and access the full site.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signup');
+                  setAuthOpenRequest((request) => request + 1);
+                }}
+                className="mt-6 rounded-lg border border-[#9b7650]/60 bg-[#6eae89] px-5 py-2.5 text-sm font-semibold text-[#102018] hover:bg-[#8bd3a7]"
+              >
+                Create free account
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signin');
+                  setAuthOpenRequest((request) => request + 1);
+                }}
+                className="mt-3 block w-full text-xs font-semibold text-[#8bd3a7] hover:text-white"
+              >
+                Already have an account? Sign in
+              </button>
+            </div>
+          </section>
+        ) : activeTab === 'offers' && (
           <>
             <CommunityChat username={authUser?.username} userId={authUser?.id} />
           </>
@@ -738,7 +745,7 @@ export default function App() {
               siteSettings={siteSettings}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              onSearchSubmit={(query) => void handleSearchChange(query, true)}
+              onSearchSubmit={handleSearchChange}
               onOpenFinder={() => setOfferFinderOpen(true)}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
@@ -836,7 +843,7 @@ export default function App() {
         subscriberCount={subscribers.length}
       />
 
-      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} mode={authMode} disabled={recordingMode} />
+      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} mode={authMode} disabled={recordingMode} requiredAuth={!authUser} />
       {accountOpen && authUser && (
         <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
       )}
