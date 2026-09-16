@@ -789,7 +789,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="mx-auto max-w-6xl">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3">
                     {filteredOffers.map((offer) => (
                       <OfferCard
                         key={offer.id}
