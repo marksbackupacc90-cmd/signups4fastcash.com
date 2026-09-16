@@ -7,13 +7,7 @@ import {
   ChevronUp, 
   AlertTriangle, 
   Zap, 
-  Clock, 
   ShieldCheck, 
-  CheckCircle2, 
-  Sparkles,
-  ArrowRight,
-  HelpCircle,
-  Cpu
 } from 'lucide-react';
 import { Offer } from '../types';
 import { CompanyLogo } from './CompanyLogo';
@@ -39,8 +33,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
     year: 'numeric',
   });
   const isReviewed = offer.verificationStatus === 'reviewed';
-  const termsVary = offer.verificationStatus === 'terms-vary' || !isReviewed;
-  const isCustomOffer = offer.id.startsWith('custom-');
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -63,7 +55,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       id={`offer-card-${offer.id}`}
       className="offer-card retro-window group relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e121a] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#8bd3a7]/30 hover:shadow-[0_0_18px_rgba(139,211,167,0.12)]"
     >
-      <div className="flex flex-1 flex-col bg-[#141824] p-4 sm:p-5">
+      <div className="flex flex-1 flex-col bg-[#141824] p-5">
         
         {/* Header: Company Logo next to Title + Incentive Badge */}
         <div className="flex items-center gap-3">
@@ -77,52 +69,14 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           />
           <div className="min-w-0 flex-1">
               <div className="flex items-center flex-wrap gap-1.5">
-                <span className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-sm font-mono font-bold uppercase tracking-wider text-zinc-200 sm:text-[15px]">
-                  {offer.company}
-                </span>
                 <span className="inline-flex rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-mono font-bold text-emerald-300">
                   {offer.incentiveAmount}
                 </span>
-                {offer.featured && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-mono text-emerald-300">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    Top Pick
-                  </span>
-                )}
-                {/\$0|no deposit|zero deposit/i.test(offer.depositRequired) && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-emerald-300">
-                    $0 DEP
-                  </span>
-                )}
-                {isReviewed && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-300/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-cyan-200">
-                    <ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />
-                    Reviewed
-                  </span>
-                )}
-                {termsVary && !isCustomOffer && (
-                  <span className="inline-flex items-center rounded-full bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-amber-200">
-                    Terms vary
-                  </span>
-                )}
-                {isCustomOffer && (
-                  <span className="inline-flex items-center rounded-full bg-cyan-300/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-cyan-200">
-                    Custom listing
-                  </span>
-                )}
-                {offer.honestTruth.idVerificationRequired && (
-                  <span className="inline-flex items-center rounded-full bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-amber-200">
-                    ID REQUIRED
-                  </span>
-                )}
               </div>
               <h2 className="mt-0.5 text-base sm:text-lg font-bold text-white transition-colors group-hover:text-[#8bd3a7] leading-snug">
                 {offer.title}
               </h2>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex rounded-full border border-[#8bd3a7]/20 bg-[#14251f] px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide text-[#8bd3a7]">
-                  {offer.category}
-                </span>
                 <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-[9px] font-mono text-zinc-400">
                   {offer.difficulty}
                 </span>
@@ -256,11 +210,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           {/* Honest Truth Expanded Panel */}
           {showTruth && (
             <div className="p-3 rounded-lg bg-[#07090e] border border-white/10 text-xs space-y-2 animate-in fade-in duration-200">
-              <div className="flex items-center gap-1.5 text-zinc-200 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>{offer.honestTruth.summary}</span>
-              </div>
-              
               <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
