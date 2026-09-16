@@ -101,6 +101,9 @@ const seoPageRoutes: Record<string, string> = {
   '/free-stock-bonuses': 'free-stock-bonuses.html',
   '/banking-signup-offers': 'banking-signup-offers.html',
   '/crypto-signup-bonuses': 'crypto-signup-bonuses.html',
+  '/best-no-deposit-bonuses-this-month': 'best-no-deposit-bonuses-this-month.html',
+  '/how-to-compare-referral-bonuses-safely': 'how-to-compare-referral-bonuses-safely.html',
+  '/best-cashback-apps': 'best-cashback-apps.html',
 };
 
 const legacySeoRedirects: Record<string, string> = {
@@ -109,6 +112,9 @@ const legacySeoRedirects: Record<string, string> = {
   '/best-free-stock-bonuses.html': '/free-stock-bonuses',
   '/banking-fintech-signup-bonuses.html': '/banking-signup-offers',
   '/crypto-signup-bonuses.html': '/crypto-signup-bonuses',
+  '/best-no-deposit-signup-bonuses.html': '/best-no-deposit-bonuses-this-month',
+  '/best-cashback-apps.html': '/best-cashback-apps',
+  '/how-to-compare-referral-bonuses-safely.html': '/how-to-compare-referral-bonuses-safely',
 };
 
 Object.entries(seoPageRoutes).forEach(([route, fileName]) => {

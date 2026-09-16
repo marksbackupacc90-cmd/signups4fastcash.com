@@ -99,6 +99,14 @@ export const Hero: React.FC<HeroProps> = ({
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
 
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+          <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-500">Popular guides:</span>
+          <a href="/cashback-offers" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Cashback offers</a>
+          <a href="/signup-bonus-sites" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Signup bonus sites</a>
+          <a href="/best-no-deposit-bonuses-this-month" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit bonuses</a>
+          <a href="/how-to-compare-referral-bonuses-safely" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Referral safety guide</a>
+        </div>
+
         {/* Search and Filters Bar */}
         <div className="mt-6 flex flex-col items-stretch justify-between gap-4 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 md:flex-row md:items-center">
           
