@@ -429,12 +429,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       referralUrl: newRefUrl,
       status: 'live',
       honestTruth: {
-        summary: newHonestSummary || 'Fully tested promo verified by our editorial staff.',
-        theCatch: newHonestCatch || 'Must complete standard ID verification and minimum deposit requirement.',
+        summary: newHonestSummary || 'Review the current promotion details and eligibility requirements before applying.',
+        theCatch: newHonestCatch || 'Eligibility, funding requirements, and payout timing are controlled by the provider and may change.',
         minimumHoldTime: newMinHold,
         idVerificationRequired: true,
-        hiddenFeesWarning: 'Zero monthly account maintenance fees.',
-        trustScore: 98,
+        hiddenFeesWarning: 'Review the provider terms for account fees, transfer limits, and other conditions.',
+        trustScore: 90,
       },
       speedrunHints: newSpeedrunSteps,
     });
@@ -483,6 +483,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => {
       setSavedSuccessIds((prev) => ({ ...prev, [offerId]: false }));
     }, 2500);
+  };
+
+  const handleVerificationUpdate = (offer: Offer, status: Offer['verificationStatus']) => {
+    onUpdateLiveOffer(offer.id, {
+      verificationStatus: status,
+      verifiedAt: status === 'reviewed' ? new Date().toISOString() : offer.verifiedAt,
+    });
+    setSavedSuccessIds((prev) => ({ ...prev, [offer.id]: true }));
   };
 
   const handleCopyCode = (code: string, id: string) => {
@@ -1253,6 +1261,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           className="w-full px-3 py-2 rounded bg-[#090b0e] border border-white/10 text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400"
                         />
                         <p className="mt-1 text-[10px] text-zinc-500">Use a direct HTTPS image link. Leave blank to use the existing local logo.</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-white/[0.06] bg-[#0e121a] p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-300">Offer verification</p>
+                          <p className="mt-1 text-[10px] text-zinc-500">
+                            Mark reviewed only after checking the provider terms for this exact referral link.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleVerificationUpdate(offer, 'reviewed')}
+                            className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1.5 text-[10px] font-mono font-semibold text-emerald-300 hover:bg-emerald-400/20"
+                          >
+                            Mark reviewed today
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleVerificationUpdate(offer, 'terms-vary')}
+                            className="rounded-md border border-amber-300/30 bg-amber-300/10 px-2.5 py-1.5 text-[10px] font-mono font-semibold text-amber-200 hover:bg-amber-300/20"
+                          >
+                            Terms vary
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-zinc-500">
+                        <span>Status: <strong className="text-zinc-300">{offer.verificationStatus === 'reviewed' ? 'Reviewed' : 'Terms vary'}</strong></span>
+                        <span>Last checked: <strong className="text-zinc-300">{offer.verifiedAt ? new Date(offer.verifiedAt).toLocaleDateString() : 'Not checked'}</strong></span>
                       </div>
                     </div>
 

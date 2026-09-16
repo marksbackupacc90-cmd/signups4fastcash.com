@@ -31,6 +31,23 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
       ? 'topcashback'
       : normalized.replace(/[^a-z0-9]/g, '');
 
+  const simpleIconSlugMap: Record<string, string> = {
+    sofi: 'sofi',
+    chime: 'chime',
+    capitalone: 'capitalone',
+    freecash: 'freecash',
+    stake: 'stake',
+    upside: 'upside',
+    kalshi: 'kalshi',
+    robinhood: 'robinhood',
+    revolut: 'revolut',
+    coinbase: 'coinbase',
+    kraken: 'kraken',
+    paypal: 'paypal',
+    rakuten: 'rakuten',
+    topcashback: 'topcashback',
+  };
+
   const localLogoMap: Record<string, string> = {
     sofi: '/company-logos/sofi-logo.png',
     chime: '/company-logos/chime-logo.jpg',
@@ -42,6 +59,8 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     kraken: '/company-logos/kraken.png',
     paypal: '/company-logos/paypal-logo.png',
     freecash: '/company-logos/freecash.jpg',
+    heycash: '/company-logos/heycash-logo.png',
+    stake: '/company-logos/stake-logo.png',
     rakuten: '/company-logos/rakuten.png',
   };
 
@@ -55,48 +74,25 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     .join('')
     .toUpperCase();
 
-  const [imageFailed, setImageFailed] = React.useState(false);
+  const imageSources = [
+    logoUrl,
+    localLogo,
+    `https://cdn.simpleicons.org/${simpleIconSlugMap[logoSlug] || logoSlug}`,
+  ].filter((source): source is string => Boolean(source));
+  const [imageSourceIndex, setImageSourceIndex] = React.useState(0);
+  const imageSource = imageSources[imageSourceIndex];
+  const imageFrameClass = `${sizeClasses} ${className} rounded-lg flex items-center justify-center shrink-0 overflow-hidden select-none`;
 
-  if (!imageFailed && logoUrl) {
+  if (imageSource) {
     return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-white flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden select-none`}>
+      <div className={imageFrameClass}>
         <img
-          src={logoUrl}
+          src={imageSource}
           alt={`${companyName} logo`}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           loading={loading}
           decoding="async"
-          onError={() => setImageFailed(true)}
-        />
-      </div>
-    );
-  }
-
-  if (!imageFailed && localLogo) {
-    return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-white flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden select-none`}>
-        <img
-          src={localLogo}
-          alt={`${companyName} logo`}
-          className="w-full h-full object-contain"
-          loading={loading}
-          decoding="async"
-          onError={() => setImageFailed(true)}
-        />
-      </div>
-    );
-  }
-
-  if (!imageFailed) {
-    return (
-      <div className={`${sizeClasses} ${className} rounded-lg bg-white flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden select-none`}>
-        <img
-          src={`https://cdn.simpleicons.org/${logoSlug}`}
-          alt={`${companyName} logo`}
-          className="w-full h-full object-contain"
-          loading={loading}
-          decoding="async"
-          onError={() => setImageFailed(true)}
+          onError={() => setImageSourceIndex((current) => current + 1)}
         />
       </div>
     );

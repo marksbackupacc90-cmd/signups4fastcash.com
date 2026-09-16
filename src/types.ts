@@ -33,7 +33,7 @@ export interface Offer {
   referralUrl: string;
   sourceUrl?: string;
   verifiedAt?: string;
-  verificationStatus?: 'unverified' | 'reviewed';
+  verificationStatus?: 'unverified' | 'reviewed' | 'terms-vary';
   
   // "Logo for each company its for displayed next to the offer title"
   logoSvgKey?: string;

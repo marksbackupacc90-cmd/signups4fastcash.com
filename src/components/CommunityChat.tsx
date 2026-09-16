@@ -205,9 +205,9 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   };
 
   return (
-    <aside ref={chatMenuRef} className="relative inline-block shrink-0">
+    <aside ref={chatMenuRef} className="fixed bottom-5 right-5 z-40 inline-block">
       {open && (
-        <section className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
+        <section className="absolute bottom-full right-0 z-50 mb-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#8bd3a7]/25 bg-[#14251f] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
@@ -326,7 +326,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
         <button type="button" onClick={() => {
           setOpen(true);
           requestAnimationFrame(() => scrollToLatest());
-        }} className="retro-button focus-ring ml-1 flex min-w-0 items-center justify-center gap-1.5 rounded-md border border-white/15 px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf] sm:min-w-[7.5rem] sm:gap-2 sm:px-5 md:ml-3" aria-label={`Open community chat (${activeCount} active)`}>
+        }} className="retro-button focus-ring flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-white/15 bg-[#14251f] px-3 py-3 text-xs font-medium text-zinc-200 shadow-xl hover:bg-[#1b352b] hover:text-[#f1e6cf] sm:gap-2 sm:px-4" aria-label={`Open community chat (${activeCount} active)`}>
           <MessageCircle className="h-4 w-4 text-[#8bd3a7]" />
           <span className="hidden sm:inline">Chat</span>
           <span className="text-[#8bd3a7]">{activeCount}</span>

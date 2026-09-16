@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
-import { CommunityChat } from './CommunityChat';
 import { Bell, ChevronDown, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
@@ -112,7 +111,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <CommunityChat username={username} userId={userId} />
           {username ? (
             <div ref={accountMenuRef} className="relative">
               <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[8rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>

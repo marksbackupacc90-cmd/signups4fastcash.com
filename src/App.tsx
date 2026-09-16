@@ -14,7 +14,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
-import { SupportBot } from './components/SupportBot';
+import { CommunityChat } from './components/CommunityChat';
 import { HowItWorks } from './components/HowItWorks';
 
 interface AuthUser {
@@ -748,7 +748,7 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'offers' && (
           <>
-            <SupportBot />
+            <CommunityChat username={authUser?.username} userId={authUser?.id} />
           </>
         )}
         {activeTab === 'offers' && (
@@ -808,7 +808,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="mx-auto max-w-6xl">
-                  <div className="grid items-start gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {filteredOffers.map((offer) => (
                       <OfferCard
                         key={offer.id}
