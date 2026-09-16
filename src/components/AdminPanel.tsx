@@ -1121,6 +1121,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </span>
                         </div>
                         <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-xl">{offer.title}</div>
+                        <div className="mt-1 flex items-center gap-3 text-[10px] font-mono text-zinc-500">
+                          <span>
+                            Clicks: <strong className="text-emerald-300">{offer.clicksCount || 0}</strong>
+                          </span>
+                          <span>
+                            Conversions: <strong className="text-cyan-300">{offer.conversionsCount || 0}</strong>
+                          </span>
+                        </div>
                       </div>
                       <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${expandedLiveOfferId === offer.id ? 'rotate-180' : ''}`} />
                     </button>
