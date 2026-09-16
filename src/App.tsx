@@ -518,25 +518,6 @@ export default function App() {
     showToast('Removed offer from the pending queue.');
   };
 
-  const handleCashBotScan = async () => {
-    const token = localStorage.getItem('signups4fastcash_admin_token');
-    const response = await fetch('/api/cashbot/scan', {
-      method: 'POST',
-      headers: token ? { 'x-admin-token': token } : {},
-    });
-    const data = await response.json().catch(() => null) as { findings?: Offer[]; error?: string } | null;
-    if (!response.ok || !data?.findings) {
-      throw new Error(data?.error || 'CashBot scan failed.');
-    }
-
-    setPendingOffers((current) => {
-      const existingIds = new Set(current.map((offer) => offer.id));
-      const newFindings = data.findings!.filter((offer) => !existingIds.has(offer.id));
-      return [...newFindings, ...current];
-    });
-    showToast(`CashBot found ${data.findings.length} offer${data.findings.length === 1 ? '' : 's'} for review.`);
-  };
-
   const handleUpdateLiveOffer = async (offerId: string, updates: Partial<Offer>) => {
     const previousOffers = liveOffers;
     setLiveOffers((prev) =>
@@ -836,7 +817,6 @@ export default function App() {
               onUpdateLiveOffer={handleUpdateLiveOffer}
               onDeleteLiveOffer={handleDeleteLiveOffer}
               onCreateCustomOffer={handleCreateCustomOffer}
-              onCashBotScan={handleCashBotScan}
               blastLogs={blastLogs}
               onLockAdmin={handleLockAdmin}
               siteSettings={siteSettings}

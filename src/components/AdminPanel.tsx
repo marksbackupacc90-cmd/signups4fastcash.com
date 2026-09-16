@@ -43,7 +43,6 @@ interface AdminPanelProps {
   onUpdateLiveOffer: (offerId: string, updates: Partial<Offer>) => void;
   onDeleteLiveOffer: (offerId: string) => void;
   onCreateCustomOffer: (newOffer: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>) => void;
-  onCashBotScan: () => Promise<void>;
   blastLogs: EmailBlastLog[];
   onLockAdmin?: () => void;
   siteSettings: SiteSettings;
@@ -226,7 +225,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateLiveOffer,
   onDeleteLiveOffer,
   onCreateCustomOffer,
-  onCashBotScan,
   blastLogs,
   onLockAdmin,
   siteSettings,
@@ -248,8 +246,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotError, setCopilotError] = useState<string | null>(null);
   const [visitorAnalytics, setVisitorAnalytics] = useState<VisitorAnalytics | null>(null);
-  const [cashBotScanning, setCashBotScanning] = useState(false);
-  const [cashBotError, setCashBotError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -594,7 +590,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
           </div>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Review CashBot automated discoveries, attach your affiliate codes, and trigger email blasts to {subscribers.length} newsletter subscribers.
+            Manage live offers, review pending submissions, and keep referral details and terms accurate.
           </p>
         </div>
 
@@ -607,11 +603,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             className="max-w-[15rem] rounded-md bg-[#07090e] px-3 py-2 text-xs font-semibold text-zinc-200 outline-none"
           >
             <option value="live">Referral Links & Offers ({liveOffers.length})</option>
-            <option value="pending">CashBot Queue{pendingOffers.length > 0 ? ` (${pendingOffers.length})` : ''}</option>
-            <option value="create">New Custom Offer</option>
-            <option value="blasts">Blast Logs ({blastLogs.length})</option>
-            <option value="copilot">S4FC Copilot</option>
-            <option value="assistant">Outreach Assistant</option>
+            <option value="pending">Review Queue{pendingOffers.length > 0 ? ` (${pendingOffers.length})` : ''}</option>
+            <option value="create">Create Offer</option>
+            <option value="blasts">Email History ({blastLogs.length})</option>
             <option value="settings">Site Settings</option>
             {isOwnerAdmin && <option value="accounts">Accounts</option>}
           </select>
@@ -800,40 +794,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* Tab 1: Pending CashBot Findings & Approval */}
+      {/* Tab 1: Pending offer review */}
       {activeAdminTab === 'pending' && (
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-bold text-white">Run a fresh CashBot scan</div>
-              <p className="mt-1 text-xs text-zinc-400">Find current public promotions and add unique results to the review queue.</p>
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                setCashBotScanning(true);
-                setCashBotError(null);
-                try {
-                  await onCashBotScan();
-                } catch (error) {
-                  setCashBotError(error instanceof Error ? error.message : 'CashBot scan failed.');
-                } finally {
-                  setCashBotScanning(false);
-                }
-              }}
-              disabled={cashBotScanning}
-              className="shrink-0 rounded-lg bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-60"
-            >
-              {cashBotScanning ? 'Scanning...' : 'Scan now'}
-            </button>
-          </div>
-          {cashBotError && <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs text-red-200">{cashBotError}</div>}
           {pendingOffers.length === 0 ? (
             <div className="p-12 text-center rounded-xl bg-[#0b0e14] border border-white/[0.08]">
               <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-white">CashBot Queue is Clear</h3>
+              <h3 className="text-base font-bold text-white">Review queue is clear</h3>
               <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
-                No new pending offers. CashBot is scanning the web every hour. You can trigger an instant scan using the status widget on the home tab.
+                No offers are waiting for approval. New submissions can be reviewed here before they appear on the live site.
               </p>
             </div>
           ) : (
@@ -877,7 +846,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div>
                         <div className="text-xs font-mono text-amber-400 flex items-center gap-1.5">
                           <Bot className="w-3.5 h-3.5" />
-                          Pending CashBot Review
+                          Pending offer review
                         </div>
                         <h3 className="text-lg font-bold text-white mt-0.5">
                           {selectedPendingOffer.title}
@@ -953,7 +922,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-4 rounded-lg bg-[#07090e] border border-white/[0.06] text-xs space-y-2">
                     <div className="font-mono font-semibold text-zinc-300 flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      CashBot Extracted Honest Truth & Catch:
+                      Offer summary and terms:
                     </div>
                     <p className="text-zinc-300 font-sans">{selectedPendingOffer.honestTruth.summary}</p>
                     <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-200">
@@ -966,7 +935,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-4 rounded-lg bg-[#07090e] border border-white/[0.06] text-xs space-y-2">
                     <div className="font-mono font-semibold text-[#38bdf8] flex items-center gap-2">
                       <Sparkles className="w-4 h-4" />
-                      Generated Step-by-Step Speedrun Hints:
+                      Suggested steps:
                     </div>
                     <ol className="space-y-1.5 list-decimal list-inside text-zinc-300">
                       {selectedPendingOffer.speedrunHints.map((step) => (
