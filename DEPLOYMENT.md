@@ -85,4 +85,6 @@ Then visit:
 - The server reads `.env.local` during local development and will use host environment variables in production.
 - The app is already configured for a server-side Gemini setup.
 - Without `DATABASE_URL`, local development uses an in-memory fallback and changes reset when the server restarts.
+- Offline friends in the chat list show relative last-seen text such as `last seen 5m ago`. A friend is considered online after chat activity within the last 90 seconds.
+- Presence is currently kept in server memory and retained for up to 30 days. It resets when the server restarts and is not shared across multiple web-service instances; use a shared presence store such as PostgreSQL or Redis before scaling horizontally.
 - Render's `render.yaml` provisions the PostgreSQL database and injects its connection string into the web service.

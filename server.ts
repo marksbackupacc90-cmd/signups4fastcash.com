@@ -301,7 +301,7 @@ let visitorAnalyticsStore = {
 let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
 const communityMessages: Array<{ id: string; displayName: string; content: string; createdAt: string }> = [];
-const communityPresence = new Map<string, { lastSeen: number; displayName: string }>();
+const communityPresence = new Map<string, { lastSeen: number; displayName: string; userId?: string }>();
 const communityMessageRates = new Map<string, number[]>();
 
 function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>) {
@@ -1112,15 +1112,20 @@ app.get('/api/community-chat', async (req, res) => {
   const displayName = typeof req.query.displayName === 'string'
     ? req.query.displayName.trim().slice(0, 40) || 'Guest'
     : 'Guest';
-  if (visitorId) communityPresence.set(visitorId, { lastSeen: Date.now(), displayName });
+  const user = await getAuthenticatedUser(req);
+  const presenceId = user?.id || visitorId;
+  if (presenceId) communityPresence.set(presenceId, { lastSeen: Date.now(), displayName, userId: user?.id });
   const cutoff = Date.now() - 90_000;
+  const stalePresenceCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   for (const [id, presence] of communityPresence) {
-    if (presence.lastSeen < cutoff) communityPresence.delete(id);
+    if (presence.lastSeen < stalePresenceCutoff) communityPresence.delete(id);
   }
   const activeUsers = [...communityPresence.values()]
+    .filter((presence) => presence.lastSeen >= cutoff)
     .map((presence) => presence.displayName)
     .filter((name, index, names) => names.indexOf(name) === index)
     .sort((left, right) => left.localeCompare(right));
+  const activeCount = [...communityPresence.values()].filter((presence) => presence.lastSeen >= cutoff).length;
 
   if (database) {
     const result = await database.query<{ id: string; display_name: string; content: string; created_at: Date }>(
@@ -1133,12 +1138,12 @@ app.get('/api/community-chat', async (req, res) => {
         content: message.content,
         createdAt: new Date(message.created_at).toISOString(),
       })),
-      activeCount: communityPresence.size,
+      activeCount,
       activeUsers,
     });
   }
 
-  return res.json({ messages: communityMessages.slice(-50), activeCount: communityPresence.size, activeUsers });
+  return res.json({ messages: communityMessages.slice(-50), activeCount, activeUsers });
 });
 
 app.post('/api/community-chat', async (req, res) => {
@@ -1153,7 +1158,12 @@ app.post('/api/community-chat', async (req, res) => {
   if (recentMessages.length >= 5) return res.status(429).json({ error: 'Please wait a moment before sending more messages.' });
   recentMessages.push(now);
   communityMessageRates.set(visitorId, recentMessages);
-  communityPresence.set(visitorId, { lastSeen: Date.now(), displayName: displayName || 'Guest' });
+  const user = await getAuthenticatedUser(req);
+  communityPresence.set(user?.id || visitorId, {
+    lastSeen: Date.now(),
+    displayName: displayName || 'Guest',
+    userId: user?.id,
+  });
   const message = { id: randomUUID(), displayName: displayName || 'Guest', content, createdAt: new Date().toISOString() };
   communityMessages.push(message);
   if (communityMessages.length > 200) communityMessages.splice(0, communityMessages.length - 200);
@@ -1195,8 +1205,18 @@ app.get('/api/friends', async (req, res) => {
   );
   const friends = result.rows.filter((entry) => entry.relationship === 'active');
   const blocked = result.rows.filter((entry) => entry.relationship === 'blocked');
+  const presenceByUserId = new Map(
+    [...communityPresence.values()]
+      .filter((presence) => presence.userId)
+      .map((presence) => [presence.userId as string, presence.lastSeen]),
+  );
   return res.json({
-    friends: friends.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
+    friends: friends.map((entry) => ({
+      id: entry.id,
+      username: entry.username,
+      avatarUrl: entry.avatar_url,
+      lastOnline: presenceByUserId.get(entry.id) ? new Date(presenceByUserId.get(entry.id) as number).toISOString() : null,
+    })),
     blocked: blocked.map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
     users: result.rows.filter((entry) => entry.relationship === 'none').map((entry) => ({ id: entry.id, username: entry.username, avatarUrl: entry.avatar_url })),
   });

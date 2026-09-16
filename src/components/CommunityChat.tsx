@@ -13,6 +13,8 @@ interface CommunityChatProps {
   userId?: string;
 }
 
+type FriendEntry = { id: string; username: string; avatarUrl?: string | null; lastOnline?: string | null };
+
 export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }) => {
   const [open, setOpen] = useState(false);
   const [visitorId] = useState(() => {
@@ -29,14 +31,15 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [users, setUsers] = useState<Array<{ id: string; username: string; avatarUrl?: string | null }>>([]);
+  const [users, setUsers] = useState<FriendEntry[]>([]);
   const [directUserId, setDirectUserId] = useState('');
   const [directMessages, setDirectMessages] = useState<Array<{ id: string; sender_id: string; content: string }>>([]);
   const [section, setSection] = useState<'community' | 'private'>('community');
-  const [friends, setFriends] = useState<typeof users>([]);
-  const [blockedUsers, setBlockedUsers] = useState<typeof users>([]);
+  const [friends, setFriends] = useState<FriendEntry[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<FriendEntry[]>([]);
   const [friendName, setFriendName] = useState('');
   const [contextUser, setContextUser] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [relativeTimeNow, setRelativeTimeNow] = useState(() => Date.now());
   const [mutedUsers, setMutedUsers] = useState<string[]>(() => JSON.parse(localStorage.getItem('s4fc_muted_chat_users') || '[]') as string[]);
   const communityMessagesRef = useRef<HTMLDivElement | null>(null);
   const directMessagesRef = useRef<HTMLDivElement | null>(null);
@@ -58,12 +61,22 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
 
   useEffect(() => {
     if (!userId) return;
-    fetch('/api/friends').then((response) => response.ok ? response.json() : Promise.reject(new Error())).then((data: { friends?: typeof users; blocked?: typeof users }) => {
-      setFriends(data.friends || []);
-      setBlockedUsers(data.blocked || []);
-      setUsers(data.friends || []);
-    }).catch(() => undefined);
+    const loadFriends = () => {
+      fetch('/api/friends').then((response) => response.ok ? response.json() : Promise.reject(new Error())).then((data: { friends?: FriendEntry[]; blocked?: FriendEntry[] }) => {
+        setFriends(data.friends || []);
+        setBlockedUsers(data.blocked || []);
+        setUsers(data.friends || []);
+      }).catch(() => undefined);
+    };
+    loadFriends();
+    const interval = window.setInterval(loadFriends, 10000);
+    return () => window.clearInterval(interval);
   }, [userId]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setRelativeTimeNow(Date.now()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!directUserId) return;
@@ -115,10 +128,23 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
     minute: '2-digit',
   }).format(new Date(createdAt));
 
+  const formatLastOnline = (lastOnline: string | null | undefined) => {
+    if (!lastOnline) return 'last seen unknown';
+    const elapsedSeconds = Math.max(0, Math.floor((relativeTimeNow - new Date(lastOnline).getTime()) / 1000));
+    if (elapsedSeconds < 60) return 'last seen just now';
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    if (elapsedMinutes < 60) return `last seen ${elapsedMinutes}m ago`;
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+    if (elapsedHours < 24) return `last seen ${elapsedHours}h ago`;
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    if (elapsedDays < 30) return `last seen ${elapsedDays}d ago`;
+    return `last seen ${Math.floor(elapsedDays / 30)}mo ago`;
+  };
+
   const refreshFriends = async () => {
     const response = await fetch('/api/friends');
     if (!response.ok) return;
-    const data = await response.json() as { friends?: typeof users; blocked?: typeof users };
+    const data = await response.json() as { friends?: FriendEntry[]; blocked?: FriendEntry[] };
     setFriends(data.friends || []);
     setBlockedUsers(data.blocked || []);
     setUsers(data.friends || []);
@@ -205,7 +231,13 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                 {friends.map((entry) => {
                   const online = activeUsers.includes(`@${entry.username}`);
                   return <div key={entry.id} className="flex items-center gap-1 rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300">
-                    <button type="button" onClick={() => setDirectUserId(entry.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left"><span className={`h-1.5 w-1.5 rounded-full ${online ? 'bg-[#8bd3a7] shadow-[0_0_7px_#8bd3a7]' : 'bg-red-400'}`} />@{entry.username}</button>
+                    <button type="button" onClick={() => setDirectUserId(entry.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#8bd3a7] shadow-[0_0_7px_#8bd3a7]' : 'bg-red-400'}`} />
+                      <span className="min-w-0">
+                        <span className="block truncate">@{entry.username}</span>
+                        {!online && <span className="block text-[9px] text-zinc-500">{formatLastOnline(entry.lastOnline)}</span>}
+                      </span>
+                    </button>
                     <button type="button" onClick={() => void removeFriend(entry.id)} className="text-zinc-500 hover:text-red-200" title="Remove friend"><UserMinus className="h-3 w-3" /></button>
                   </div>;
                 })}
