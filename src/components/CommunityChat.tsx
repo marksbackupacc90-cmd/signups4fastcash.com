@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Send, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
 
 interface CommunityMessage {
   id: string;
@@ -35,6 +35,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   const [directUserId, setDirectUserId] = useState('');
   const [directMessages, setDirectMessages] = useState<Array<{ id: string; sender_id: string; content: string }>>([]);
   const [section, setSection] = useState<'community' | 'private'>('community');
+  const [privateView, setPrivateView] = useState<'list' | 'conversation'>('list');
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<FriendEntry[]>([]);
   const [friendName, setFriendName] = useState('');
@@ -199,6 +200,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
     if (friend) {
       setSection('private');
       setDirectUserId(friend.id);
+      setPrivateView('conversation');
     } else if (userId) {
       void updateFriend(name, 'active');
     }
@@ -214,7 +216,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   return (
     <aside ref={chatMenuRef} className="fixed bottom-5 right-5 z-40 inline-block">
       {open && (
-        <section className="absolute bottom-full right-0 z-50 mb-2 h-[40rem] max-h-[78vh] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
+        <section className="absolute bottom-full right-0 z-50 mb-2 flex h-[40rem] max-h-[78vh] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
@@ -239,19 +241,19 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             <button type="button" onClick={() => setSection('community')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'community' ? 'bg-[#2dd4ee] font-semibold text-[#06131a]' : 'text-zinc-400'}`}>Community</button>
             <button type="button" onClick={() => setSection('private')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'private' ? 'bg-[#2dd4ee] font-semibold text-[#06131a]' : 'text-zinc-400'}`}>Private</button>
           </div>
-          {section === 'private' && userId && (
-            <div className="border-b border-white/[0.08] bg-[#0e121a] p-2.5">
+          {section === 'private' && userId && privateView === 'list' && (
+            <div className="flex min-h-0 flex-1 flex-col border-b border-white/[0.08] bg-[#0e121a] p-2.5">
               <div className="mb-2 flex gap-1.5">
                 <input value={friendName} onChange={(event) => setFriendName(event.target.value)} placeholder="Add friend by username" className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2 py-1.5 text-xs text-white" />
                 <button type="button" onClick={() => void updateFriend(friendName, 'active')} disabled={!friendName.trim()} className="rounded-md bg-[#2dd4ee] px-2 text-[#06131a] disabled:opacity-50" title="Add friend"><UserPlus className="h-3.5 w-3.5" /></button>
                 <button type="button" onClick={() => void updateFriend(friendName, 'block')} disabled={!friendName.trim()} className="rounded-md border border-red-300/30 px-2 text-red-200 disabled:opacity-50" title="Block user"><ShieldBan className="h-3.5 w-3.5" /></button>
               </div>
-              <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
                 <div className="text-[9px] uppercase tracking-wider text-zinc-500">Friends</div>
                 {sortedFriends.map((entry) => {
                   const online = activeUsers.includes(`@${entry.username}`);
                   return <div key={entry.id} className="flex items-center gap-1 rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300">
-                    <button type="button" onClick={() => setDirectUserId(entry.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+                    <button type="button" onClick={() => { setDirectUserId(entry.id); setPrivateView('conversation'); }} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#2dd4ee] shadow-[0_0_7px_#2dd4ee]' : 'bg-red-400'}`} />
                       <span className="min-w-0">
                         <span className="block truncate">@{entry.username}</span>
@@ -274,7 +276,20 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-400">Sign in to add friends and send private messages.</div>
           ) : section === 'private' && directUserId ? (
             <>
-              <div ref={directMessagesRef} className="max-h-80 space-y-2 overflow-y-auto bg-[#141824] p-3">
+              <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => { setPrivateView('list'); setDirectUserId(''); }}
+                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-200 hover:text-white"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  All people
+                </button>
+                <span className="max-w-[10rem] truncate text-xs text-zinc-400">
+                  @{friends.find((friend) => friend.id === directUserId)?.username || 'Private chat'}
+                </span>
+              </div>
+              <div ref={directMessagesRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#141824] p-3">
                 {directMessages.map((message) => <div key={message.id} className={`rounded-lg px-2.5 py-2 text-xs ${message.sender_id === userId ? 'ml-6 bg-[#2dd4ee] text-[#06131a]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>{message.content}</div>)}
               </div>
               <form onSubmit={async (event) => {

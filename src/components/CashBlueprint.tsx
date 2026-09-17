@@ -3,6 +3,10 @@ import { ArrowRight, ChevronDown, ExternalLink, ShieldCheck, Sparkles } from 'lu
 
 const DEBBIE_REFERRAL_URL = 'https://www.joindebbie.com/referral?name=Mark&ref_id=2FMKVWHWZ';
 
+interface CashBlueprintProps {
+  onOpenSofi?: () => void;
+}
+
 const steps = [
   {
     number: '01',
@@ -38,12 +42,16 @@ const steps = [
   },
 ];
 
-export const CashBlueprint: React.FC = () => {
+export const CashBlueprint: React.FC<CashBlueprintProps> = ({ onOpenSofi }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleStepClick = (target: string, external: boolean) => {
     if (external) {
       window.open(target, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (onOpenSofi) {
+      onOpenSofi();
       return;
     }
     document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'center' });

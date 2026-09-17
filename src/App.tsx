@@ -726,7 +726,17 @@ export default function App() {
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">
               <HowItWorks />
-              <CashBlueprint />
+              <CashBlueprint
+                onOpenSofi={() => {
+                  const sofiOffer = liveOffers.find((offer) => offer.id === 'offer-sofi-banking');
+                  if (!sofiOffer) {
+                    showToast('The SoFi offer is temporarily unavailable.');
+                    return;
+                  }
+                  void handleClaimClick(sofiOffer.id);
+                  window.open(sofiOffer.referralUrl || sofiOffer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
+                }}
+              />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
