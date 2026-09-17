@@ -720,7 +720,7 @@ export default function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
-              featuredOffers={orderedLiveOffers.slice(0, 4)}
+              featuredOffers={orderedLiveOffers}
             />
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">

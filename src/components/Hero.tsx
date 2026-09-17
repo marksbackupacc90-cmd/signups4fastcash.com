@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from '../types';
 import { CompanyLogo } from './CompanyLogo';
@@ -40,6 +40,22 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenFinder,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+  const [logoPage, setLogoPage] = useState(0);
+  const logoPageCount = Math.max(1, Math.ceil(featuredOffers.length / 4));
+
+  useEffect(() => {
+    setLogoPage((currentPage) => currentPage % logoPageCount);
+  }, [logoPageCount]);
+
+  useEffect(() => {
+    if (logoPageCount <= 1) return;
+    const interval = window.setInterval(() => {
+      setLogoPage((currentPage) => (currentPage + 1) % logoPageCount);
+    }, 4500);
+    return () => window.clearInterval(interval);
+  }, [logoPageCount]);
+
+  const visibleLogoOffers = featuredOffers.slice(logoPage * 4, logoPage * 4 + 4);
 
   return (
     <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
@@ -82,15 +98,28 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
           <div className="w-full max-w-[13rem] self-start sm:max-w-[15rem] lg:w-64">
             <div className="grid grid-cols-2 gap-3">
-            {featuredOffers.slice(0, 4).map((offer) => (
+            {visibleLogoOffers.map((offer) => (
               <div
                 key={offer.id}
-                className="flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0a1220] p-2 transition-colors hover:border-[#2dd4ee]/40 hover:bg-[#0f1d2d] sm:p-3"
+                className="animate-in fade-in flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0a1220] p-2 transition-colors duration-700 hover:border-[#2dd4ee]/40 hover:bg-[#0f1d2d] sm:p-3"
               >
                 <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" loading="eager" className="!h-14 !w-14 rounded-md sm:!h-16 sm:!w-16" />
               </div>
             ))}
             </div>
+            {logoPageCount > 1 && (
+              <div className="mt-3 flex items-center justify-center gap-1.5" aria-label="Rotating featured offers">
+                {Array.from({ length: logoPageCount }, (_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`Show featured offers ${index + 1} of ${logoPageCount}`}
+                    onClick={() => setLogoPage(index)}
+                    className={`h-1.5 rounded-full transition-all ${index === logoPage ? 'w-5 bg-[#2dd4ee]' : 'w-1.5 bg-white/25 hover:bg-white/50'}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
