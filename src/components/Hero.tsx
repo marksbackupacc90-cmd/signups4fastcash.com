@@ -56,6 +56,8 @@ export const Hero: React.FC<HeroProps> = ({
   }, [logoPageCount]);
 
   const visibleLogoOffers = featuredOffers.slice(logoPage * 4, logoPage * 4 + 4);
+  const nextLogoPage = (logoPage + 1) % logoPageCount;
+  const nextLogoOffers = featuredOffers.slice(nextLogoPage * 4, nextLogoPage * 4 + 4);
 
   return (
     <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
@@ -107,6 +109,18 @@ export const Hero: React.FC<HeroProps> = ({
                 <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" loading="eager" className="!h-14 !w-14 rounded-md sm:!h-16 sm:!w-16" />
               </div>
             ))}
+            </div>
+            <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden="true">
+              {nextLogoOffers.map((offer) => (
+                <CompanyLogo
+                  key={`preload-${offer.id}`}
+                  companyName={offer.company}
+                  slug={offer.companySlug}
+                  logoUrl={offer.logoUrl}
+                  size="sm"
+                  loading="eager"
+                />
+              ))}
             </div>
             {logoPageCount > 1 && (
               <div className="mt-3 flex items-center justify-center gap-1.5" aria-label="Rotating featured offers">

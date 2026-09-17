@@ -90,6 +90,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   ].filter((source): source is string => Boolean(source));
   const [imageSourceIndex, setImageSourceIndex] = React.useState(0);
   const imageSource = imageSources[imageSourceIndex];
+  const [imageLoaded, setImageLoaded] = React.useState(false);
   const imageFrameClass = `${sizeClasses} ${className} rounded-lg flex items-center justify-center shrink-0 overflow-hidden select-none`;
 
   if (imageSource) {
@@ -98,9 +99,10 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
         <img
           src={imageSource}
           alt={`${companyName} logo`}
-          className="w-full h-full object-cover"
+          className={`h-full w-full object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           decoding="async"
+          onLoad={() => setImageLoaded(true)}
           onError={() => setImageSourceIndex((current) => current + 1)}
         />
       </div>
