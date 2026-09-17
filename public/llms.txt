@@ -1,0 +1,23 @@
+# Signups4FastCash.com
+
+> Signups4FastCash.com is an offer-comparison website that helps visitors review referral bonuses, cashback offers, rewards apps, and fintech promotions before visiting the merchant.
+
+## Primary pages
+
+- [Homepage](https://signups4fastcash.com/): Current public offer catalog and comparison cards.
+- [How to compare referral bonuses safely](https://signups4fastcash.com/how-to-compare-referral-bonuses-safely.html): Practical guidance for reviewing eligibility, fees, and requirements.
+- [Best referral bonuses](https://signups4fastcash.com/best-referral-bonuses.html): Referral-offer overview.
+- [Banking signup offers](https://signups4fastcash.com/banking-signup-offers.html): Banking and fintech offer guide.
+- [Privacy and methodology](https://signups4fastcash.com/): The homepage legal and editorial-methodology sections explain analytics consent, verification, ranking factors, affiliate disclosure, and corrections.
+
+## Offer data
+
+- [Live offer API](https://signups4fastcash.com/api/offers): Machine-readable JSON for currently eligible public offers.
+- Offer terms, eligibility, fees, payout timing, and availability can change. The merchant's official terms always control.
+- Offers may use referral or affiliate links. Visitors should review the merchant page before completing any qualifying action.
+
+## Trust and privacy
+
+- Analytics is consent-based and reports aggregate visitor information.
+- Approximate country and region may be derived from provider headers; exact GPS location is not collected by the location feature.
+- Contact the site owner through the website to report outdated terms or request a correction.
