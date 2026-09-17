@@ -19,8 +19,15 @@ const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
 const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
-const appUrl = (env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const ownerEmail = (env.OWNER_EMAIL || 'winters.mark1990@gmail.com').trim().toLowerCase();
+
+function getRequestAppUrl(req: express.Request) {
+  const configuredAppUrl = env.APP_URL?.trim().replace(/\/$/, '');
+  if (configuredAppUrl) return configuredAppUrl;
+  const forwardedProto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0]?.trim() || req.protocol || 'http';
+  const forwardedHost = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim() || (req.headers.host || `localhost:${PORT}`);
+  return `${forwardedProto}://${forwardedHost}`;
+}
 const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
 const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
@@ -173,9 +180,10 @@ app.get('/api/auth/google', (req, res) => {
   if (!googleClientId || !googleClientSecret) {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
+  const redirectUri = `${getRequestAppUrl(req)}/api/auth/google/callback`;
   const params = new URLSearchParams({
     client_id: googleClientId,
-    redirect_uri: `${appUrl}/api/auth/google/callback`,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'online',
@@ -186,6 +194,7 @@ app.get('/api/auth/google', (req, res) => {
 
 app.get('/api/auth/google/callback', async (req, res) => {
   const code = typeof req.query.code === 'string' ? req.query.code : '';
+  const requestAppUrl = getRequestAppUrl(req);
   if (!googleClientId || !googleClientSecret || !code) {
     return res.status(400).send('Google sign-in could not be completed.');
   }
@@ -197,7 +206,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
         code,
         client_id: googleClientId,
         client_secret: googleClientSecret,
-        redirect_uri: `${appUrl}/api/auth/google/callback`,
+        redirect_uri: `${requestAppUrl}/api/auth/google/callback`,
         grant_type: 'authorization_code',
       }),
     });
@@ -230,6 +239,9 @@ app.get('/api/auth/google/callback', async (req, res) => {
       ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null }
       : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null };
     authUsers.set(memoryUser.id, memoryUser);
+    if (database) {
+      await syncOwnerFriendListForUser(memoryUser.id);
+    }
     const sessionToken = randomBytes(32).toString('hex');
     const expiresAt = Date.now() + AUTH_SESSION_MAX_AGE_SECONDS * 1000;
     authSessions.set(sessionToken, { userId: memoryUser.id, expiresAt });
@@ -241,7 +253,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
       );
     }
     res.setHeader('Set-Cookie', `sfc_session=${sessionToken}; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax${env.NODE_ENV === 'production' ? '; Secure' : ''}`);
-    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>window.opener?.postMessage({type:'sfc-auth-complete'},${JSON.stringify(appUrl)});window.close();</script><p>You can close this window.</p>`);
+    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>window.opener?.postMessage({type:'sfc-auth-complete'}, window.location.origin);window.close();</script><p>You can close this window.</p>`);
   } catch (error) {
     console.error('Google sign-in failed:', error);
     res.status(500).send('Google sign-in could not be completed.');
@@ -384,6 +396,41 @@ const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; conten
 const communityMessages: Array<{ id: string; displayName: string; content: string; createdAt: string }> = [];
 const communityPresence = new Map<string, { lastSeen: number; displayName: string; userId?: string }>();
 const communityMessageRates = new Map<string, number[]>();
+
+async function syncOwnerFriendListForUser(userId: string) {
+  if (!database) return;
+  const owner = await database.query<{ id: string }>(
+    'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+    [ownerEmail],
+  );
+  const ownerUserId = owner.rows[0]?.id;
+  if (!ownerUserId) return;
+
+  if (userId === ownerUserId) {
+    await database.query(
+      `INSERT INTO friend_connections (requester_id, recipient_id, status)
+       SELECT $1, u.id, 'active'
+       FROM users u
+       WHERE u.id <> $1
+       ON CONFLICT (requester_id, recipient_id) DO UPDATE SET status = EXCLUDED.status`,
+      [ownerUserId],
+    );
+    return;
+  }
+
+  await database.query(
+    `INSERT INTO friend_connections (requester_id, recipient_id, status)
+     VALUES ($1, $2, 'active')
+     ON CONFLICT (requester_id, recipient_id) DO UPDATE SET status = EXCLUDED.status`,
+    [ownerUserId, userId],
+  );
+  await database.query(
+    `INSERT INTO friend_connections (requester_id, recipient_id, status)
+     VALUES ($2, $1, 'active')
+     ON CONFLICT (requester_id, recipient_id) DO UPDATE SET status = EXCLUDED.status`,
+    [ownerUserId, userId],
+  );
+}
 
 function createBuiltInSupportAnswer(message: string, previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>) {
   const lower = message.toLowerCase();
@@ -551,6 +598,21 @@ async function initializeOfferStore() {
       PRIMARY KEY (requester_id, recipient_id)
     )
   `);
+  const ownerUserRow = await database.query<{ id: string }>(
+    'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+    [ownerEmail],
+  );
+  const ownerUserId = ownerUserRow.rows[0]?.id;
+  if (ownerUserId) {
+    await database.query(
+      `INSERT INTO friend_connections (requester_id, recipient_id, status)
+       SELECT $1, u.id, 'active'
+       FROM users u
+       WHERE u.id <> $1
+       ON CONFLICT (requester_id, recipient_id) DO UPDATE SET status = EXCLUDED.status`,
+      [ownerUserId],
+    );
+  }
   await database.query(
     `INSERT INTO analytics_counters (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
   );

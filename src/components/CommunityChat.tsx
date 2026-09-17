@@ -142,17 +142,24 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   }).format(new Date(createdAt));
 
   const formatLastOnline = (lastOnline: string | null | undefined) => {
-    if (!lastOnline) return 'last seen unknown';
+    if (!lastOnline) return 'last active unknown';
     const elapsedSeconds = Math.max(0, Math.floor((relativeTimeNow - new Date(lastOnline).getTime()) / 1000));
-    if (elapsedSeconds < 60) return 'last seen just now';
+    if (elapsedSeconds < 60) return 'active now';
     const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-    if (elapsedMinutes < 60) return `last seen ${elapsedMinutes}m ago`;
+    if (elapsedMinutes < 60) return `last active ${elapsedMinutes}m ago`;
     const elapsedHours = Math.floor(elapsedMinutes / 60);
-    if (elapsedHours < 24) return `last seen ${elapsedHours}h ago`;
+    if (elapsedHours < 24) return `last active ${elapsedHours}h ago`;
     const elapsedDays = Math.floor(elapsedHours / 24);
-    if (elapsedDays < 30) return `last seen ${elapsedDays}d ago`;
-    return `last seen ${Math.floor(elapsedDays / 30)}mo ago`;
+    if (elapsedDays < 30) return `last active ${elapsedDays}d ago`;
+    return `last active ${Math.floor(elapsedDays / 30)}mo ago`;
   };
+
+  const sortedFriends = [...friends].sort((left, right) => {
+    const leftOnline = activeUsers.includes(`@${left.username}`);
+    const rightOnline = activeUsers.includes(`@${right.username}`);
+    if (leftOnline !== rightOnline) return leftOnline ? -1 : 1;
+    return (left.username || '').localeCompare(right.username || '');
+  });
 
   const refreshFriends = async () => {
     const response = await fetch('/api/friends');
@@ -207,7 +214,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
   return (
     <aside ref={chatMenuRef} className="fixed bottom-5 right-5 z-40 inline-block">
       {open && (
-        <section className="absolute bottom-full right-0 z-50 mb-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
+        <section className="absolute bottom-full right-0 z-50 mb-2 h-[40rem] max-h-[78vh] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
@@ -241,20 +248,22 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
               </div>
               <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
                 <div className="text-[9px] uppercase tracking-wider text-zinc-500">Friends</div>
-                {friends.map((entry) => {
+                {sortedFriends.map((entry) => {
                   const online = activeUsers.includes(`@${entry.username}`);
                   return <div key={entry.id} className="flex items-center gap-1 rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300">
                     <button type="button" onClick={() => setDirectUserId(entry.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#2dd4ee] shadow-[0_0_7px_#2dd4ee]' : 'bg-red-400'}`} />
                       <span className="min-w-0">
                         <span className="block truncate">@{entry.username}</span>
-                        {!online && <span className="block text-[9px] text-zinc-500">{formatLastOnline(entry.lastOnline)}</span>}
+                        <span className={`block text-[9px] ${online ? 'text-[#8fe9ff]' : 'text-zinc-500'}`}>
+                          {online ? 'online now' : formatLastOnline(entry.lastOnline)}
+                        </span>
                       </span>
                     </button>
                     <button type="button" onClick={() => void removeFriend(entry.id)} className="text-zinc-500 hover:text-red-200" title="Remove friend"><UserMinus className="h-3 w-3" /></button>
                   </div>;
                 })}
-                {friends.length === 0 && <div className="text-[10px] text-zinc-500">No friends yet. Add someone by username.</div>}
+                {sortedFriends.length === 0 && <div className="text-[10px] text-zinc-500">No friends yet. Add someone by username.</div>}
                 <div className="pt-2 text-[9px] uppercase tracking-wider text-zinc-500">Blocked</div>
                 {blockedUsers.map((entry) => <div key={entry.id} className="flex items-center justify-between rounded bg-[#141824] px-2 py-1.5 text-[10px] text-red-200"><span>@{entry.username}</span><button type="button" onClick={() => void removeFriend(entry.id)} className="text-zinc-500 hover:text-[#2dd4ee]" title="Unblock user">Unblock</button></div>)}
                 {blockedUsers.length === 0 && <div className="text-[10px] text-zinc-500">No blocked users.</div>}
@@ -265,7 +274,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-400">Sign in to add friends and send private messages.</div>
           ) : section === 'private' && directUserId ? (
             <>
-              <div ref={directMessagesRef} className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
+              <div ref={directMessagesRef} className="max-h-80 space-y-2 overflow-y-auto bg-[#141824] p-3">
                 {directMessages.map((message) => <div key={message.id} className={`rounded-lg px-2.5 py-2 text-xs ${message.sender_id === userId ? 'ml-6 bg-[#2dd4ee] text-[#06131a]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>{message.content}</div>)}
               </div>
               <form onSubmit={async (event) => {
@@ -293,7 +302,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
             </>
           ) : section === 'community' ? (
           <>
-            <div ref={communityMessagesRef} className="max-h-64 space-y-2 overflow-y-auto bg-[#141824] p-3">
+            <div ref={communityMessagesRef} className="max-h-80 space-y-2 overflow-y-auto bg-[#141824] p-3">
             {messages.length === 0 && (
               <div className="rounded-lg border border-[#2dd4ee]/20 bg-[#0d1724] px-3 py-3 text-center text-xs leading-relaxed text-zinc-300">
                 Welcome! Drop a quick hello and tell the community which signup bonus or cashback deal you’re looking at.
