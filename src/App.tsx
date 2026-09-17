@@ -750,6 +750,7 @@ export default function App() {
               setSortBy={setSortBy}
               totalOffersCount={liveOffers.length}
               featuredOffers={orderedLiveOffers}
+              onOpenNewsletter={() => setIsNewsletterOpen(true)}
             />
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">

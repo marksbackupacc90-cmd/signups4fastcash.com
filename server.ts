@@ -24,9 +24,25 @@ const ownerEmail = (env.OWNER_EMAIL || 'winters.mark1990@gmail.com').trim().toLo
 function getRequestAppUrl(req: express.Request) {
   const configuredAppUrl = env.APP_URL?.trim().replace(/\/$/, '');
   if (configuredAppUrl) return configuredAppUrl;
+  return getRequestOrigin(req);
+}
+
+function getRequestOrigin(req: express.Request) {
   const forwardedProto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0]?.trim() || req.protocol || 'http';
   const forwardedHost = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim() || (req.headers.host || `localhost:${PORT}`);
   return `${forwardedProto}://${forwardedHost}`;
+}
+
+function getOAuthAppUrl(req: express.Request) {
+  const configuredAppUrl = env.APP_URL?.trim().replace(/\/$/, '');
+  if (!configuredAppUrl) return getRequestOrigin(req);
+  try {
+    const configuredUrl = new URL(configuredAppUrl);
+    const requestUrl = new URL(getRequestOrigin(req));
+    return configuredUrl.hostname === requestUrl.hostname ? configuredAppUrl : requestUrl.origin;
+  } catch {
+    return getRequestOrigin(req);
+  }
 }
 
 async function sendTransactionalEmail(to: string, subject: string, html: string) {
@@ -227,7 +243,7 @@ app.get('/api/auth/google', (req, res) => {
   if (!googleClientId || !googleClientSecret) {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
-  const redirectUri = `${getRequestAppUrl(req)}/api/auth/google/callback`;
+  const redirectUri = `${getOAuthAppUrl(req)}/api/auth/google/callback`;
   const params = new URLSearchParams({
     client_id: googleClientId,
     redirect_uri: redirectUri,
@@ -241,7 +257,7 @@ app.get('/api/auth/google', (req, res) => {
 
 app.get('/api/auth/google/callback', async (req, res) => {
   const code = typeof req.query.code === 'string' ? req.query.code : '';
-  const requestAppUrl = getRequestAppUrl(req);
+  const requestAppUrl = getOAuthAppUrl(req);
   if (!googleClientId || !googleClientSecret || !code) {
     return res.status(400).send('Google sign-in could not be completed.');
   }

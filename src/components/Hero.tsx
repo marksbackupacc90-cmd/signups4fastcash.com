@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ArrowRight, BellRing, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -15,6 +15,7 @@ interface HeroProps {
   totalOffersCount: number;
   featuredOffers: Offer[];
   onOpenFinder?: () => void;
+  onOpenNewsletter?: () => void;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -38,6 +39,7 @@ export const Hero: React.FC<HeroProps> = ({
   totalOffersCount,
   featuredOffers,
   onOpenFinder,
+  onOpenNewsletter,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const marqueeOffers = featuredOffers.length > 0 ? [...featuredOffers, ...featuredOffers] : [];
@@ -108,6 +110,28 @@ export const Hero: React.FC<HeroProps> = ({
           <span><strong className="text-emerald-400">Terms shown</strong> before you click</span>
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
+
+        {onOpenNewsletter && (
+          <div className="mt-5 flex flex-col gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
+                <BellRing className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Get the best new offers sent to you</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">Choose instant drops, a daily digest, or a weekly shortlist. Confirm your email and unsubscribe anytime.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenNewsletter}
+              className="focus-ring inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-cyan-300 px-4 py-2.5 text-xs font-bold text-[#06131a] transition-colors hover:bg-cyan-200"
+            >
+              Subscribe to alerts
+              <ArrowRight className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
           <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-400">Popular guides:</span>
