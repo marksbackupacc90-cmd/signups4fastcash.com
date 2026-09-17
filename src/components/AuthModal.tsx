@@ -27,29 +27,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
   const needsUsername = Boolean(user && !user.username);
   const [authPopup, setAuthPopup] = useState<Window | null>(null);
 
+  const loadAuthenticatedUser = async () => {
+    const response = await fetch('/api/auth/me', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Could not load your account.');
+    const data = await response.json() as { user: AuthUser | null };
+    onUserChange(data.user);
+    if (data.user) {
+      setOpen(!data.user.username);
+      setAuthPopup(null);
+      return true;
+    }
+    return false;
+  };
+
   useEffect(() => {
     if (!disabled && (openRequest > 0 || (requiredAuth && !user))) setOpen(true);
   }, [disabled, openRequest, requiredAuth, user]);
 
   useEffect(() => {
     if (disabled) return;
-    fetch('/api/auth/me')
-      .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
-      .then(({ user: currentUser }) => {
-        onUserChange(currentUser);
-        setOpen(Boolean(currentUser && !currentUser.username));
-      })
+    loadAuthenticatedUser()
       .catch(() => {
         onUserChange(null);
       });
     const handleAuthComplete = () => {
-      fetch('/api/auth/me')
-        .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
-        .then(({ user: currentUser }) => {
-          onUserChange(currentUser);
-          setOpen(Boolean(currentUser && !currentUser.username));
-          setAuthPopup(null);
-        })
+      loadAuthenticatedUser()
         .catch(() => setError('Could not load your account.'));
     };
     const handleMessage = (event: MessageEvent) => {
@@ -65,19 +67,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
     if (!popup) setError('Please allow pop-ups to sign in with Google.');
     else {
       setAuthPopup(popup);
-      const poll = window.setInterval(() => {
-        if (popup.closed) {
-          window.clearInterval(poll);
-          setAuthPopup(null);
-          fetch('/api/auth/me')
-            .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
-            .then(({ user: currentUser }) => {
-              onUserChange(currentUser);
-              setOpen(Boolean(currentUser && !currentUser.username));
-            })
-            .catch(() => setError('Could not load your account.'));
+      const poll = window.setInterval(async () => {
+        try {
+          const authenticated = await loadAuthenticatedUser();
+          if (authenticated || popup.closed) {
+            window.clearInterval(poll);
+            setAuthPopup(null);
+          }
+        } catch {
+          if (popup.closed) {
+            window.clearInterval(poll);
+            setAuthPopup(null);
+            setError('Could not load your account.');
+          }
         }
-      }, 500);
+      }, 700);
+      window.setTimeout(() => {
+        if (!popup.closed && !user) return;
+        window.clearInterval(poll);
+      }, 10 * 60 * 1000);
     }
   };
 
