@@ -25,6 +25,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const needsUsername = Boolean(user && !user.username);
+  const [authPopup, setAuthPopup] = useState<Window | null>(null);
 
   useEffect(() => {
     if (!disabled && (openRequest > 0 || (requiredAuth && !user))) setOpen(true);
@@ -47,18 +48,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
         .then(({ user: currentUser }) => {
           onUserChange(currentUser);
           setOpen(Boolean(currentUser && !currentUser.username));
+          setAuthPopup(null);
         })
         .catch(() => setError('Could not load your account.'));
     };
-    window.addEventListener('message', (event) => {
-      if (event.origin === window.location.origin && event.data?.type === 'sfc-auth-complete') handleAuthComplete();
-    });
-  }, [disabled, onUserChange]);
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source === authPopup && event.data?.type === 'sfc-auth-complete') handleAuthComplete();
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [authPopup, disabled, onUserChange]);
 
   const signIn = () => {
     setError('');
     const popup = window.open('/api/auth/google', 'sfc-google-signin', 'width=520,height=650');
     if (!popup) setError('Please allow pop-ups to sign in with Google.');
+    else {
+      setAuthPopup(popup);
+      const poll = window.setInterval(() => {
+        if (popup.closed) {
+          window.clearInterval(poll);
+          setAuthPopup(null);
+          fetch('/api/auth/me')
+            .then((response) => response.json() as Promise<{ user: AuthUser | null }>)
+            .then(({ user: currentUser }) => {
+              onUserChange(currentUser);
+              setOpen(Boolean(currentUser && !currentUser.username));
+            })
+            .catch(() => setError('Could not load your account.'));
+        }
+      }, 500);
+    }
   };
 
   const saveUsername = async (event: React.FormEvent) => {

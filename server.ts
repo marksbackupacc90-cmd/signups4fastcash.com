@@ -253,7 +253,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
       );
     }
     res.setHeader('Set-Cookie', `sfc_session=${sessionToken}; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax${env.NODE_ENV === 'production' ? '; Secure' : ''}`);
-    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>window.opener?.postMessage({type:'sfc-auth-complete'}, window.location.origin);window.close();</script><p>You can close this window.</p>`);
+    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>window.opener?.postMessage({type:'sfc-auth-complete'}, '*');window.close();</script><p>You can close this window.</p>`);
   } catch (error) {
     console.error('Google sign-in failed:', error);
     res.status(500).send('Google sign-in could not be completed.');
