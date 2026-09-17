@@ -104,6 +104,12 @@ interface AdminAuditEntry {
   createdAt: string;
 }
 
+interface ServiceHealth {
+  status: 'ok' | 'degraded';
+  database: 'connected' | 'memory' | 'unavailable';
+  email: 'configured' | 'not_configured';
+}
+
 export interface UserReferralPreset {
   company: string;
   code: string;
@@ -288,6 +294,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [analyticsResetMessage, setAnalyticsResetMessage] = useState<string | null>(null);
   const [auditEntries, setAuditEntries] = useState<AdminAuditEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [serviceHealth, setServiceHealth] = useState<ServiceHealth | null>(null);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -344,6 +351,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     setAdminUsernamesDraft(adminUsernames.join(', '));
   }, [adminUsernames]);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then(async (response) => {
+        const data = await response.json().catch(() => null) as Partial<ServiceHealth> | null;
+        if (!response.ok || !data?.status || !data.database || !data.email) {
+          throw new Error('Could not load service health.');
+        }
+        setServiceHealth({
+          status: data.status,
+          database: data.database,
+          email: data.email,
+        });
+      })
+      .catch((error) => console.error(error));
+  }, []);
 
   useEffect(() => {
     try {
@@ -710,6 +733,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-6">
+      {serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100" role="alert">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
+          <div>
+            <div className="font-semibold">Production configuration needs attention</div>
+            <div className="mt-1 text-xs leading-relaxed text-amber-100/80">
+              {serviceHealth.email !== 'configured' && 'Email delivery is not configured, so confirmation and broadcast messages cannot be sent. '}
+              {serviceHealth.database === 'unavailable' && 'The database readiness check is failing. '}
+              {serviceHealth.database === 'memory' && 'The server is using memory storage; database-backed changes will not persist. '}
+              Check the Render environment variables and redeploy after correcting them.
+            </div>
+          </div>
+        </div>
+      )}
       {visitorAnalytics && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="sm:col-span-3 flex items-center justify-end gap-2">
