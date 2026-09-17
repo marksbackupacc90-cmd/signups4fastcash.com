@@ -54,10 +54,6 @@ function isAvailableOffer(offer: Offer) {
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
   const [activeTab, setActiveTab] = useState<'offers' | 'admin'>('offers');
-  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
-    localStorage.getItem('signups4fastcash_theme') === 'light' ? 'light' : 'dark'
-  );
-
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
     if (saved) {
@@ -184,10 +180,6 @@ export default function App() {
       body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
     });
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('signups4fastcash_theme', theme);
-  }, [theme]);
 
   useEffect(() => {
     try {
@@ -660,7 +652,7 @@ export default function App() {
         '--site-accent': siteSettings.themeAccentColor,
         '--site-panel': siteSettings.themePanelColor,
       } as React.CSSProperties}
-      className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${theme === 'light' ? 'light-mode' : ''}`}
+      className="retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black"
     >
       <Navbar
         siteSettings={siteSettings}
@@ -857,8 +849,6 @@ export default function App() {
           }
         }}
         isAdminUnlocked={isAdminUnlocked}
-        theme={theme}
-        onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />

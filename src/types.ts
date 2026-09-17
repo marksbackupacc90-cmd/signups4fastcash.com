@@ -124,7 +124,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   brandBadge: 'Verified terms shown',
   footerBlurb: 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.',
   supportEmail: 'support@signups4fastcash.com',
-  footerDisclaimer: 'Questions or corrections? Email support@signups4fastcash.com. Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.',
+  footerDisclaimer: 'Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.',
   trustHeading: 'Compare signup bonuses with confidence',
   trustParagraph: 'We organize publicly available referral and promotional offers so you can compare signup bonuses, no-deposit rewards, cashback offers, requirements, timing, and fine print before visiting the official merchant. We do not hold your money, complete applications for you, or guarantee payment.',
   trustSubtext: 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.',

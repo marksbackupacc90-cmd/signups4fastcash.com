@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Lock, Bell, Moon, Sun } from 'lucide-react';
+import { ShieldCheck, Lock, Bell } from 'lucide-react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
@@ -11,8 +11,6 @@ interface FooterProps {
   pushEnabled?: boolean;
   onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
   isAdminUnlocked?: boolean;
-  theme?: 'dark' | 'light';
-  onToggleTheme?: () => void;
   onSelectOffers: () => void;
 }
 
@@ -24,11 +22,11 @@ export const Footer: React.FC<FooterProps> = ({
   pushEnabled = false,
   onOpenLegal,
   isAdminUnlocked = false,
-  theme = 'dark',
-  onToggleTheme,
   onSelectOffers,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+  const disclaimer = (settings.footerDisclaimer || 'Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.')
+    .replace(/^Questions or corrections\?\s*Email\s+[^.]+\.\s*/i, '');
 
   return (
     <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
@@ -50,7 +48,7 @@ export const Footer: React.FC<FooterProps> = ({
               {settings.footerBlurb || 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.'}
             </p>
             <p className="text-zinc-500 text-xs leading-relaxed max-w-md">
-              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href={`mailto:${settings.supportEmail || 'support@signups4fastcash.com'}`}>{settings.supportEmail || 'support@signups4fastcash.com'}</a>. {settings.footerDisclaimer || 'Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.'}
+              Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href={`mailto:${settings.supportEmail || 'support@signups4fastcash.com'}`}>{settings.supportEmail || 'support@signups4fastcash.com'}</a>. {disclaimer}
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
@@ -122,16 +120,6 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
           <div className="flex items-center gap-4">
             <a href="#trust" className="text-emerald-400 hover:text-emerald-300">How offers work</a>
-            {onToggleTheme && (
-              <button
-                onClick={onToggleTheme}
-                className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
-                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              >
-                {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-              </button>
-            )}
           </div>
         </div>
 
