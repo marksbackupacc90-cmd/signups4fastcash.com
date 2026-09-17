@@ -62,12 +62,12 @@ export const LegalModal: React.FC<LegalModalProps> = ({ section, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl bg-[#0c1017] border border-white/[0.12] p-6 text-sm text-zinc-300 leading-relaxed">
-        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white" aria-label="Close legal information">
+        <button onClick={onClose} className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center text-zinc-400 hover:text-white" aria-label="Close legal information">
           <X className="w-5 h-5" />
         </button>
         <h2 className="pr-8 text-xl font-bold text-white">{content.title}</h2>
         <div className="mt-5 space-y-4">{content.body}</div>
-        <p className="mt-6 border-t border-white/[0.08] pt-4 text-xs text-zinc-500">Last reviewed: September 10, 2026. This information is general and may need updating as the service changes.</p>
+        <p className="mt-6 border-t border-white/[0.08] pt-4 text-xs text-zinc-400">Last reviewed: September 10, 2026. This information is general and may need updating as the service changes.</p>
       </div>
     </div>
   );

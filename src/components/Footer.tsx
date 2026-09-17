@@ -47,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({
             <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
               {settings.footerBlurb || 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.'}
             </p>
-            <p className="text-zinc-500 text-xs leading-relaxed max-w-md">
+            <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
               Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href={`mailto:${settings.supportEmail || 'support@signups4fastcash.com'}`}>{settings.supportEmail || 'support@signups4fastcash.com'}</a>. {disclaimer}
             </p>
 
@@ -66,18 +66,18 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             <ul className="space-y-1.5 text-zinc-400 font-sans">
               <li>
-                <button onClick={onSelectOffers} className="hover:text-white transition-colors">
+                <button onClick={onSelectOffers} className="min-h-11 hover:text-white transition-colors">
                   All Available Offers
                 </button>
               </li>
               <li>
-                <button onClick={onOpenNewsletter} className="hover:text-white transition-colors text-left">
+                <button onClick={onOpenNewsletter} className="min-h-11 hover:text-white transition-colors text-left">
                   Email Drop Alerts
                 </button>
               </li>
               {onTogglePush && (
                 <li>
-                  <button onClick={onTogglePush} className="hover:text-white transition-colors text-left flex items-center gap-1">
+                  <button onClick={onTogglePush} className="min-h-11 hover:text-white transition-colors text-left flex items-center gap-1">
                     <Bell className="w-3 h-3" />
                     {pushEnabled ? 'Push Alerts On' : 'Enable Push Alerts'}
                   </button>
@@ -85,7 +85,7 @@ export const Footer: React.FC<FooterProps> = ({
               )}
               {isAdminUnlocked && (
                 <li>
-                  <button onClick={onSelectAdmin} className="hover:text-amber-300 transition-colors text-left flex items-center gap-1 text-zinc-500">
+                  <button onClick={onSelectAdmin} className="min-h-11 hover:text-amber-300 transition-colors text-left flex items-center gap-1 text-zinc-400">
                     <Lock className="w-3 h-3" />
                     <span>Admin Panel</span>
                   </button>
@@ -101,13 +101,13 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             {onOpenLegal && (
               <div className="space-y-1.5 text-zinc-300">
-                <button onClick={() => onOpenLegal('privacy')} className="block hover:text-white transition-colors text-left">Privacy Policy</button>
-                <button onClick={() => onOpenLegal('terms')} className="block hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button>
-                <button onClick={() => onOpenLegal('affiliate')} className="block hover:text-white transition-colors text-left">Affiliate Disclosure</button>
-                <button onClick={() => onOpenLegal('methodology')} className="block hover:text-white transition-colors text-left">Editorial Methodology</button>
+                <button onClick={() => onOpenLegal('privacy')} className="block min-h-11 hover:text-white transition-colors text-left">Privacy Policy</button>
+                <button onClick={() => onOpenLegal('terms')} className="block min-h-11 hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button>
+                <button onClick={() => onOpenLegal('affiliate')} className="block min-h-11 hover:text-white transition-colors text-left">Affiliate Disclosure</button>
+                <button onClick={() => onOpenLegal('methodology')} className="block min-h-11 hover:text-white transition-colors text-left">Editorial Methodology</button>
               </div>
             )}
-            <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
+            <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
               <strong>Affiliate Disclosure:</strong> Some links may compensate us at no additional cost to you. Offers are controlled by their merchants; eligibility, terms, taxes, fees, and payout timing can change. We do not provide financial, tax, legal, or investment advice.
             </p>
           </div>

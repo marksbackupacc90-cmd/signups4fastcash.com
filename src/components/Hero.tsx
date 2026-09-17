@@ -57,7 +57,7 @@ export const Hero: React.FC<HeroProps> = ({
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
             {settings.subHeadline}
           </p>
-          <p className="mt-3 text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-2xl">
+          <p className="mt-3 text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
@@ -110,7 +110,7 @@ export const Hero: React.FC<HeroProps> = ({
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
-          <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-500">Popular guides:</span>
+          <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-400">Popular guides:</span>
           <a href="/cashback-offers" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Cashback offers</a>
           <a href="/signup-bonus-sites" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Signup bonus sites</a>
           <a href="/best-no-deposit-bonuses-this-month" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit bonuses</a>
@@ -144,7 +144,7 @@ export const Hero: React.FC<HeroProps> = ({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="focus-ring absolute right-3 top-1/2 -translate-y-1/2 rounded px-1 text-xs text-zinc-400 hover:text-white"
+                className="focus-ring absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded px-1 text-xs text-zinc-400 hover:text-white"
                 aria-label="Clear offer search"
               >
                 Clear
