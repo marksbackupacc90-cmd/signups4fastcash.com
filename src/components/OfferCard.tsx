@@ -178,6 +178,10 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                 <span className="text-[10px] text-zinc-500">EFFORT</span>
                 <span className="truncate font-medium text-emerald-400">{offer.difficulty}</span>
               </div>
+              <div className="flex min-h-11 flex-col justify-center rounded border border-white/[0.04] bg-white/[0.02] px-2 py-1 sm:col-span-3">
+                <span className="text-[10px] text-zinc-500">AVAILABILITY</span>
+                <span className="font-medium text-zinc-200">{offer.availability}</span>
+              </div>
             </div>
 
             {/* Referral Code Box (if present) */}

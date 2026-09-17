@@ -499,6 +499,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       payoutSpeed: newPayoutSpeed,
       difficulty: newDifficulty,
       depositRequired: newDeposit,
+      availability: 'Verify current country and state eligibility',
       officialMerchantUrl: newRefUrl || 'https://google.com',
       referralCode: newRefCode,
       referralUrl: newRefUrl,

@@ -55,6 +55,7 @@ function applyCoinsBackTerms<T extends Record<string, any>>(offer: T): T {
     incentiveValue: 2,
     payoutSpeed: 'CoinsBack timing depends on the current program terms',
     depositRequired: '$0 (no purchase necessary)',
+    availability: 'Verify current country and state eligibility',
     verificationStatus: 'reviewed',
     verifiedAt: new Date().toISOString(),
     honestTruth: {
