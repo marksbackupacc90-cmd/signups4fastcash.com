@@ -306,18 +306,18 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
     const userId = randomUUID();
     let user = database
-      ? (await database.query<{ id: string; google_sub: string; email: string; username: string | null; account_status: 'active' | 'blocked' }>(
+      ? (await database.query<{ id: string; google_sub: string; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null; account_status: 'active' | 'blocked' }>(
         `INSERT INTO users (id, google_sub, email)
          VALUES ($1, $2, $3)
          ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()
-         RETURNING id, google_sub, email, username, account_status`,
+         RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status`,
         [userId, identity.sub, identity.email],
       )).rows[0]
       : undefined;
     if (database && !user) return res.status(500).send('Could not create your account.');
     if (user?.account_status === 'blocked') return res.status(403).send('This account has been blocked. Please contact support.');
     const memoryUser = user
-      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null, accountStatus: user.account_status, lastLoginAt: new Date().toISOString() }
+      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: user.avatar_url, paypalEmail: user.paypal_email, dateOfBirth: user.date_of_birth, sex: user.sex, state: user.state, accountStatus: user.account_status, lastLoginAt: new Date().toISOString() }
       : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null, accountStatus: 'active' as const, lastLoginAt: new Date().toISOString() };
     authUsers.set(memoryUser.id, memoryUser);
     if (database) {
@@ -357,11 +357,11 @@ app.post('/api/auth/username', async (req, res) => {
       );
       if (taken.rowCount) return res.status(409).json({ error: 'Username taken. Please pick another.' });
       const result = await database.query(
-        'UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, username',
+        'UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, username, avatar_url, paypal_email, date_of_birth, sex, state',
         [username, user.id],
       );
       if (!result.rows[0]) return res.status(404).json({ error: 'Account not found.' });
-      return res.json({ user: result.rows[0] });
+      return res.json({ user: result.rows[0] ? { id: result.rows[0].id, email: result.rows[0].email, username: result.rows[0].username, avatarUrl: result.rows[0].avatar_url, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state } : null });
     }
     const duplicate = [...authUsers.values()].some((entry) => entry.username?.toLowerCase() === username.toLowerCase() && entry.id !== user.id);
     if (duplicate) return res.status(409).json({ error: 'That username is already taken.' });
