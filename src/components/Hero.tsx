@@ -98,10 +98,11 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
           <div className="w-full max-w-[13rem] self-start sm:max-w-[15rem] lg:w-64">
             <div className="grid grid-cols-2 gap-3">
-            {visibleLogoOffers.map((offer) => (
+            {visibleLogoOffers.map((offer, index) => (
               <div
                 key={offer.id}
-                className="animate-in fade-in flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0a1220] p-2 transition-colors duration-700 hover:border-[#2dd4ee]/40 hover:bg-[#0f1d2d] sm:p-3"
+                className="logo-breathe flex aspect-square items-center justify-center rounded-lg border border-white/[0.08] bg-[#0a1220] p-2 transition-colors hover:border-[#2dd4ee]/40 hover:bg-[#0f1d2d] sm:p-3"
+                style={{ animationDelay: `${index * 350}ms` }}
               >
                 <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" loading="eager" className="!h-14 !w-14 rounded-md sm:!h-16 sm:!w-16" />
               </div>

@@ -29,6 +29,26 @@ html {
   background: var(--site-background, #04080d);
 }
 
+@keyframes logo-breathe {
+  0%, 100% {
+    opacity: 0.58;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.logo-breathe {
+  animation: logo-breathe 4.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-breathe {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 [data-site-theme="custom"] .retro-window {
   border-color: color-mix(in srgb, var(--site-accent, #2dd4ee) 24%, transparent);
 }
