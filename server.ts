@@ -35,14 +35,7 @@ function getRequestOrigin(req: express.Request) {
 
 function getOAuthAppUrl(req: express.Request) {
   const configuredAppUrl = env.APP_URL?.trim().replace(/\/$/, '');
-  if (!configuredAppUrl) return getRequestOrigin(req);
-  try {
-    const configuredUrl = new URL(configuredAppUrl);
-    const requestUrl = new URL(getRequestOrigin(req));
-    return configuredUrl.hostname === requestUrl.hostname ? configuredAppUrl : requestUrl.origin;
-  } catch {
-    return getRequestOrigin(req);
-  }
+  return configuredAppUrl || getRequestOrigin(req);
 }
 
 async function sendTransactionalEmail(to: string, subject: string, html: string) {
@@ -342,7 +335,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
       );
     }
     res.setHeader('Set-Cookie', `sfc_session=${sessionToken}; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax${env.NODE_ENV === 'production' ? '; Secure' : ''}`);
-    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>window.opener?.postMessage({type:'sfc-auth-complete'}, '*');window.close();</script><p>You can close this window.</p>`);
+    res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>if(window.opener){window.opener.location.replace(${JSON.stringify(requestAppUrl)});window.opener.postMessage({type:'sfc-auth-complete'}, '*');}window.close();</script><p>Sign-in complete. You can close this window.</p>`);
   } catch (error) {
     console.error('Google sign-in failed:', error);
     res.status(500).send('Google sign-in could not be completed.');
