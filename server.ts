@@ -30,7 +30,7 @@ function getRequestAppUrl(req: express.Request) {
 }
 const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
-const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null }>();
+const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null; accountStatus: 'active' | 'blocked'; lastLoginAt: string | null }>();
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const cpxTransactions = new Set<string>();
 const cpxBalances = new Map<string, number>();
@@ -153,16 +153,18 @@ async function getAuthenticatedUser(req: express.Request) {
   if (!token) return null;
   const session = authSessions.get(token);
   if (session && session.expiresAt > Date.now()) {
-    return authUsers.get(session.userId) || null;
+    const memoryUser = authUsers.get(session.userId);
+    return memoryUser?.accountStatus === 'blocked' ? null : memoryUser || null;
   }
   if (session) authSessions.delete(token);
   if (!database) return null;
-  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null }>(
-    `SELECT users.id, users.google_sub, users.email, users.username, users.avatar_url, users.paypal_email, users.date_of_birth, users.sex, users.state
+  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null; account_status: 'active' | 'blocked' }>(
+    `SELECT users.id, users.google_sub, users.email, users.username, users.avatar_url, users.paypal_email, users.date_of_birth, users.sex, users.state, users.account_status
      FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.token = $1 AND auth_sessions.expires_at > NOW()`,
     [token],
   );
+  if (result.rows[0]?.account_status === 'blocked') return null;
   return result.rows[0]
     ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username, avatarUrl: result.rows[0].avatar_url, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state }
     : null;
@@ -226,20 +228,22 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
     const userId = randomUUID();
     let user = database
-      ? (await database.query<{ id: string; google_sub: string; email: string; username: string | null }>(
+      ? (await database.query<{ id: string; google_sub: string; email: string; username: string | null; account_status: 'active' | 'blocked' }>(
         `INSERT INTO users (id, google_sub, email)
          VALUES ($1, $2, $3)
          ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()
-         RETURNING id, google_sub, email, username`,
+         RETURNING id, google_sub, email, username, account_status`,
         [userId, identity.sub, identity.email],
       )).rows[0]
       : undefined;
     if (database && !user) return res.status(500).send('Could not create your account.');
+    if (user?.account_status === 'blocked') return res.status(403).send('This account has been blocked. Please contact support.');
     const memoryUser = user
-      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null }
-      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null };
+      ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null, accountStatus: user.account_status, lastLoginAt: new Date().toISOString() }
+      : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null, accountStatus: 'active' as const, lastLoginAt: new Date().toISOString() };
     authUsers.set(memoryUser.id, memoryUser);
     if (database) {
+      await database.query('UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1', [memoryUser.id]);
       await syncOwnerFriendListForUser(memoryUser.id);
     }
     const sessionToken = randomBytes(32).toString('hex');
@@ -487,6 +491,8 @@ async function initializeOfferStore() {
       date_of_birth DATE,
       sex TEXT,
       state TEXT,
+      account_status TEXT NOT NULL DEFAULT 'active' CHECK (account_status IN ('active', 'blocked')),
+      last_login_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -516,6 +522,8 @@ async function initializeOfferStore() {
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS state TEXT`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT 'active'`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`);
   await database.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique
     ON users (LOWER(username)) WHERE username IS NOT NULL
@@ -1049,8 +1057,13 @@ app.get('/api/admin/access', requireOwnerAdmin, (_req, res) => {
 
 app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
   if (database) {
-    const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date }>(
-      'SELECT id, email, username, created_at FROM users ORDER BY created_at DESC',
+    const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked'; active_sessions: string }>(
+      `SELECT users.id, users.email, users.username, users.created_at, users.last_login_at, users.account_status,
+         COUNT(auth_sessions.token) FILTER (WHERE auth_sessions.expires_at > NOW())::text AS active_sessions
+       FROM users
+       LEFT JOIN auth_sessions ON auth_sessions.user_id = users.id
+       GROUP BY users.id
+       ORDER BY users.created_at DESC`,
     );
     return res.json({
       accounts: result.rows.map((account) => ({
@@ -1058,6 +1071,9 @@ app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
         email: account.email,
         username: account.username,
         createdAt: account.created_at.toISOString(),
+        lastLoginAt: account.last_login_at?.toISOString() || null,
+        status: account.account_status,
+        activeSessions: Number(account.active_sessions || 0),
       })),
     });
   }
@@ -1068,8 +1084,40 @@ app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
       email: account.email,
       username: account.username,
       createdAt: null,
+      lastLoginAt: account.lastLoginAt,
+      status: account.accountStatus,
+      activeSessions: [...authSessions.values()].filter((session) => session.userId === account.id && session.expiresAt > Date.now()).length,
     })),
   });
+});
+
+app.patch('/api/admin/accounts/:id/status', requireOwnerAdmin, async (req, res) => {
+  const status = req.body?.status;
+  if (status !== 'active' && status !== 'blocked') return res.status(400).json({ error: 'Invalid account status.' });
+  if (database) {
+    const result = await database.query('UPDATE users SET account_status = $1, updated_at = NOW() WHERE id = $2 RETURNING id', [status, req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Account not found.' });
+    if (status === 'blocked') await database.query('DELETE FROM auth_sessions WHERE user_id = $1', [req.params.id]);
+  } else {
+    const account = authUsers.get(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Account not found.' });
+    account.accountStatus = status;
+    if (status === 'blocked') {
+      [...authSessions.entries()].forEach(([token, session]) => { if (session.userId === account.id) authSessions.delete(token); });
+    }
+  }
+  res.json({ status });
+});
+
+app.delete('/api/admin/accounts/:id', requireOwnerAdmin, async (req, res) => {
+  if (database) {
+    const result = await database.query('DELETE FROM users WHERE id = $1 RETURNING id', [req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Account not found.' });
+  } else if (!authUsers.delete(req.params.id)) {
+    return res.status(404).json({ error: 'Account not found.' });
+  }
+  [...authSessions.entries()].forEach(([token, session]) => { if (session.userId === req.params.id) authSessions.delete(token); });
+  res.json({ deleted: true });
 });
 
 app.put('/api/admin/access', requireOwnerAdmin, async (req, res) => {

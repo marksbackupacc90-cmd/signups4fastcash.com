@@ -77,6 +77,9 @@ interface AdminAccount {
   email: string;
   username: string | null;
   createdAt: string | null;
+  lastLoginAt: string | null;
+  status: 'active' | 'blocked';
+  activeSessions: number;
 }
 
 interface ProviderAccountLink {
@@ -262,6 +265,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
   const [resettingAnalytics, setResettingAnalytics] = useState(false);
   const [analyticsResetMessage, setAnalyticsResetMessage] = useState<string | null>(null);
 
@@ -366,6 +371,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       .catch((error) => setAccountsError(error instanceof Error ? error.message : 'Could not load accounts.'))
       .finally(() => setAccountsLoading(false));
   }, [activeAdminTab, isOwnerAdmin]);
+
+  const runAccountAction = async (account: AdminAccount, action: 'toggle' | 'delete') => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const nextStatus = account.status === 'blocked' ? 'active' : 'blocked';
+    if (action === 'delete' && !window.confirm(`Permanently delete ${account.email}? This cannot be undone.`)) return;
+    if (action === 'toggle' && !window.confirm(`${nextStatus === 'blocked' ? 'Block' : 'Unblock'} ${account.email}?`)) return;
+    setAccountActionLoading(account.id);
+    try {
+      const response = await fetch(action === 'delete' ? `/api/admin/accounts/${account.id}` : `/api/admin/accounts/${account.id}/status`, {
+        method: action === 'delete' ? 'DELETE' : 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        ...(action === 'toggle' ? { body: JSON.stringify({ status: nextStatus }) } : {}),
+      });
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Account action failed.');
+      if (action === 'delete') setAccounts((current) => current.filter((entry) => entry.id !== account.id));
+      else setAccounts((current) => current.map((entry) => entry.id === account.id ? { ...entry, status: nextStatus, activeSessions: nextStatus === 'blocked' ? 0 : entry.activeSessions } : entry));
+    } catch (error) {
+      setAccountsError(error instanceof Error ? error.message : 'Account action failed.');
+    } finally {
+      setAccountActionLoading(null);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -758,26 +786,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
             {accountsLoading && <span className="text-xs text-zinc-400">Loading...</span>}
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <input
+              value={accountSearch}
+              onChange={(event) => setAccountSearch(event.target.value)}
+              placeholder="Search email or username"
+              className="min-w-[220px] flex-1 rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
+            />
+            <span className="text-xs text-zinc-500">Blocked accounts cannot sign in or use active sessions.</span>
+          </div>
           {accountsError && <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{accountsError}</p>}
           {!accountsLoading && !accountsError && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
           )}
           {accounts.length > 0 && (
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-xs">
+              <table className="w-full min-w-[980px] text-left text-xs">
                 <thead className="border-b border-white/[0.08] text-zinc-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">Email</th>
                     <th className="px-3 py-2 font-medium">Username</th>
                     <th className="px-3 py-2 font-medium">Signed up</th>
+                    <th className="px-3 py-2 font-medium">Most recent login</th>
+                    <th className="px-3 py-2 font-medium">Status / sessions</th>
+                    <th className="px-3 py-2 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {accounts.map((account) => (
+                  {accounts.filter((account) => `${account.email} ${account.username || ''}`.toLowerCase().includes(accountSearch.toLowerCase().trim())).map((account) => (
                     <tr key={account.id} className="border-b border-white/[0.05] text-zinc-200">
                       <td className="px-3 py-3">{account.email}</td>
                       <td className="px-3 py-3">{account.username ? `@${account.username}` : 'Not chosen'}</td>
                       <td className="px-3 py-3 text-zinc-400">{account.createdAt ? new Date(account.createdAt).toLocaleString() : 'Current session data'}</td>
+                      <td className="px-3 py-3 text-zinc-400">{account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleString() : 'Never'}</td>
+                      <td className="px-3 py-3">
+                        <span className={account.status === 'blocked' ? 'text-red-300' : 'text-emerald-300'}>{account.status}</span>
+                        <span className="ml-2 text-zinc-500">{account.activeSessions} session{account.activeSessions === 1 ? '' : 's'}</span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex gap-2">
+                          <button type="button" disabled={accountActionLoading === account.id} onClick={() => runAccountAction(account, 'toggle')} className="rounded border border-white/10 px-2 py-1 text-[11px] text-zinc-200 hover:border-cyan-400 disabled:opacity-50">
+                            {account.status === 'blocked' ? 'Unblock' : 'Block'}
+                          </button>
+                          <button type="button" disabled={accountActionLoading === account.id} onClick={() => runAccountAction(account, 'delete')} className="rounded border border-red-400/30 px-2 py-1 text-[11px] text-red-300 hover:bg-red-400/10 disabled:opacity-50">
+                            Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
