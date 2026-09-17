@@ -67,18 +67,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
     if (!popup) setError('Please allow pop-ups to sign in with Google.');
     else {
       setAuthPopup(popup);
+      let closedChecks = 0;
       const poll = window.setInterval(async () => {
         try {
           const authenticated = await loadAuthenticatedUser();
-          if (authenticated || popup.closed) {
+          if (authenticated) {
             window.clearInterval(poll);
             setAuthPopup(null);
+          } else if (popup.closed && closedChecks >= 8) {
+            window.clearInterval(poll);
+            setAuthPopup(null);
+            setError('Google sign-in did not create a session. Please try again.');
+          } else if (popup.closed) {
+            closedChecks += 1;
           }
         } catch {
-          if (popup.closed) {
+          if (popup.closed && closedChecks >= 8) {
             window.clearInterval(poll);
             setAuthPopup(null);
             setError('Could not load your account.');
+          } else if (popup.closed) {
+            closedChecks += 1;
           }
         }
       }, 700);
