@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-type LegalSection = 'privacy' | 'terms' | 'affiliate';
+export type LegalSection = 'privacy' | 'terms' | 'affiliate' | 'methodology';
 
 interface LegalModalProps {
   section: LegalSection | null;
@@ -14,7 +14,8 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
     body: (
       <>
         <p>We collect information you choose to submit, such as your email address when you subscribe to alerts. We use it to provide the requested alerts and maintain the service.</p>
-        <p>We may also receive basic technical information from your browser and hosting provider, such as request time, device type, and IP address, for security and reliability.</p>
+        <p>We may also receive basic technical information from your browser and hosting provider, such as request time, device type, and IP address, for security and reliability. With your permission, we use hosting-provider location signals to estimate a visitor's general country and region for aggregate analytics; we do not store exact GPS locations or raw IP addresses for this feature.</p>
+        <p>Optional analytics can be declined without limiting access to the site. Visitor analytics are retained for up to 365 days by default, subject to the site's configured retention period, and are then deleted. To request access to or deletion of information associated with you, or to withdraw newsletter consent, contact the site operator at the support address shown below.</p>
         <p>We do not sell your personal information. Merchant websites have their own privacy policies, and you should review them before applying through an external link.</p>
         <p>To request removal of a newsletter address or ask a privacy question, contact the site operator through the email address listed in the deployment configuration.</p>
       </>
@@ -38,6 +39,17 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
         <p>Some links on this site are referral or affiliate links. If you use one, the merchant may compensate us at no additional cost to you.</p>
         <p>Affiliate compensation does not change the merchant's eligibility rules, approval decisions, fees, or payout obligations.</p>
         <p>We aim to describe requirements plainly, but the official merchant terms are the controlling source. Please report outdated or inaccurate offer information so it can be reviewed.</p>
+      </>
+    ),
+  },
+  methodology: {
+    title: 'Editorial Methodology',
+    body: (
+      <>
+        <p>We organize publicly available promotions so visitors can compare the advertised reward, required actions, timing, fees, eligibility, and important fine print before visiting the official merchant.</p>
+        <p>Offers are reviewed against the official merchant or program page when available. A review records what was visible at that time; it does not guarantee approval, eligibility, payout, or that terms will remain unchanged. Reviews are scheduled to expire so stale promotions can be checked again.</p>
+        <p>Offers are not ranked solely by the largest advertised dollar amount. We consider clarity of requirements, deposit or purchase obligations, payout timing, geographic limitations, and the risk of conditions being misunderstood.</p>
+        <p>Some links are referral or affiliate links. That compensation does not buy a favorable review or change how requirements are described. If you find an outdated or inaccurate offer, contact the site operator so it can be reviewed and corrected.</p>
       </>
     ),
   },

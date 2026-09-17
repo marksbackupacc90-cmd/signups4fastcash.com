@@ -17,6 +17,12 @@ Set these in the hosting panel:
 - `CPX_SECURE_HASH` — private CPX postback secret; set this in Render and never commit it
 - `GOOGLE_CLIENT_ID` — Google OAuth web application client ID
 - `GOOGLE_CLIENT_SECRET` — Google OAuth web application secret
+- `RESEND_API_KEY` — Resend API key for confirmation and alert delivery
+- `EMAIL_FROM` — verified sender, for example `Signups4FastCash.com <alerts@your-domain.com>`
+- `NEWSLETTER_UNSUBSCRIBE_SECRET` — long random secret used to sign unsubscribe links
+- `NEWSLETTER_WEBHOOK_SECRET` — separate secret configured on the email-provider webhook
+- `ADMIN_SESSION_HOURS` — optional admin-token lifetime, default `2`
+- `VISITOR_ANALYTICS_RETENTION_DAYS` — optional visitor-event retention, default `365`
 
 Once `CPX_SECURE_HASH` is configured, the Surveys & Rewards category generates a signed CPX iframe URL for each anonymous browser session. Without this secret, the site intentionally shows a configuration message instead of a broken survey wall.
 
@@ -58,9 +64,40 @@ The callback accepts CPX statuses `1` (credit) and `2` (reversal), validates the
 4. Use these values:
    - Build Command: `npm install && npm run build`
    - Start Command: `npm run start`
-   - Health Check Path: `/api/health`
+   - Health Check Path: `/api/health` (returns HTTP 503 when PostgreSQL is configured but unavailable)
 5. Add the environment variables above, or use the `render.yaml` blueprint to create the web service and database together.
 6. Deploy. On the first start, the server creates the `offers` table and imports the catalog from `src/data/initialOffers.ts`.
+
+## Redeploying offer catalog changes
+
+Offer cards are bundled into the frontend during `npm run build`. After adding or
+updating an offer in `src/data/initialOffers.ts`:
+
+1. Push the change to the branch connected to Render.
+2. In Render, open the `signups4fastcash` service and select **Manual Deploy > Deploy latest commit**.
+3. Wait for the deploy to become live and confirm the health check is passing.
+4. Open `https://signups4fastcash.com/api/offers` and verify the offer ID is present.
+5. Open the homepage in a private window, hard-refresh, and click the offer card to confirm its referral URL.
+
+For the Western Union card, verify `offer-western-union-referral` and
+`https://ssqt.co/mQXPJgc`. Do not rely on an old browser tab or cached JavaScript
+when checking a newly deployed catalog.
+
+## Monitoring and recovery
+
+- Configure the hosting platform health check to call `/api/health`. It returns HTTP 503 when
+  PostgreSQL is configured but cannot answer a readiness probe.
+- Send response status and the `x-request-id` header to your log/incident system so failures can
+  be traced without logging tokens, passwords, or subscriber email contents.
+- Configure the email provider webhook to POST bounce and complaint events to
+  `/api/newsletter/provider-webhook` with the `x-newsletter-webhook-secret` header. The endpoint
+  suppresses affected addresses from future broadcasts.
+- Enable automated PostgreSQL backups in the hosting provider and perform a restore test before
+  launch. Source code cannot create or verify provider-side backups.
+- Keep database, email, OAuth, CPX, and admin secrets only in the hosting provider's secret
+  manager. Never place them in the repository.
+- Before a production release, run `npm run lint`, `npm test`, and a smoke test covering health,
+  newsletter confirmation, unsubscribe, admin unlock, offer publishing, and analytics access.
 
 ## Custom domain
 1. In Render, add the custom domain `signups4fastcash.com`.

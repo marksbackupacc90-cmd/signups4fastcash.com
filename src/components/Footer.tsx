@@ -9,7 +9,7 @@ interface FooterProps {
   onSelectAdmin: () => void;
   onTogglePush?: () => void;
   pushEnabled?: boolean;
-  onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate') => void;
+  onOpenLegal?: (section: 'privacy' | 'terms' | 'affiliate' | 'methodology') => void;
   isAdminUnlocked?: boolean;
   onSelectOffers: () => void;
 }
@@ -104,6 +104,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <button onClick={() => onOpenLegal('privacy')} className="block hover:text-white transition-colors text-left">Privacy Policy</button>
                 <button onClick={() => onOpenLegal('terms')} className="block hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button>
                 <button onClick={() => onOpenLegal('affiliate')} className="block hover:text-white transition-colors text-left">Affiliate Disclosure</button>
+                <button onClick={() => onOpenLegal('methodology')} className="block hover:text-white transition-colors text-left">Editorial Methodology</button>
               </div>
             )}
             <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">

@@ -70,6 +70,13 @@ interface VisitorAnalytics {
   totalPageViews: number;
   uniqueVisitors: number;
   sources: { source: string; pageViews: number }[];
+  locations: {
+    country: string;
+    region: string;
+    pageViews: number;
+    uniqueVisitors: number;
+  }[];
+  filtered?: boolean;
 }
 
 interface AdminAccount {
@@ -86,6 +93,15 @@ interface ProviderAccountLink {
   id: string;
   label: string;
   url: string;
+}
+
+interface AdminAuditEntry {
+  id: string;
+  action: string;
+  role: string;
+  actor: string | null;
+  details: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface UserReferralPreset {
@@ -249,7 +265,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts'>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit'>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
@@ -262,6 +278,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotError, setCopilotError] = useState<string | null>(null);
   const [visitorAnalytics, setVisitorAnalytics] = useState<VisitorAnalytics | null>(null);
+  const [analyticsRange, setAnalyticsRange] = useState<'all' | '7d' | '30d'>('all');
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -269,6 +286,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
   const [resettingAnalytics, setResettingAnalytics] = useState(false);
   const [analyticsResetMessage, setAnalyticsResetMessage] = useState<string | null>(null);
+  const [auditEntries, setAuditEntries] = useState<AdminAuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -372,6 +391,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       .finally(() => setAccountsLoading(false));
   }, [activeAdminTab, isOwnerAdmin]);
 
+  useEffect(() => {
+    if (activeAdminTab !== 'audit' || !isOwnerAdmin) return;
+    setAuditLoading(true);
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    fetch('/api/admin/audit-log', { headers: token ? { 'x-admin-token': token } : {} })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Could not load the admin audit log.');
+        return response.json() as Promise<{ entries?: AdminAuditEntry[] }>;
+      })
+      .then((data) => setAuditEntries(data.entries || []))
+      .catch((error) => console.error(error))
+      .finally(() => setAuditLoading(false));
+  }, [activeAdminTab, isOwnerAdmin]);
+
   const runAccountAction = async (account: AdminAccount, action: 'toggle' | 'delete') => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
     const nextStatus = account.status === 'blocked' ? 'active' : 'blocked';
@@ -397,7 +430,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
-    fetch('/api/admin/analytics/visitors', {
+    const query = analyticsRange === 'all' ? '' : `?from=${new Date(Date.now() - (analyticsRange === '7d' ? 7 : 30) * 86400000).toISOString().slice(0, 10)}`;
+    fetch(`/api/admin/analytics/visitors${query}`, {
       headers: token ? { 'x-admin-token': token } : {},
     })
       .then(async (response) => {
@@ -406,7 +440,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       })
       .then(setVisitorAnalytics)
       .catch((error) => console.error(error));
-  }, []);
+  }, [analyticsRange]);
 
   const handleOutreachAssistant = async () => {
     if (!outreachTask.trim()) {
@@ -678,6 +712,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="space-y-6">
       {visitorAnalytics && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-3 flex items-center justify-end gap-2">
+            <span className="text-[11px] font-mono text-zinc-500">Analytics range</span>
+            {(['all', '30d', '7d'] as const).map((range) => (
+              <button
+                key={range}
+                type="button"
+                onClick={() => setAnalyticsRange(range)}
+                className={`rounded border px-2 py-1 text-[10px] font-mono ${analyticsRange === range ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-200' : 'border-white/10 text-zinc-500 hover:text-zinc-200'}`}
+              >
+                {range === 'all' ? 'All' : range === '30d' ? '30 days' : '7 days'}
+              </button>
+            ))}
+          </div>
           <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
             <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Unique visitors</div>
             <div className="mt-2 text-2xl font-mono font-bold text-white">{visitorAnalytics.uniqueVisitors.toLocaleString()}</div>
@@ -692,6 +739,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Top source</div>
             <div className="mt-2 truncate text-lg font-mono font-bold text-white">{visitorAnalytics.sources[0]?.source || 'No data yet'}</div>
             <div className="mt-1 text-[11px] text-zinc-500">{visitorAnalytics.sources[0]?.pageViews || 0} page views</div>
+          </div>
+          <div className="sm:col-span-3 rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Approximate visitor locations</div>
+                <div className="mt-1 text-[11px] text-zinc-500">Coarse country/region estimates; no exact location or raw IP is stored.</div>
+              </div>
+              <div className="text-[11px] text-zinc-500">{visitorAnalytics.locations.length} locations</div>
+            </div>
+            {visitorAnalytics.locations.length > 0 ? (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-xs">
+                  <thead className="border-b border-white/[0.08] text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                    <tr>
+                      <th className="px-2 py-2 font-normal">Country</th>
+                      <th className="px-2 py-2 font-normal">Region</th>
+                      <th className="px-2 py-2 text-right font-normal">Visitors</th>
+                      <th className="px-2 py-2 text-right font-normal">Page views</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visitorAnalytics.locations.slice(0, 20).map((location) => (
+                      <tr key={`${location.country}-${location.region}`} className="border-b border-white/[0.05] last:border-0">
+                        <td className="px-2 py-2 text-zinc-200">{location.country}</td>
+                        <td className="px-2 py-2 text-zinc-400">{location.region}</td>
+                        <td className="px-2 py-2 text-right font-mono text-zinc-200">{location.uniqueVisitors.toLocaleString()}</td>
+                        <td className="px-2 py-2 text-right font-mono text-zinc-400">{location.pageViews.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="mt-3 text-xs text-zinc-500">No location data has been recorded yet.</div>
+            )}
           </div>
           {isOwnerAdmin && (
             <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#9b7650]/35 bg-[#10131d] p-4">
@@ -774,6 +856,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <option value="blasts">Email History ({blastLogs.length})</option>
             <option value="settings">Site Settings</option>
             {isOwnerAdmin && <option value="accounts">Accounts</option>}
+            {isOwnerAdmin && <option value="audit">Audit Log</option>}
           </select>
         </label>
       </div>
@@ -799,6 +882,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {accountsError && <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{accountsError}</p>}
           {!accountsLoading && !accountsError && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
+          )}
+
+          {activeAdminTab === 'audit' && isOwnerAdmin && (
+            <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+              <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+                <div>
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Owner-only history</div>
+                  <h3 className="mt-1 text-lg font-bold text-white">Admin Audit Log</h3>
+                </div>
+                {auditLoading && <span className="text-xs text-zinc-400">Loading...</span>}
+              </div>
+              {auditEntries.length === 0 && !auditLoading ? (
+                <p className="mt-4 text-xs text-zinc-500">No audit events recorded yet.</p>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  {auditEntries.map((entry) => (
+                    <div key={entry.id} className="rounded-lg border border-white/[0.06] bg-[#141824] p-3 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="font-mono text-zinc-200">{entry.action}</strong>
+                        <span className="font-mono text-[10px] text-zinc-500">{new Date(entry.createdAt).toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 text-zinc-500">
+                        {entry.role} {entry.actor ? `• ${entry.actor}` : ''}
+                      </div>
+                      {Object.keys(entry.details).length > 0 && (
+                        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[10px] text-zinc-400">{JSON.stringify(entry.details)}</pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {accounts.length > 0 && (
             <div className="mt-4 overflow-x-auto">
@@ -1508,8 +1623,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-zinc-500">
-                        <span>Status: <strong className="text-zinc-300">{offer.verificationStatus === 'reviewed' ? 'Reviewed' : 'Terms vary'}</strong></span>
+                        <span>Status: <strong className={offer.verificationExpiresAt && new Date(offer.verificationExpiresAt) <= new Date() ? 'text-red-300' : 'text-zinc-300'}>{offer.verificationExpiresAt && new Date(offer.verificationExpiresAt) <= new Date() ? 'Review expired' : offer.verificationStatus === 'reviewed' ? 'Reviewed' : 'Terms vary'}</strong></span>
                         <span>Last checked: <strong className="text-zinc-300">{offer.verifiedAt ? new Date(offer.verifiedAt).toLocaleDateString() : 'Not checked'}</strong></span>
+                        <span>Review due: <strong className="text-zinc-300">{offer.verificationExpiresAt ? new Date(offer.verificationExpiresAt).toLocaleDateString() : 'Not scheduled'}</strong></span>
                       </div>
                     </div>
 

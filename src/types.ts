@@ -34,6 +34,7 @@ export interface Offer {
   referralUrl: string;
   sourceUrl?: string;
   verifiedAt?: string;
+  verificationExpiresAt?: string;
   verificationStatus?: 'unverified' | 'reviewed' | 'terms-vary';
   
   // "Logo for each company its for displayed next to the offer title"
@@ -91,6 +92,8 @@ export interface EmailBlastLog {
   recipientCount: number;
   subject: string;
   pushSent: boolean;
+  status?: 'delivered' | 'failed' | 'not_configured';
+  failureReason?: string;
 }
 
 export interface SiteSettings {

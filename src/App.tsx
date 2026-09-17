@@ -1,14 +1,14 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
-import { AdminPanel } from './components/AdminPanel';
+const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })));
 import { NewsletterModal } from './components/NewsletterModal';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
-import { LegalModal } from './components/LegalModal';
+import { LegalModal, LegalSection } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
 import { CheckCircle2 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
@@ -122,7 +122,7 @@ export default function App() {
   const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [legalSection, setLegalSection] = useState<'privacy' | 'terms' | 'affiliate' | null>(null);
+  const [legalSection, setLegalSection] = useState<LegalSection | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -133,6 +133,14 @@ export default function App() {
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
+    try {
+      const saved = localStorage.getItem('signups4fastcash_analytics_consent');
+      return saved === 'granted' || saved === 'denied' ? saved : 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  });
 
   useEffect(() => {
     fetch('/api/site-settings')
@@ -158,6 +166,7 @@ export default function App() {
   }, [siteSettings]);
 
   useEffect(() => {
+    if (analyticsConsent !== 'granted') return;
     const storageKey = 'signups4fastcash_visitor_id';
     let visitorId = localStorage.getItem(storageKey);
     if (!visitorId) {
@@ -179,7 +188,16 @@ export default function App() {
       },
       body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
     });
-  }, []);
+  }, [analyticsConsent]);
+
+  const updateAnalyticsConsent = (consent: 'granted' | 'denied') => {
+    try {
+      localStorage.setItem('signups4fastcash_analytics_consent', consent);
+    } catch {
+      // Continue with the in-memory choice if storage is unavailable.
+    }
+    setAnalyticsConsent(consent);
+  };
 
   useEffect(() => {
     try {
@@ -439,7 +457,7 @@ export default function App() {
     }
   };
 
-  const handleApproveOffer = (
+  const handleApproveOffer = async (
     offerId: string,
     referralCode: string,
     referralUrl: string,
@@ -477,7 +495,17 @@ export default function App() {
           icon: '/favicon.ico',
         });
       }
-      showToast('Offer published. Email delivery still requires a connected provider.');
+      const response = await fetch('/api/admin/newsletter/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+        body: JSON.stringify({ offerId: approvedOffer.id }),
+      }).catch(() => null);
+      const result = await response?.json().catch(() => null) as { delivered?: number; error?: string } | null;
+      if (response?.ok) {
+        showToast(`Offer published. Newsletter delivered to ${result?.delivered || 0} verified subscribers.`);
+      } else {
+        showToast(result?.error || 'Offer published, but newsletter delivery failed.');
+      }
     } else {
       showToast(`Approved & published ${approvedOffer.company} with your referral link.`);
     }
@@ -551,26 +579,29 @@ export default function App() {
   };
 
   const handleSubscribeNewsletter = async (email: string, frequency: 'instant' | 'daily' | 'weekly') => {
-    const newSub: NewsletterSubscriber = {
-      id: `sub-${Date.now()}`,
-      email,
-      subscribedAt: new Date().toISOString(),
-      verified: true,
-      frequency,
-    };
-    setSubscribers((prev) => [newSub, ...prev]);
-
     try {
-      await fetch('/api/newsletter/subscribe', {
+      const response = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, frequency }),
       });
+      const data = await response.json().catch(() => null) as { error?: string; pendingConfirmation?: boolean } | null;
+      if (!response.ok) {
+        showToast(data?.error || 'Could not start your subscription.');
+        return;
+      }
+      const newSub: NewsletterSubscriber = {
+        id: `sub-${Date.now()}`,
+        email,
+        subscribedAt: new Date().toISOString(),
+        verified: false,
+        frequency,
+      };
+      setSubscribers((prev) => [newSub, ...prev.filter((subscriber) => subscriber.email !== email)]);
+      showToast(data?.pendingConfirmation ? 'Check your email to confirm the alerts.' : `Subscribed ${email} to ${frequency} earning alerts.`);
     } catch {
-      // local fallback
+      showToast('Could not reach the newsletter service. Please try again.');
     }
-
-    showToast(`Subscribed ${email} to ${frequency} earning alerts.`);
   };
 
   const orderedLiveOffers = [...liveOffers].sort((a, b) => {
@@ -792,23 +823,25 @@ export default function App() {
 
         {activeTab === 'admin' && isAdminUnlocked && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <AdminPanel
-              pendingOffers={pendingOffers}
-              liveOffers={liveOffers}
-              subscribers={subscribers}
-              onApproveOffer={handleApproveOffer}
-              onRejectOffer={handleRejectOffer}
-              onUpdateLiveOffer={handleUpdateLiveOffer}
-              onDeleteLiveOffer={handleDeleteLiveOffer}
-              onCreateCustomOffer={handleCreateCustomOffer}
-              blastLogs={blastLogs}
-              onLockAdmin={handleLockAdmin}
-              siteSettings={siteSettings}
-              onUpdateSiteSettings={handleUpdateSiteSettings}
-              isOwnerAdmin={isOwnerAdmin}
-              adminUsernames={adminUsernames}
-              onUpdateAdminUsernames={handleUpdateAdminUsernames}
-            />
+            <Suspense fallback={<div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-8 text-center text-xs font-mono text-zinc-400">Loading admin tools…</div>}>
+              <AdminPanel
+                pendingOffers={pendingOffers}
+                liveOffers={liveOffers}
+                subscribers={subscribers}
+                onApproveOffer={handleApproveOffer}
+                onRejectOffer={handleRejectOffer}
+                onUpdateLiveOffer={handleUpdateLiveOffer}
+                onDeleteLiveOffer={handleDeleteLiveOffer}
+                onCreateCustomOffer={handleCreateCustomOffer}
+                blastLogs={blastLogs}
+                onLockAdmin={handleLockAdmin}
+                siteSettings={siteSettings}
+                onUpdateSiteSettings={handleUpdateSiteSettings}
+                isOwnerAdmin={isOwnerAdmin}
+                adminUsernames={adminUsernames}
+                onUpdateAdminUsernames={handleUpdateAdminUsernames}
+              />
+            </Suspense>
           </div>
         )}
       </main>
@@ -853,6 +886,31 @@ export default function App() {
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
       {offerFinderOpen && <OfferFinder offers={liveOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
+      {analyticsConsent === 'unknown' && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-2xl rounded-xl border border-cyan-400/30 bg-[#0d1724] p-4 shadow-2xl shadow-black/40">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-relaxed text-zinc-300">
+              We use optional analytics to understand aggregate visits and approximate country/region. No exact location or raw IP is stored for this feature. You can decline and still use the site.
+            </p>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => updateAnalyticsConsent('denied')}
+                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-mono text-zinc-300 hover:bg-white/10"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                onClick={() => updateAnalyticsConsent('granted')}
+                className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-mono font-semibold text-[#06131a] hover:bg-cyan-300"
+              >
+                Allow analytics
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

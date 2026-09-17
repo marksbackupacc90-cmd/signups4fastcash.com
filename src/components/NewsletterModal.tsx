@@ -49,9 +49,9 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
             <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-white">You're On The VIP List!</h3>
+            <h3 className="text-lg font-bold text-white">Check Your Email</h3>
             <p className="text-xs text-zinc-400 max-w-xs mx-auto">
-              We'll send alerts for new offers that are added to the catalog. Always confirm the merchant's current terms.
+              Click the confirmation link we sent before alerts begin. You can unsubscribe from any alert.
             </p>
           </div>
         ) : (
@@ -69,7 +69,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
             </div>
 
             <p className="text-xs text-zinc-300 leading-relaxed">
-              Receive email alerts when new offers are added. We do not publish unverified subscriber or payout numbers.
+              Receive email alerts when new offers are added. Confirm your email before alerts begin. We do not publish unverified subscriber or payout numbers.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3 pt-1">

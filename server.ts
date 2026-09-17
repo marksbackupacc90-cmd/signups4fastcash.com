@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -28,7 +28,31 @@ function getRequestAppUrl(req: express.Request) {
   const forwardedHost = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim() || (req.headers.host || `localhost:${PORT}`);
   return `${forwardedProto}://${forwardedHost}`;
 }
+
+async function sendTransactionalEmail(to: string, subject: string, html: string) {
+  const apiKey = env.RESEND_API_KEY?.trim();
+  const from = env.EMAIL_FROM?.trim();
+  if (!apiKey || !from) throw new Error('Email provider is not configured.');
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject, html }),
+  });
+  if (!response.ok) throw new Error(`Email provider rejected the message (${response.status}).`);
+}
+
+function getApproximateLocation(req: express.Request) {
+  const header = (name: string) => {
+    const value = req.header(name)?.split(',')[0]?.trim();
+    return value && value.length <= 100 ? value : '';
+  };
+  return {
+    country: header('cf-ipcountry') || header('x-vercel-ip-country') || header('x-country') || 'Unknown',
+    region: header('x-vercel-ip-country-region') || header('x-region') || 'Unknown',
+  };
+}
 const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
+const adminUnlockAttempts = new Map<string, { count: number; resetAt: number }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
 const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null; accountStatus: 'active' | 'blocked'; lastLoginAt: string | null }>();
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -86,22 +110,41 @@ function isHttpUrl(value: unknown): value is string {
 }
 
 function isPublishableOffer(offer: Record<string, unknown>) {
+  const verificationExpiresAt = typeof offer.verificationExpiresAt === 'string'
+    ? Date.parse(offer.verificationExpiresAt)
+    : NaN;
   return (
     isHttpUrl(offer.officialMerchantUrl) &&
     isHttpUrl(offer.referralUrl) &&
     offer.referralCode !== 'PENDING_ADMIN_CODE' &&
-    offer.status === 'live'
+    offer.status === 'live' &&
+    (!Number.isFinite(verificationExpiresAt) || verificationExpiresAt > Date.now())
   );
 }
 
+function isVerificationCurrent(offer: { verificationExpiresAt?: string }) {
+  return !offer.verificationExpiresAt || Date.parse(offer.verificationExpiresAt) > Date.now();
+}
+
 app.use(express.json());
-app.use(express.static(path.join(process.cwd(), 'public')));
-app.use((_req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
+app.use((req, res, next) => {
+  const requestId = req.header('x-request-id')?.trim() || randomUUID();
+  res.setHeader('x-request-id', requestId);
+  res.locals.requestId = requestId;
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store');
+  } else if (/\.[a-f0-9]{8,}\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/i.test(req.path)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  } else {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
   next();
 });
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 const seoPageRoutes: Record<string, string> = {
   '/cashback-offers': 'cashback-offers.html',
@@ -395,6 +438,7 @@ let visitorAnalyticsStore = {
   totalPageViews: 0,
   uniqueVisitors: new Set<string>(),
   sources: new Map<string, number>(),
+  locations: new Map<string, { country: string; region: string; pageViews: number; visitors: Set<string> }>(),
 };
 let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
@@ -465,6 +509,61 @@ async function initializeOfferStore() {
   }
 
   await database.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      subscribed_at TIMESTAMPTZ NOT NULL,
+      frequency TEXT NOT NULL
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS visitor_events (
+      id TEXT PRIMARY KEY,
+      visitor_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      path TEXT NOT NULL,
+      viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  const migrationClient = await database.connect();
+  const migrations = [
+    {
+      version: 1,
+      apply: async () => {
+        await migrationClient.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE');
+        await migrationClient.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS confirmation_token TEXT');
+        await migrationClient.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ');
+        await migrationClient.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT \'Unknown\'');
+        await migrationClient.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT \'Unknown\'');
+      },
+    },
+  ];
+  try {
+    for (const migration of migrations) {
+      const applied = await migrationClient.query('SELECT 1 FROM schema_migrations WHERE version = $1', [migration.version]);
+      if (!applied.rowCount) {
+        await migrationClient.query('BEGIN');
+        try {
+          await migration.apply();
+          await migrationClient.query('INSERT INTO schema_migrations (version) VALUES ($1)', [migration.version]);
+          await migrationClient.query('COMMIT');
+        } catch (error) {
+          await migrationClient.query('ROLLBACK');
+          throw error;
+        }
+      }
+    }
+  } finally {
+    migrationClient.release();
+  }
+
+  await database.query(`
     CREATE TABLE IF NOT EXISTS cpx_transactions (
       transaction_id TEXT PRIMARY KEY,
       status INTEGER NOT NULL,
@@ -511,6 +610,16 @@ async function initializeOfferStore() {
       granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS admin_audit_log (
+      id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'delegated', 'unknown')),
+      actor TEXT,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
   const adminAccessCount = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM admin_access');
   if (adminAccessCount.rows[0]?.count === '0') {
     await database.query(`INSERT INTO admin_access (username) VALUES ('modmark')`);
@@ -551,9 +660,15 @@ async function initializeOfferStore() {
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
       subscribed_at TIMESTAMPTZ NOT NULL,
-      frequency TEXT NOT NULL
+      frequency TEXT NOT NULL,
+      verified BOOLEAN NOT NULL DEFAULT FALSE,
+      confirmation_token TEXT,
+      unsubscribed_at TIMESTAMPTZ
     )
   `);
+  await database.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE');
+  await database.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS confirmation_token TEXT');
+  await database.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ');
   await database.query(`
     CREATE TABLE IF NOT EXISTS analytics_counters (
       id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -567,9 +682,18 @@ async function initializeOfferStore() {
       visitor_id TEXT NOT NULL,
       source TEXT NOT NULL,
       path TEXT NOT NULL,
+      country TEXT NOT NULL DEFAULT 'Unknown',
+      region TEXT NOT NULL DEFAULT 'Unknown',
       viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT \'Unknown\'');
+  await database.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT \'Unknown\'');
+  const configuredRetentionDays = Number.parseInt(env.VISITOR_ANALYTICS_RETENTION_DAYS || '365', 10);
+  const retentionDays = Number.isFinite(configuredRetentionDays)
+    ? Math.min(Math.max(configuredRetentionDays, 1), 3650)
+    : 365;
+  await database.query('DELETE FROM visitor_events WHERE viewed_at < NOW() - ($1 * INTERVAL \'1 day\')', [retentionDays]);
   await database.query(`
     CREATE TABLE IF NOT EXISTS support_chat_messages (
       id TEXT PRIMARY KEY,
@@ -626,8 +750,8 @@ async function initializeOfferStore() {
     `INSERT INTO analytics_counters (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
   );
   const [subscribers, analytics] = await Promise.all([
-    database.query<{ id: string; email: string; subscribed_at: Date; frequency: string }>(
-      'SELECT id, email, subscribed_at, frequency FROM newsletter_subscribers ORDER BY subscribed_at DESC',
+    database.query<{ id: string; email: string; subscribed_at: Date; frequency: string; verified: boolean }>(
+      'SELECT id, email, subscribed_at, frequency, verified FROM newsletter_subscribers WHERE unsubscribed_at IS NULL ORDER BY subscribed_at DESC',
     ),
     database.query<{ total_clicks: number; total_conversions: number }>(
       'SELECT total_clicks, total_conversions FROM analytics_counters WHERE id = 1',
@@ -637,20 +761,36 @@ async function initializeOfferStore() {
     `SELECT visitor_id, source, COUNT(*)::text AS total
      FROM visitor_events GROUP BY visitor_id, source`,
   );
+  const locationRows = await database.query<{ visitor_id: string; country: string; region: string; total: string }>(
+    `SELECT visitor_id, country, region, COUNT(*)::text AS total
+     FROM visitor_events GROUP BY visitor_id, country, region`,
+  );
   const sourceTotals = new Map<string, number>();
   visitorRows.rows.forEach((row) => {
     sourceTotals.set(row.source, (sourceTotals.get(row.source) || 0) + Number(row.total));
+  });
+  const locationTotals = new Map<string, { country: string; region: string; pageViews: number; visitors: Set<string> }>();
+  locationRows.rows.forEach((row) => {
+    const country = row.country || 'Unknown';
+    const region = row.region || 'Unknown';
+    const key = `${country}\u0000${region}`;
+    const current = locationTotals.get(key) || { country, region, pageViews: 0, visitors: new Set<string>() };
+    current.pageViews += Number(row.total);
+    current.visitors.add(row.visitor_id);
+    locationTotals.set(key, current);
   });
   visitorAnalyticsStore = {
     totalPageViews: visitorRows.rows.reduce((sum, row) => sum + Number(row.total), 0),
     uniqueVisitors: new Set(visitorRows.rows.map((row) => row.visitor_id)),
     sources: sourceTotals,
+    locations: locationTotals,
   };
   subscribersStore = subscribers.rows.map((subscriber) => ({
     id: subscriber.id,
     email: subscriber.email,
     subscribedAt: new Date(subscriber.subscribed_at).toISOString(),
     frequency: subscriber.frequency,
+    verified: subscriber.verified,
   }));
   if (analytics.rows[0]) {
     analyticsStore = {
@@ -723,8 +863,33 @@ async function saveLiveOffers() {
 }
 
 // API: Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: database ? 'connected' : 'memory', timestamp: new Date().toISOString() });
+app.get('/api/health', async (_req, res) => {
+  const emailConfigured = Boolean(env.RESEND_API_KEY?.trim() && env.EMAIL_FROM?.trim());
+  if (!database) {
+    return res.json({
+      status: 'ok',
+      database: 'memory',
+      email: emailConfigured ? 'configured' : 'not_configured',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  try {
+    await database.query('SELECT 1');
+    return res.json({
+      status: 'ok',
+      database: 'connected',
+      email: emailConfigured ? 'configured' : 'not_configured',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Health check database probe failed:', error);
+    return res.status(503).json({
+      status: 'degraded',
+      database: 'unavailable',
+      email: emailConfigured ? 'configured' : 'not_configured',
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 app.get('/api/cpx/balance', async (req, res) => {
@@ -934,14 +1099,14 @@ app.get('/api/cpx/postback', async (req, res) => {
 });
 
 app.get('/api/offers', (req, res) => {
-  res.json({ offers: liveOffersStore });
+  res.json({ offers: liveOffersStore.filter(isVerificationCurrent) });
 });
 
 app.get('/api/site-settings', (_req, res) => {
   res.json({ settings: siteSettingsStore });
 });
 
-app.put('/api/site-settings', requireAdmin, (req, res) => {
+app.put('/api/site-settings', requireAdmin, async (req, res) => {
   const incoming = (req.body && typeof req.body === 'object' ? req.body : {}) as Partial<SiteSettings>;
   const nextSettings: SiteSettings = {
     ...siteSettingsStore,
@@ -976,19 +1141,37 @@ app.put('/api/site-settings', requireAdmin, (req, res) => {
   };
 
   siteSettingsStore = nextSettings;
+  await auditAdminAction(req, 'site_settings_updated', { fields: Object.keys(incoming).join(',') });
   res.json({ settings: siteSettingsStore });
 });
 
 app.post('/api/admin/unlock-user', async (req, res) => {
+  const attemptKey = req.ip || req.header('x-forwarded-for') || 'unknown';
+  const now = Date.now();
+  const currentAttempts = adminUnlockAttempts.get(attemptKey);
+  if (currentAttempts && currentAttempts.resetAt > now && currentAttempts.count >= 5) {
+    return res.status(429).json({ error: 'Too many admin unlock attempts. Try again later.' });
+  }
+  if (!currentAttempts || currentAttempts.resetAt <= now) {
+    adminUnlockAttempts.set(attemptKey, { count: 1, resetAt: now + 15 * 60 * 1000 });
+  } else {
+    currentAttempts.count += 1;
+  }
   const user = await getAuthenticatedUser(req);
   const username = user?.username?.trim().toLowerCase();
   const isOwner = Boolean(user && user.email.trim().toLowerCase() === ownerEmail);
   if (!user || (!isOwner && (!username || !delegatedAdminUsernames.has(username)))) {
     return res.status(403).json({ error: 'This account has not been granted admin access.' });
   }
+  adminUnlockAttempts.delete(attemptKey);
   const token = randomUUID();
   const role = isOwner ? 'owner' : 'delegated';
-  adminTokens.set(token, { expiresAt: Date.now() + 8 * 60 * 60 * 1000, role });
+  const configuredAdminSessionHours = Number.parseFloat(env.ADMIN_SESSION_HOURS || '2');
+  const adminSessionHours = Number.isFinite(configuredAdminSessionHours)
+    ? Math.min(Math.max(configuredAdminSessionHours, 0.25), 24)
+    : 2;
+  adminTokens.set(token, { expiresAt: Date.now() + adminSessionHours * 60 * 60 * 1000, role });
+  await auditAdminAction(req, 'admin_unlock', { actor: user.email.toLowerCase(), role });
   res.json({ token, role });
 });
 
@@ -1006,7 +1189,29 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
     if (token) adminTokens.delete(token);
     return res.status(401).json({ error: 'Admin authentication required' });
   }
+
   next();
+}
+
+async function auditAdminAction(req: express.Request, action: string, details: Record<string, string | number | boolean | null> = {}) {
+  if (!database) return;
+  const token = req.header('x-admin-token');
+  const session = token ? adminTokens.get(token) : undefined;
+  try {
+    await database.query(
+      `INSERT INTO admin_audit_log (id, action, role, actor, details)
+       VALUES ($1, $2, $3, $4, $5::jsonb)`,
+      [
+        randomUUID(),
+        action,
+        session?.role || 'unknown',
+        typeof details.actor === 'string' ? details.actor : null,
+        JSON.stringify(details),
+      ],
+    );
+  } catch (error) {
+    console.error('Could not write admin audit log:', error);
+  }
 }
 
 function hasValidAdminToken(token: string | undefined) {
@@ -1054,6 +1259,25 @@ function createFallbackOutreachResult(task: string, reason: string) {
 
 app.get('/api/admin/access', requireOwnerAdmin, (_req, res) => {
   res.json({ usernames: [...delegatedAdminUsernames].sort() });
+});
+
+app.get('/api/admin/audit-log', requireOwnerAdmin, async (req, res) => {
+  if (!database) return res.json({ entries: [] });
+  const result = await database.query<{ id: string; action: string; role: string; actor: string | null; details: Record<string, unknown>; created_at: Date }>(
+    `SELECT id, action, role, actor, details, created_at
+     FROM admin_audit_log ORDER BY created_at DESC LIMIT 200`,
+  );
+  await auditAdminAction(req, 'audit_log_viewed');
+  res.json({
+    entries: result.rows.map((entry) => ({
+      id: entry.id,
+      action: entry.action,
+      role: entry.role,
+      actor: entry.actor,
+      details: entry.details,
+      createdAt: entry.created_at.toISOString(),
+    })),
+  });
 });
 
 app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
@@ -1107,6 +1331,7 @@ app.patch('/api/admin/accounts/:id/status', requireOwnerAdmin, async (req, res) 
       [...authSessions.entries()].forEach(([token, session]) => { if (session.userId === account.id) authSessions.delete(token); });
     }
   }
+  await auditAdminAction(req, 'account_status_updated', { accountId: req.params.id, status });
   res.json({ status });
 });
 
@@ -1118,6 +1343,7 @@ app.delete('/api/admin/accounts/:id', requireOwnerAdmin, async (req, res) => {
     return res.status(404).json({ error: 'Account not found.' });
   }
   [...authSessions.entries()].forEach(([token, session]) => { if (session.userId === req.params.id) authSessions.delete(token); });
+  await auditAdminAction(req, 'account_deleted', { accountId: req.params.id });
   res.json({ deleted: true });
 });
 
@@ -1144,6 +1370,7 @@ app.put('/api/admin/access', requireOwnerAdmin, async (req, res) => {
   }
   delegatedAdminUsernames.clear();
   usernames.forEach((username) => delegatedAdminUsernames.add(username));
+  await auditAdminAction(req, 'admin_access_updated', { usernameCount: usernames.length });
   res.json({ usernames: [...delegatedAdminUsernames].sort() });
 });
 
@@ -1596,6 +1823,7 @@ app.put('/api/offers/:id', requireAdmin, async (req, res) => {
     status: 'live',
     verificationStatus: 'reviewed',
     verifiedAt: new Date().toISOString(),
+    verificationExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   };
   if (!isPublishableOffer(updatedOffer)) {
@@ -1605,6 +1833,7 @@ app.put('/api/offers/:id', requireAdmin, async (req, res) => {
 
   try {
     await saveLiveOffers();
+    await auditAdminAction(req, 'offer_updated', { offerId: req.params.id });
     res.json({ offer: liveOffersStore[index] });
   } catch (error) {
     res.status(500).json({ error: 'Could not save offer' });
@@ -1620,6 +1849,7 @@ app.post('/api/offers', requireAdmin, async (req, res) => {
     conversionsCount: req.body.conversionsCount || 0,
     createdAt: req.body.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    verificationExpiresAt: req.body.verificationExpiresAt || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   };
   if (!isPublishableOffer(offer)) {
     return res.status(400).json({ error: 'A live offer needs valid HTTP(S) merchant and referral URLs and a referral code.' });
@@ -1628,6 +1858,7 @@ app.post('/api/offers', requireAdmin, async (req, res) => {
 
   try {
     await saveLiveOffers();
+    await auditAdminAction(req, 'offer_created', { offerId: offer.id });
     res.status(201).json({ offer });
   } catch (error) {
     res.status(500).json({ error: 'Could not save offer' });
@@ -1643,6 +1874,7 @@ app.delete('/api/offers/:id', requireAdmin, async (req, res) => {
 
   try {
     await saveLiveOffers();
+    await auditAdminAction(req, 'offer_deleted', { offerId: req.params.id });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Could not delete offer' });
@@ -2085,12 +2317,19 @@ app.post('/api/analytics/pageview', async (req, res) => {
   visitorAnalyticsStore.totalPageViews += 1;
   visitorAnalyticsStore.uniqueVisitors.add(visitorId);
   visitorAnalyticsStore.sources.set(source, (visitorAnalyticsStore.sources.get(source) || 0) + 1);
+  const location = getApproximateLocation(req);
+  const locationKey = `${location.country}\u0000${location.region}`;
+  const locationSummary = visitorAnalyticsStore.locations.get(locationKey)
+    || { ...location, pageViews: 0, visitors: new Set<string>() };
+  locationSummary.pageViews += 1;
+  locationSummary.visitors.add(visitorId);
+  visitorAnalyticsStore.locations.set(locationKey, locationSummary);
 
   if (database) {
     try {
       await database.query(
-        `INSERT INTO visitor_events (id, visitor_id, source, path) VALUES ($1, $2, $3, $4)`,
-        [randomUUID(), visitorId, source, path],
+        `INSERT INTO visitor_events (id, visitor_id, source, path, country, region) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [randomUUID(), visitorId, source, path, location.country, location.region],
       );
     } catch (error) {
       console.error('Could not persist visitor event:', error);
@@ -2100,7 +2339,34 @@ app.post('/api/analytics/pageview', async (req, res) => {
   return res.json({ success: true });
 });
 
-app.get('/api/admin/analytics/visitors', requireAdmin, (_req, res) => {
+app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
+  const from = typeof req.query.from === 'string' ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
+  const to = typeof req.query.to === 'string' ? new Date(`${req.query.to}T23:59:59.999Z`) : null;
+  if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime()))) {
+    return res.status(400).json({ error: 'Use valid from and to dates in YYYY-MM-DD format.' });
+  }
+  if (database && (from || to)) {
+    const result = await database.query<{ total_page_views: string; unique_visitors: string }>(
+      `SELECT COUNT(*)::text AS total_page_views, COUNT(DISTINCT visitor_id)::text AS unique_visitors
+       FROM visitor_events
+       WHERE ($1::timestamptz IS NULL OR viewed_at >= $1)
+         AND ($2::timestamptz IS NULL OR viewed_at <= $2)`,
+      [from?.toISOString() || null, to?.toISOString() || null],
+    );
+    const sourceRows = await database.query<{ source: string; page_views: string }>(
+      `SELECT source, COUNT(*)::text AS page_views FROM visitor_events
+       WHERE ($1::timestamptz IS NULL OR viewed_at >= $1) AND ($2::timestamptz IS NULL OR viewed_at <= $2)
+       GROUP BY source ORDER BY COUNT(*) DESC`,
+      [from?.toISOString() || null, to?.toISOString() || null],
+    );
+    return res.json({
+      totalPageViews: Number(result.rows[0]?.total_page_views || 0),
+      uniqueVisitors: Number(result.rows[0]?.unique_visitors || 0),
+      sources: sourceRows.rows.map((row) => ({ source: row.source, pageViews: Number(row.page_views) })),
+      locations: [],
+      filtered: true,
+    });
+  }
   const sources = [...visitorAnalyticsStore.sources.entries()]
     .map(([source, pageViews]) => ({ source, pageViews }))
     .sort((a, b) => b.pageViews - a.pageViews);
@@ -2108,6 +2374,15 @@ app.get('/api/admin/analytics/visitors', requireAdmin, (_req, res) => {
     totalPageViews: visitorAnalyticsStore.totalPageViews,
     uniqueVisitors: visitorAnalyticsStore.uniqueVisitors.size,
     sources,
+    locations: [...visitorAnalyticsStore.locations.values()]
+      .map(({ country, region, pageViews, visitors }) => ({
+        country,
+        region,
+        pageViews,
+        uniqueVisitors: visitors.size,
+      }))
+      .sort((a, b) => b.uniqueVisitors - a.uniqueVisitors || b.pageViews - a.pageViews),
+    filtered: false,
   });
 });
 
@@ -2117,6 +2392,7 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
     totalPageViews: 0,
     uniqueVisitors: new Set<string>(),
     sources: new Map<string, number>(),
+    locations: new Map<string, { country: string; region: string; pageViews: number; visitors: Set<string> }>(),
   };
   liveOffersStore = liveOffersStore.map((offer) => ({
     ...offer,
@@ -2138,7 +2414,64 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
     }
   }
 
+  await auditAdminAction(_req, 'analytics_reset');
   return res.json({ success: true });
+});
+
+app.post('/api/admin/newsletter/broadcast', requireAdmin, async (req, res) => {
+  const { offerId } = req.body || {};
+  const offer = liveOffersStore.find((candidate) => candidate.id === offerId);
+  if (!offer) return res.status(404).json({ error: 'Offer not found.' });
+  if (!database) return res.status(503).json({ error: 'Newsletter delivery requires a configured database.' });
+  const subscribers = await database.query<{ email: string }>(
+    'SELECT email FROM newsletter_subscribers WHERE verified = TRUE AND unsubscribed_at IS NULL',
+  );
+  if (!subscribers.rows.length) return res.json({ delivered: 0, recipientCount: 0 });
+  const secret = env.NEWSLETTER_UNSUBSCRIBE_SECRET || env.ADMIN_PASSCODE || '';
+  if (!secret) return res.status(503).json({ error: 'Newsletter unsubscribe signing is not configured.' });
+  try {
+    await Promise.all(subscribers.rows.map(({ email }) => {
+      const signature = createHmac('sha256', secret).update(email).digest('hex');
+      const unsubscribeUrl = `${getRequestAppUrl(req)}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}&sig=${signature}`;
+      return sendTransactionalEmail(
+        email,
+        `New offer listed: ${offer.incentiveAmount} on ${offer.company}`,
+        `<h2>${offer.company}: ${offer.title}</h2><p>${offer.incentiveAmount}</p><p>Review the current merchant terms before applying.</p><p><a href="${offer.referralUrl}">View offer</a></p><hr><p><a href="${unsubscribeUrl}">Unsubscribe</a></p>`,
+      );
+    }));
+    await auditAdminAction(req, 'newsletter_broadcast', { offerId: offer.id, recipientCount: subscribers.rows.length });
+    return res.json({ delivered: subscribers.rows.length, recipientCount: subscribers.rows.length, status: 'delivered' });
+  } catch (error) {
+    console.error('Newsletter broadcast failed:', error);
+    await auditAdminAction(req, 'newsletter_broadcast_failed', { offerId: offer.id, recipientCount: subscribers.rows.length });
+    return res.status(502).json({ error: error instanceof Error ? error.message : 'Newsletter delivery failed.' });
+  }
+});
+
+app.post('/api/newsletter/provider-webhook', async (req, res) => {
+  const webhookSecret = env.NEWSLETTER_WEBHOOK_SECRET?.trim();
+  const suppliedSecret = req.header('x-newsletter-webhook-secret')?.trim();
+  if (!webhookSecret || !suppliedSecret || suppliedSecret !== webhookSecret) {
+    return res.status(401).json({ error: 'Webhook authentication failed.' });
+  }
+  const event = req.body as {
+    type?: string;
+    data?: { to?: string[] | string };
+  };
+  const shouldSuppress = event.type === 'email.bounced' || event.type === 'email.complained';
+  if (!shouldSuppress || !database) return res.json({ processed: false });
+  const recipients = Array.isArray(event.data?.to) ? event.data.to : [event.data?.to];
+  const emails = recipients
+    .filter((email): email is string => typeof email === 'string')
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  if (emails.length > 0) {
+    await database.query(
+      'UPDATE newsletter_subscribers SET unsubscribed_at = NOW(), verified = FALSE WHERE LOWER(email) = ANY($1::text[])',
+      [emails],
+    );
+  }
+  return res.json({ processed: true, suppressed: emails.length });
 });
 
 // API: Newsletter subscription
@@ -2149,24 +2482,58 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
     return res.status(400).json({ error: 'A valid email is required' });
   }
   const subscriberFrequency = frequency === 'daily' || frequency === 'weekly' ? frequency : 'instant';
+  const confirmationToken = randomBytes(32).toString('hex');
+  const confirmationUrl = `${getRequestAppUrl(req)}/api/newsletter/confirm?token=${confirmationToken}`;
   if (database) {
     try {
       await database.query(
-        `INSERT INTO newsletter_subscribers (id, email, subscribed_at, frequency)
-         VALUES ($1, $2, NOW(), $3) ON CONFLICT (email) DO NOTHING`,
-        [randomUUID(), normalizedEmail, subscriberFrequency],
+        `INSERT INTO newsletter_subscribers (id, email, subscribed_at, frequency, confirmation_token, verified, unsubscribed_at)
+         VALUES ($1, $2, NOW(), $3, $4, FALSE, NULL)
+         ON CONFLICT (email) DO UPDATE SET frequency = EXCLUDED.frequency, confirmation_token = EXCLUDED.confirmation_token,
+           verified = CASE WHEN newsletter_subscribers.verified AND newsletter_subscribers.unsubscribed_at IS NULL THEN TRUE ELSE FALSE END,
+           unsubscribed_at = NULL`,
+        [randomUUID(), normalizedEmail, subscriberFrequency, confirmationToken],
       );
-      const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers');
-      return res.json({ success: true, subscriberCount: Number(count.rows[0]?.count || 0) });
-    } catch {
-      return res.status(500).json({ error: 'Could not subscribe at this time' });
+      await sendTransactionalEmail(
+        normalizedEmail,
+        'Confirm your Signups4FastCash.com alerts',
+        `<p>Confirm your email to receive ${subscriberFrequency} offer alerts.</p><p><a href="${confirmationUrl}">Confirm subscription</a></p><p>If you did not request this, you can ignore this message.</p>`,
+      );
+      const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers WHERE verified = TRUE AND unsubscribed_at IS NULL');
+      return res.json({ success: true, pendingConfirmation: true, subscriberCount: Number(count.rows[0]?.count || 0) });
+    } catch (error) {
+      console.error('Could not subscribe:', error);
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Could not subscribe at this time' });
     }
   }
-  const existing = subscribersStore.find((s) => s.email === normalizedEmail);
-  if (!existing) {
-    subscribersStore.push({ id: `sub-${Date.now()}`, email: normalizedEmail, subscribedAt: new Date().toISOString(), frequency: subscriberFrequency });
+  return res.status(503).json({ error: 'Newsletter delivery is not configured yet.' });
+});
+
+app.get('/api/newsletter/confirm', async (req, res) => {
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+  if (!token || !database) return res.status(400).send('This confirmation link is invalid or expired.');
+  const result = await database.query(
+    `UPDATE newsletter_subscribers SET verified = TRUE, confirmation_token = NULL
+     WHERE confirmation_token = $1 AND unsubscribed_at IS NULL RETURNING email`,
+    [token],
+  );
+  if (!result.rowCount) return res.status(400).send('This confirmation link is invalid or expired.');
+  res.type('html').send('<h1>Email alerts confirmed</h1><p>You are now subscribed to Signups4FastCash.com alerts.</p>');
+});
+
+app.get('/api/newsletter/unsubscribe', async (req, res) => {
+  const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
+  const signature = typeof req.query.sig === 'string' ? req.query.sig : '';
+  const secret = env.NEWSLETTER_UNSUBSCRIBE_SECRET || env.ADMIN_PASSCODE || '';
+  const expected = secret && email ? createHmac('sha256', secret).update(email).digest('hex') : '';
+  const signaturesMatch = signature.length === expected.length
+    && signature.length > 0
+    && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  if (!email || !signaturesMatch || !database) {
+    return res.status(400).send('This unsubscribe link is invalid.');
   }
-  res.json({ success: true, subscriberCount: subscribersStore.length });
+  await database.query('UPDATE newsletter_subscribers SET unsubscribed_at = NOW(), verified = FALSE WHERE email = $1', [email]);
+  res.type('html').send('<h1>You are unsubscribed</h1><p>You will not receive further alerts from this list.</p>');
 });
 
 // API: Newsletter subscriber count
@@ -2178,14 +2545,15 @@ app.get('/api/newsletter/subscribers', async (req, res) => {
     const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers');
     const response: { count: number; subscribers?: typeof subscribersStore } = { count: Number(count.rows[0]?.count || 0) };
     if (hasValidAdminToken(req.header('x-admin-token'))) {
-      const subscribers = await database.query<{ id: string; email: string; subscribed_at: Date; frequency: string }>(
-        'SELECT id, email, subscribed_at, frequency FROM newsletter_subscribers ORDER BY subscribed_at DESC',
+      const subscribers = await database.query<{ id: string; email: string; subscribed_at: Date; frequency: string; verified: boolean }>(
+        'SELECT id, email, subscribed_at, frequency, verified FROM newsletter_subscribers WHERE unsubscribed_at IS NULL ORDER BY subscribed_at DESC',
       );
       response.subscribers = subscribers.rows.map((subscriber) => ({
         id: subscriber.id,
         email: subscriber.email,
         subscribedAt: new Date(subscriber.subscribed_at).toISOString(),
         frequency: subscriber.frequency,
+        verified: subscriber.verified,
       }));
     }
     return res.json(response);
@@ -2215,9 +2583,13 @@ async function startServer() {
   });
 }
 
-initializeOfferStore()
-  .then(startServer)
-  .catch((error) => {
-    console.error('Failed to initialize offer store:', error);
-    process.exit(1);
-  });
+export { app };
+
+if (env.NODE_ENV !== 'test') {
+  initializeOfferStore()
+    .then(startServer)
+    .catch((error) => {
+      console.error('Failed to initialize offer store:', error);
+      process.exit(1);
+    });
+}
