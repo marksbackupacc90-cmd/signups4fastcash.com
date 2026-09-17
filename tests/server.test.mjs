@@ -78,6 +78,17 @@ test('offer analytics rejects malformed telemetry payloads', async () => {
   assert.equal(response.body.error, 'A valid offerId and event type are required');
 });
 
+test('completion reports are separate from verified conversions', async () => {
+  const response = await request('/api/offers/offer-western-union-referral/completion-report', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ confirmed: true }),
+  });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.status, 'pending_review');
+  assert.match(response.body.message, /not a verified conversion/i);
+});
+
 test('admin analytics requires an admin token', async () => {
   const response = await request('/api/admin/analytics/visitors');
   assert.equal(response.status, 401);

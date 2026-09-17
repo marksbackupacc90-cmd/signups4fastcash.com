@@ -21,6 +21,8 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const [showDetails, setShowDetails] = useState(false);
   const [showHints, setShowHints] = useState(false);
   const [showTruth, setShowTruth] = useState(false);
+  const [showCompletionReport, setShowCompletionReport] = useState(false);
+  const [completionReportStatus, setCompletionReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [copied, setCopied] = useState(false);
   const updatedLabel = new Date(offer.updatedAt).toLocaleDateString(undefined, {
     month: 'short',
@@ -71,6 +73,21 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
     onClaimClick(offer.id);
     const targetUrl = offer.referralUrl || offer.officialMerchantUrl;
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCompletionReport = async () => {
+    setCompletionReportStatus('submitting');
+    try {
+      const response = await fetch(`/api/offers/${offer.id}/completion-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmed: true }),
+      });
+      if (!response.ok) throw new Error('Could not submit completion report.');
+      setCompletionReportStatus('submitted');
+    } catch {
+      setCompletionReportStatus('error');
+    }
   };
 
 
@@ -315,6 +332,36 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               <span>Claim offer</span>
               <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
             </button>
+
+            <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+              <button
+                type="button"
+                onClick={() => setShowCompletionReport((current) => !current)}
+                className="focus-ring flex min-h-11 w-full items-center justify-between text-left text-[11px] font-mono text-zinc-300"
+                aria-expanded={showCompletionReport}
+              >
+                <span>Did you complete this offer?</span>
+                {showCompletionReport ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+              {showCompletionReport && (
+                <div className="mt-2 border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-400">
+                  <p>This is self-reported only. It will not be counted as a verified conversion.</p>
+                  {completionReportStatus === 'submitted' ? (
+                    <p className="mt-2 text-emerald-300">Thanks — your report was recorded for review.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleCompletionReport}
+                      disabled={completionReportStatus === 'submitting'}
+                      className="focus-ring mt-2 min-h-11 rounded-md border border-emerald-300/30 px-3 py-2 text-emerald-200 hover:bg-emerald-300/10 disabled:opacity-60"
+                    >
+                      {completionReportStatus === 'submitting' ? 'Submitting...' : 'Yes, I completed it'}
+                    </button>
+                  )}
+                  {completionReportStatus === 'error' && <p className="mt-2 text-rose-300">We could not record that report. Please try again.</p>}
+                </div>
+              )}
+            </div>
 
             <div className="mt-2 border-t border-white/[0.06] pt-2 text-center text-[9px] text-zinc-500">
               <span className="text-emerald-400">Direct partner link</span>

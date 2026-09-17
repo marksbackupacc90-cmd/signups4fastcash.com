@@ -58,6 +58,7 @@ const authUsers = new Map<string, { id: string; googleSub: string; email: string
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const cpxTransactions = new Set<string>();
 const cpxBalances = new Map<string, number>();
+const completionReports = new Map<string, { id: string; offerId: string; reportedAt: string }>();
 const SURVEY_POINTS_PER_DOLLAR = 100;
 const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
 const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -427,7 +428,7 @@ function extractPublicUrl(value: string) {
 }
 
 // In-memory / server state for demo & persistence
-let liveOffersStore: any[] = [];
+let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
 let pendingOffersStore: any[] = [];
 let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string }[] = [];
 let analyticsStore = {
@@ -1100,6 +1101,27 @@ app.get('/api/cpx/postback', async (req, res) => {
 
 app.get('/api/offers', (req, res) => {
   res.json({ offers: liveOffersStore.filter(isVerificationCurrent) });
+});
+
+app.post('/api/offers/:id/completion-report', (req, res) => {
+  const offer = liveOffersStore.find((candidate) => candidate.id === req.params.id);
+  if (!offer || !isVerificationCurrent(offer)) {
+    return res.status(404).json({ error: 'Offer not found' });
+  }
+  if (req.body?.confirmed !== true) {
+    return res.status(400).json({ error: 'Completion confirmation is required.' });
+  }
+  const report = {
+    id: randomUUID(),
+    offerId: offer.id,
+    reportedAt: new Date().toISOString(),
+  };
+  completionReports.set(report.id, report);
+  return res.status(201).json({
+    success: true,
+    status: 'pending_review',
+    message: 'Thanks. Your report was recorded as self-reported and is not a verified conversion.',
+  });
 });
 
 app.get('/api/site-settings', (_req, res) => {
