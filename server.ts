@@ -2583,7 +2583,7 @@ async function startServer() {
   });
 }
 
-export { app };
+export { app, isVerificationCurrent };
 
 if (env.NODE_ENV !== 'test') {
   initializeOfferStore()

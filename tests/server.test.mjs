@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app } = await import('../dist/server.cjs');
+const { app, isVerificationCurrent } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -39,6 +39,13 @@ test('responses preserve a caller request ID for support diagnostics', async () 
   });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('x-request-id'), 'test-request-123');
+});
+
+test('offer verification expiry accepts only current or legacy dates', () => {
+  assert.equal(isVerificationCurrent({ verificationExpiresAt: new Date(Date.now() + 86400000).toISOString() }), true);
+  assert.equal(isVerificationCurrent({ verificationExpiresAt: new Date(Date.now() - 86400000).toISOString() }), false);
+  assert.equal(isVerificationCurrent({}), true);
+  assert.equal(isVerificationCurrent({ verificationExpiresAt: 'not-a-date' }), false);
 });
 
 test('pageview analytics rejects missing visitor identifiers', async () => {
