@@ -17,6 +17,42 @@ interface AccountPanelProps {
   onClose: () => void;
 }
 
+const PRESET_AVATARS = [
+  { id: 'cyan', label: 'Cyan wave', background: '#0e7490', accent: '#67e8f9', mark: '✦' },
+  { id: 'violet', label: 'Violet spark', background: '#5b21b6', accent: '#ddd6fe', mark: '✧' },
+  { id: 'emerald', label: 'Emerald bolt', background: '#047857', accent: '#a7f3d0', mark: '⚡' },
+  { id: 'amber', label: 'Amber sun', background: '#b45309', accent: '#fef3c7', mark: '✹' },
+  { id: 'rose', label: 'Rose orbit', background: '#be123c', accent: '#ffe4e6', mark: '◉' },
+];
+
+function createPresetAvatar(background: string, accent: string, mark: string) {
+  const size = 160;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  if (!context) return '';
+  context.fillStyle = background;
+  context.fillRect(0, 0, size, size);
+  context.globalAlpha = 0.2;
+  context.fillStyle = accent;
+  context.beginPath();
+  context.arc(42, 34, 50, 0, Math.PI * 2);
+  context.fill();
+  context.globalAlpha = 1;
+  context.strokeStyle = accent;
+  context.lineWidth = 5;
+  context.beginPath();
+  context.arc(80, 80, 52, 0, Math.PI * 2);
+  context.stroke();
+  context.fillStyle = accent;
+  context.font = 'bold 64px sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(mark, 80, 82);
+  return canvas.toDataURL('image/png');
+}
+
 export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose }) => {
   const [form, setForm] = useState({
     username: user.username || '',
@@ -99,6 +135,29 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
           <label className="block text-xs font-semibold text-zinc-300">Profile picture
             <input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectAvatar} className="mt-1 w-full text-xs text-zinc-400" />
           </label>
+          <div>
+            <p className="text-xs font-semibold text-zinc-300">Or choose an avatar</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {PRESET_AVATARS.map((preset) => {
+                const selected = form.avatarUrl === createPresetAvatar(preset.background, preset.accent, preset.mark);
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => update('avatarUrl', createPresetAvatar(preset.background, preset.accent, preset.mark))}
+                    className={`focus-ring rounded-full p-0.5 transition-transform hover:scale-105 ${selected ? 'bg-cyan-300' : 'bg-transparent'}`}
+                    aria-label={`Use ${preset.label} avatar`}
+                    title={preset.label}
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 text-xl" style={{ backgroundColor: preset.background, color: preset.accent }}>
+                      {preset.mark}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {form.avatarUrl && <img src={form.avatarUrl} alt="Selected profile avatar preview" className="mt-3 h-14 w-14 rounded-full object-cover ring-2 ring-cyan-300/50" />}
+          </div>
           <label className="block text-xs font-semibold text-zinc-300">Username<input value={form.username} onChange={(e) => update('username', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" required /></label>
           <label className="block text-xs font-semibold text-zinc-300">PayPal email<input type="email" value={form.paypalEmail} onChange={(e) => update('paypalEmail', e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white" placeholder="For cash-out requests" /></label>
           <div className="grid gap-4 sm:grid-cols-2">

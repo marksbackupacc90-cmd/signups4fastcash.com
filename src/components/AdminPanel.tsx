@@ -124,8 +124,8 @@ export const USER_REFERRAL_PRESETS: UserReferralPreset[] = [
   },
   {
     company: 'SoFi Checking',
-    code: '72836365',
-    url: 'https://www.sofi.com/invite/coach?gcp=72836365-7180-469f-bfe5-42d8c2578a99&isAliasGcp=false&siid=e2c1795c-e596-4927-a73f-cfe51c7ea3d7',
+    code: '',
+    url: 'https://www.sofi.com/invite/money?gcp=a8ea63bc-051c-47d9-ad8b-7ca79033c0cf&isAliasGcp=false&siid=7e2e4d1d-73bd-4626-aab3-483b313a07e9',
     bonus: '$25 - $300 Instant Cash',
     matchKeys: ['sofi'],
   },

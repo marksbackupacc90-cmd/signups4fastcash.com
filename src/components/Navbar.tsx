@@ -10,6 +10,7 @@ interface NavbarProps {
   onInstallApp: () => void;
   installAvailable: boolean;
   username?: string | null;
+  avatarUrl?: string | null;
   onSignUp: () => void;
   onSignIn: () => void;
   hideSignIn?: boolean;
@@ -31,6 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onInstallApp,
   installAvailable,
   username,
+  avatarUrl,
   onSignUp,
   onSignIn,
   hideSignIn = false,
@@ -113,7 +115,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           {username ? (
             <div ref={accountMenuRef} className="relative">
-              <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[8rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>
+              <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[10rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-cyan-300/40" />
+                ) : (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-[10px] font-bold text-cyan-200 ring-1 ring-cyan-300/25">
+                    {username.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
                 @{username}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {accountMenuOpen && (

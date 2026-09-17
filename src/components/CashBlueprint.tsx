@@ -11,7 +11,7 @@ const steps = [
   {
     number: '01',
     title: 'Start with SoFi',
-    description: 'Open the SoFi offer first, then review the current Credit Score Monitoring and account-opening terms shown by SoFi.',
+    description: 'Open the SoFi referral page first and review the current account-opening terms shown by SoFi before deciding whether it is a fit.',
     action: 'Open SoFi offer',
     target: 'offer-sofi-banking',
     external: false,
@@ -19,7 +19,7 @@ const steps = [
   {
     number: '02',
     title: 'Review the next option',
-    description: 'If you decide to continue, review SoFi’s current funding and direct-deposit terms at your own pace. Nothing here requires a deposit or payroll change.',
+    description: 'If you decide to continue, review SoFi’s current $500 funding requirement and any separate offer terms at your own pace. Nothing here requires a deposit or payroll change.',
     action: 'Review the option',
     target: 'offer-sofi-banking',
     external: false,
@@ -27,7 +27,7 @@ const steps = [
   {
     number: '03',
     title: 'Check optional SoFi extras',
-    description: 'Before opening investing or crypto products, confirm the current requirements, risks, and whether the reward is worth the activity for you.',
+    description: 'The referral page currently highlights checking and savings plus a limited-time SoFi Plus step. Confirm the current requirements before considering anything else.',
     action: 'View SoFi offer',
     target: 'offer-sofi-banking',
     external: false,

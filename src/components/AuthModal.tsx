@@ -28,7 +28,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
   const [authPopup, setAuthPopup] = useState<Window | null>(null);
 
   const loadAuthenticatedUser = async () => {
-    const response = await fetch('/api/auth/me', { cache: 'no-store' });
+    const response = await fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' });
     if (!response.ok) throw new Error('Could not load your account.');
     const data = await response.json() as { user: AuthUser | null };
     onUserChange(data.user);
@@ -95,6 +95,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
     const response = await fetch('/api/auth/username', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ username }),
     });
     const data = await response.json() as { user?: AuthUser; error?: string };

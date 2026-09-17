@@ -64,11 +64,15 @@ export default function App() {
       try {
         const parsed: Offer[] = JSON.parse(saved);
         const availableOffers = parsed.filter(isAvailableOffer).map((offer) => {
-          if (offer.company.toLowerCase().includes('sofi') && offer.referralCode === 'SOFI-CASH2026') {
+          if (offer.company.toLowerCase().includes('sofi') && (
+            offer.referralCode === 'SOFI-CASH2026' ||
+            offer.referralCode === '72836365' ||
+            offer.referralUrl?.includes('gcp=72836365')
+          )) {
             return {
               ...offer,
-              referralCode: '72836365',
-              referralUrl: 'https://www.sofi.com/invite/coach?gcp=72836365-7180-469f-bfe5-42d8c2578a99&isAliasGcp=false&siid=e2c1795c-e596-4927-a73f-cfe51c7ea3d7',
+              referralCode: undefined,
+              referralUrl: 'https://www.sofi.com/invite/money?gcp=a8ea63bc-051c-47d9-ad8b-7ca79033c0cf&isAliasGcp=false&siid=7e2e4d1d-73bd-4626-aab3-483b313a07e9',
             };
           }
           if (offer.company.toLowerCase().includes('chime') && offer.referralCode === 'CHIME100FREE') {
@@ -665,6 +669,7 @@ export default function App() {
         onInstallApp={handleInstallApp}
         installAvailable={Boolean(installPrompt)}
         username={authUser?.username}
+        avatarUrl={authUser?.avatarUrl}
         userId={authUser?.id}
         onShare={() => void handleShare()}
         shareCopied={shareCopied}
@@ -705,7 +710,7 @@ export default function App() {
       <main className="flex-1">
         {authUser && activeTab === 'offers' && (
           <>
-            <CommunityChat username={authUser?.username} userId={authUser?.id} />
+            <CommunityChat username={authUser?.username} userId={authUser?.id} avatarUrl={authUser?.avatarUrl} />
           </>
         )}
         {activeTab === 'offers' && (

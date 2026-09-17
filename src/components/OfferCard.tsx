@@ -35,6 +35,28 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const isReviewed = offer.verificationStatus === 'reviewed';
   const statusLabel = isReviewed ? 'Verified' : 'Updated';
   const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
+  const sofiPaths = [
+    {
+      label: 'Banking',
+      detail: 'Up to $125',
+      url: offer.referralUrl || offer.officialMerchantUrl,
+    },
+    {
+      label: 'Credit',
+      detail: '$10 points',
+      url: 'https://www.sofi.com/invite/coach?gcp=65212857-4fac-4777-b80b-2d77cf7da92f&isAliasGcp=false&siid=db756f4b-a5e2-44d8-a8a3-439da7165e18',
+    },
+    {
+      label: 'Invest',
+      detail: '$75 referral',
+      url: 'https://www.sofi.com/invite/invest?gcp=a5844ce4-c8ad-4de4-af76-78b6d6034541&isAliasGcp=false&siid=8cabebd2-fb23-4458-9e3a-0fb8a4aeb102',
+    },
+    {
+      label: 'Crypto',
+      detail: '$50 SOFiD',
+      url: 'https://www.sofi.com/invite/crypto?gcp=00ede0ca-0fbe-458d-ab3b-b9067218b083&isAliasGcp=false&siid=cdfa7ad0-802f-4a66-8416-e61c277dd7dd',
+    },
+  ];
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -117,14 +139,26 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-mono">
               <span className="font-bold uppercase tracking-[0.1em] text-cyan-200">SoFi paths</span>
               <span className="text-zinc-600">•</span>
-              <span className="text-zinc-300">Banking</span>
-              <span className="text-zinc-600">→</span>
-              <span className="text-zinc-300">Credit monitoring</span>
-              <span className="text-zinc-600">→</span>
-              <span className="text-zinc-300">Optional extras</span>
+              {sofiPaths.map((path, index) => (
+                <React.Fragment key={path.label}>
+                  {index > 0 && <span className="text-zinc-600">→</span>}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      window.open(path.url, '_blank', 'noopener,noreferrer');
+                    }}
+                    className="focus-ring rounded px-1 text-left text-zinc-300 transition-colors hover:bg-cyan-300/10 hover:text-cyan-100"
+                    title={`Open SoFi ${path.label} referral`}
+                  >
+                    {path.label}
+                    <span className="ml-1 text-zinc-500">({path.detail})</span>
+                  </button>
+                </React.Fragment>
+              ))}
             </div>
             <p className="mt-1 text-[9px] leading-relaxed text-zinc-500">
-              These can be reviewed separately over time. You can still earn from options that do not require a deposit or bank link, so choose only the paths that work for you.
+              Open each path separately and review its official terms. You can choose options that do not require a deposit or bank link.
             </p>
           </div>
         )}

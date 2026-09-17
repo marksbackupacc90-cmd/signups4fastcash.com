@@ -11,11 +11,12 @@ interface CommunityMessage {
 interface CommunityChatProps {
   username?: string | null;
   userId?: string;
+  avatarUrl?: string | null;
 }
 
 type FriendEntry = { id: string; username: string; avatarUrl?: string | null; lastOnline?: string | null };
 
-export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }) => {
+export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, avatarUrl }) => {
   const [open, setOpen] = useState(false);
   const [visitorId] = useState(() => {
     const key = 's4fc_chat_visitor';
@@ -254,7 +255,13 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId }
                   const online = activeUsers.includes(`@${entry.username}`);
                   return <div key={entry.id} className="flex items-center gap-1 rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300">
                     <button type="button" onClick={() => { setDirectUserId(entry.id); setPrivateView('conversation'); }} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${online ? 'bg-[#2dd4ee] shadow-[0_0_7px_#2dd4ee]' : 'bg-red-400'}`} />
+                      {entry.avatarUrl ? (
+                        <img src={entry.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/15" />
+                      ) : (
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-300/10 text-[10px] font-bold text-cyan-200 ring-1 ring-white/10 ${online ? 'shadow-[0_0_7px_#2dd4ee]' : ''}`}>
+                          {entry.username.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
                       <span className="min-w-0">
                         <span className="block truncate">@{entry.username}</span>
                         <span className={`block text-[9px] ${online ? 'text-[#8fe9ff]' : 'text-zinc-500'}`}>
