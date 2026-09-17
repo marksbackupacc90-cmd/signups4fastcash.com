@@ -33,6 +33,8 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
     year: 'numeric',
   });
   const isReviewed = offer.verificationStatus === 'reviewed';
+  const statusLabel = isReviewed ? 'Verified' : 'Updated';
+  const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -53,56 +55,79 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="offer-card retro-window group relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a1220] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#2dd4ee]/30 hover:shadow-[0_0_18px_rgba(45,212,238,0.12)]"
+      className="offer-card retro-window group relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[radial-gradient(circle_at_top_left,_rgba(45,212,238,0.08),transparent_28%),#0a1220] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#2dd4ee]/30 hover:shadow-[0_0_18px_rgba(45,212,238,0.12)]"
     >
-      <div className="flex flex-1 flex-col bg-[#0d1724] p-5">
-        
-        {/* Header: Company Logo next to Title + Incentive Badge */}
-        <div className="flex items-center gap-3">
+      <div className="flex flex-1 flex-col bg-[#0d1724] p-4 sm:p-5">
+        <div className="flex items-start gap-3">
           <button
             type="button"
             onClick={handleClaim}
             aria-label={`Open ${offer.title} offer from ${offer.company}`}
-            className="flex min-w-0 flex-1 items-center gap-3 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
+            className="flex min-w-0 flex-1 items-start gap-3 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
           >
             <CompanyLogo
               companyName={offer.company}
               slug={offer.companySlug}
               logoUrl={offer.logoUrl}
               size="md"
-              className="shrink-0"
+              className="shrink-0 mt-0.5"
             />
             <div className="min-w-0 flex-1">
-                <div className="flex items-center flex-wrap gap-1.5">
-                  <span className="inline-flex rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-mono font-bold text-emerald-300">
-                    {offer.incentiveAmount}
-                  </span>
-                </div>
-                <h2 className="mt-0.5 text-base sm:text-lg font-bold text-white transition-colors group-hover:text-[#2dd4ee] leading-snug">
-                  {offer.title}
-                </h2>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-[9px] font-mono text-zinc-400">
-                    {offer.difficulty}
-                  </span>
-                </div>
-                <p className="mt-1 line-clamp-1 text-xs text-zinc-400">{offer.honestTruth.summary}</p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-emerald-300">
+                  {offer.incentiveAmount}
+                </span>
+                <span className="inline-flex rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[8px] font-mono uppercase tracking-[0.12em] text-zinc-300">
+                  {statusLabel}
+                </span>
+              </div>
+
+              <h2 className="mt-2 text-base sm:text-[1.05rem] font-black text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
+                {offer.title}
+              </h2>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-zinc-400">
+                <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-zinc-300">
+                  {offer.difficulty}
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span>{reviewLabel}</span>
+              </div>
+
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
             </div>
           </button>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 pt-1">
             <button
               type="button"
               onClick={() => setShowDetails((current) => !current)}
               aria-expanded={showDetails}
               aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${offer.company}`}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-white/[0.08] px-2.5 py-2 text-[10px] font-semibold text-zinc-200 transition-colors hover:bg-white/[0.14] hover:text-white sm:text-xs"
+              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-2 text-[10px] font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-white sm:text-xs"
             >
-              <span>{showDetails ? 'Hide info' : 'More info'}</span>
+              <span>{showDetails ? 'Hide' : 'Details'}</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
             </button>
           </div>
         </div>
+
+        {isSofiOffer && (
+          <div className="mt-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.04] px-3 py-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-mono">
+              <span className="font-bold uppercase tracking-[0.1em] text-cyan-200">SoFi paths</span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-zinc-300">Banking</span>
+              <span className="text-zinc-600">→</span>
+              <span className="text-zinc-300">Credit monitoring</span>
+              <span className="text-zinc-600">→</span>
+              <span className="text-zinc-300">Optional extras</span>
+            </div>
+            <p className="mt-1 text-[9px] leading-relaxed text-zinc-500">
+              These can be reviewed separately over time. You can still earn from options that do not require a deposit or bank link, so choose only the paths that work for you.
+            </p>
+          </div>
+        )}
 
         {showDetails && (
           <div className="animate-in fade-in duration-200">
@@ -246,10 +271,10 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               type="button"
               onClick={handleClaim}
               id={`claim-offer-btn-${offer.id}`}
-              aria-label={`Get ${offer.incentiveAmount} offer from ${offer.company}`}
-              className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-sm transition-colors hover:bg-[#67e8f9] active:scale-[0.99]"
+              aria-label={`Claim the ${offer.company} offer`}
+              className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
             >
-              <span>Get {offer.incentiveAmount} offer from {offer.company}</span>
+              <span>Claim offer</span>
               <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
             </button>
 
@@ -258,7 +283,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               {' '}• payout by {offer.company} • no extra cost
               <div className="mt-0.5 text-zinc-600">
                 {isReviewed && offer.verifiedAt ? `Terms checked ${reviewLabel}.` : `Last updated ${updatedLabel}.`}
-                {' '}Confirm eligibility and current terms on the merchant site.
+                {' '}Confirm current terms before applying.
               </div>
             </div>
 

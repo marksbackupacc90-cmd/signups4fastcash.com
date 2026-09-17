@@ -89,9 +89,14 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     `https://cdn.simpleicons.org/${simpleIconSlugMap[logoSlug] || logoSlug}`,
   ].filter((source): source is string => Boolean(source));
   const [imageSourceIndex, setImageSourceIndex] = React.useState(0);
-  const imageSource = imageSources[imageSourceIndex];
+  const imageSource = imageSources[imageSourceIndex] || null;
   const [imageLoaded, setImageLoaded] = React.useState(false);
-  const imageFrameClass = `${sizeClasses} ${className} rounded-lg flex items-center justify-center shrink-0 overflow-hidden select-none`;
+  const tone = {
+    bg: 'from-[#0d1724] via-[#111b2a] to-[#0a1220]',
+    glow: 'rgba(45, 212, 238, 0.2)',
+    dot: '#67e8f9',
+  };
+  const imageFrameClass = `${sizeClasses} ${className} flex items-center justify-center shrink-0 overflow-hidden select-none`;
 
   if (imageSource) {
     return (
@@ -99,11 +104,15 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
         <img
           src={imageSource}
           alt={`${companyName} logo`}
-          className={`h-full w-full object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`h-full w-full object-contain transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           decoding="async"
+          draggable={false}
           onLoad={() => setImageLoaded(true)}
-          onError={() => setImageSourceIndex((current) => current + 1)}
+          onError={() => {
+            setImageLoaded(false);
+            setImageSourceIndex((current) => (current + 1 < imageSources.length ? current + 1 : imageSources.length));
+          }}
         />
       </div>
     );
@@ -252,9 +261,12 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   }
 
   // Fallback when a provider logo is unavailable.
+  const fallbackMark = initials || '$';
   return (
-    <div className={`${sizeClasses} ${className} rounded-lg bg-[#1a1f2c] border border-white/10 flex items-center justify-center text-[#38bdf8] font-mono font-bold shrink-0 select-none`}>
-      {initials || '$'}
+    <div className={`${imageFrameClass} rounded-lg bg-slate-900/80`}>
+      <span className="font-black tracking-[-0.12em] text-white/90 select-none">
+        {fallbackMark}
+      </span>
     </div>
   );
 };

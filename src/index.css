@@ -29,30 +29,27 @@ html {
   background: var(--site-background, #04080d);
 }
 
-@keyframes logo-breathe {
+@keyframes logo-marquee {
   0% {
-    opacity: 0;
-    transform: translateX(18px);
-  }
-  28%, 68% {
-    opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    opacity: 0;
-    transform: translateX(-18px);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
-.logo-breathe {
-  animation: logo-breathe 6.5s ease-in-out infinite;
-  will-change: opacity, transform;
+.logo-marquee-track {
+  animation: logo-marquee 24s linear infinite;
+  will-change: transform;
+}
+
+.logo-marquee-track:hover {
+  animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .logo-breathe {
+  .logo-marquee-track {
     animation: none;
-    opacity: 1;
     transform: none;
   }
 }
