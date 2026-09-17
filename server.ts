@@ -57,6 +57,30 @@ async function sendTransactionalEmail(to: string, subject: string, html: string)
   if (!response.ok) throw new Error(`Email provider rejected the message (${response.status}).`);
 }
 
+function newsletterEmailLayout(content: string, footer = '') {
+  return `<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#06131a;color:#e5e7eb;font-family:Arial,Helvetica,sans-serif;">
+    <div style="padding:32px 16px;background:linear-gradient(135deg,#06131a 0%,#0d1724 55%,#102a35 100%);">
+      <div style="max-width:600px;margin:0 auto;background:#0d1724;border:1px solid rgba(45,212,238,.24);border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.28);">
+        <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#67e8f9;font-weight:700;">Signups4FastCash.com</div>
+          <div style="margin-top:8px;font-size:13px;color:#94a3b8;">Rewards and cashback with clear terms</div>
+        </div>
+        <div style="padding:30px 28px;">${content}</div>
+        <div style="padding:18px 28px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;line-height:1.6;color:#64748b;">
+          ${footer || 'Independent offer comparisons. Merchant terms and availability can change.'}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`;
+}
+
+function emailButton(url: string, label: string) {
+  return `<a href="${url}" style="display:inline-block;background:#67e8f9;color:#06131a;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">${label}</a>`;
+}
+
 function getApproximateLocation(req: express.Request) {
   const header = (name: string) => {
     const value = req.header(name)?.split(',')[0]?.trim();
@@ -2474,7 +2498,19 @@ app.post('/api/admin/newsletter/broadcast', requireAdmin, async (req, res) => {
       return sendTransactionalEmail(
         email,
         `New offer listed: ${offer.incentiveAmount} on ${offer.company}`,
-        `<h2>${offer.company}: ${offer.title}</h2><p>${offer.incentiveAmount}</p><p>Review the current merchant terms before applying.</p><p><a href="${offer.referralUrl}">View offer</a></p><hr><p><a href="${unsubscribeUrl}">Unsubscribe</a></p>`,
+        newsletterEmailLayout(
+          `<div style="display:inline-block;padding:6px 10px;border:1px solid rgba(52,211,153,.35);border-radius:999px;color:#86efac;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">New offer drop</div>
+           <h1 style="margin:18px 0 10px;color:#fff;font-size:28px;line-height:1.2;">${offer.company}</h1>
+           <p style="margin:0 0 22px;color:#cbd5e1;font-size:16px;line-height:1.5;">${offer.title}</p>
+           <div style="padding:16px;border:1px solid rgba(45,212,238,.2);border-radius:12px;background:rgba(45,212,238,.06);">
+             <div style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Advertised reward</div>
+             <div style="margin-top:6px;color:#67e8f9;font-size:24px;font-weight:700;">${offer.incentiveAmount}</div>
+           </div>
+           <p style="margin:22px 0;color:#cbd5e1;font-size:14px;line-height:1.6;">Review the current requirements and merchant terms before applying.</p>
+           ${emailButton(offer.referralUrl, 'Review this offer')}
+           <p style="margin:24px 0 0;font-size:11px;"><a href="${unsubscribeUrl}" style="color:#94a3b8;">Unsubscribe from offer alerts</a></p>`,
+          'You are receiving this because you confirmed email alerts from Signups4FastCash.com. Offers and terms can change.',
+        ),
       );
     }));
     await auditAdminAction(req, 'newsletter_broadcast', { offerId: offer.id, recipientCount: subscribers.rows.length });
@@ -2535,7 +2571,14 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
       await sendTransactionalEmail(
         normalizedEmail,
         'Confirm your Signups4FastCash.com alerts',
-        `<p>Confirm your email to receive ${subscriberFrequency} offer alerts.</p><p><a href="${confirmationUrl}">Confirm subscription</a></p><p>If you did not request this, you can ignore this message.</p>`,
+        newsletterEmailLayout(
+          `<div style="display:inline-block;padding:6px 10px;border:1px solid rgba(45,212,238,.35);border-radius:999px;color:#67e8f9;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Email alerts</div>
+           <h1 style="margin:18px 0 12px;color:#fff;font-size:28px;line-height:1.2;">Confirm your subscription</h1>
+           <p style="margin:0 0 24px;color:#cbd5e1;font-size:15px;line-height:1.6;">You selected <strong style="color:#fff;">${subscriberFrequency}</strong> offer alerts. Confirm your email to start receiving carefully explained rewards and cashback opportunities.</p>
+           ${emailButton(confirmationUrl, 'Confirm subscription')}
+           <p style="margin:24px 0 0;color:#64748b;font-size:12px;line-height:1.5;">If you did not request these alerts, you can safely ignore this email.</p>`,
+          'You can unsubscribe from any alert in one click. We do not sell subscriber addresses.',
+        ),
       );
       const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers WHERE verified = TRUE AND unsubscribed_at IS NULL');
       return res.json({ success: true, pendingConfirmation: true, subscriberCount: Number(count.rows[0]?.count || 0) });
@@ -2556,7 +2599,9 @@ app.get('/api/newsletter/confirm', async (req, res) => {
     [token],
   );
   if (!result.rowCount) return res.status(400).send('This confirmation link is invalid or expired.');
-  res.type('html').send('<h1>Email alerts confirmed</h1><p>You are now subscribed to Signups4FastCash.com alerts.</p>');
+  res.type('html').send(newsletterEmailLayout(
+    '<div style="text-align:center;"><div style="font-size:40px;color:#86efac;">✓</div><h1 style="margin:12px 0;color:#fff;">Email alerts confirmed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You are now subscribed to Signups4FastCash.com alerts.</p><a href="/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>',
+  ));
 });
 
 app.get('/api/newsletter/unsubscribe', async (req, res) => {
@@ -2571,7 +2616,9 @@ app.get('/api/newsletter/unsubscribe', async (req, res) => {
     return res.status(400).send('This unsubscribe link is invalid.');
   }
   await database.query('UPDATE newsletter_subscribers SET unsubscribed_at = NOW(), verified = FALSE WHERE email = $1', [email]);
-  res.type('html').send('<h1>You are unsubscribed</h1><p>You will not receive further alerts from this list.</p>');
+  res.type('html').send(newsletterEmailLayout(
+    '<div style="text-align:center;"><h1 style="margin:0 0 12px;color:#fff;">You are unsubscribed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You will not receive further alerts from this list.</p><a href="/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>',
+  ));
 });
 
 // API: Newsletter subscriber count
