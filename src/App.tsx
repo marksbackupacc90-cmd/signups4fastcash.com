@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
@@ -133,6 +133,7 @@ export default function App() {
       return [];
     }
   });
+  const recordedImpressions = useRef(new Set<string>());
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [isOwnerAdmin, setIsOwnerAdmin] = useState(false);
   const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
@@ -670,6 +671,21 @@ export default function App() {
       }
       return 0;
     });
+
+  useEffect(() => {
+    if (activeTab !== 'offers' || filteredOffers.length === 0 || localStorage.getItem('signups4fastcash_admin_token')) return;
+    const visitorId = localStorage.getItem('signups4fastcash_visitor_id') || undefined;
+    filteredOffers.forEach((offer, index) => {
+      const impressionKey = `${offer.id}:${index}`;
+      if (recordedImpressions.current.has(impressionKey)) return;
+      recordedImpressions.current.add(impressionKey);
+      void fetch('/api/analytics/impression', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offerId: offer.id, position: index + 1, visitorId }),
+      }).catch(() => {});
+    });
+  }, [activeTab, filteredOffers.map((offer) => offer.id).join('|')]);
 
   const compareOffers = compareIds
     .map((id) => liveOffers.find((offer) => offer.id === id))

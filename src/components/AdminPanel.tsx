@@ -96,6 +96,12 @@ interface AnalyticsReport {
   sources: { source: string; pageViews: number }[];
 }
 
+interface ExposureReport {
+  totalImpressions: number;
+  offers: { offerId: string; company: string; impressions: number; clicks: number; conversions: number; ctr: number }[];
+  positions: { position: number; impressions: number }[];
+}
+
 interface AdminAccount {
   id: string;
   email: string;
@@ -315,6 +321,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [auditEntries, setAuditEntries] = useState<AdminAuditEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [serviceHealth, setServiceHealth] = useState<ServiceHealth | null>(null);
+  const [analyticsRefreshedAt, setAnalyticsRefreshedAt] = useState<string | null>(null);
+  const [analyticsRefreshKey, setAnalyticsRefreshKey] = useState(0);
+  const [exposureReport, setExposureReport] = useState<ExposureReport | null>(null);
 
   // Live Offers inline draft referral inputs and filters
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
@@ -487,8 +496,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return response.json() as Promise<VisitorAnalytics>;
       })
       .then(setVisitorAnalytics)
+      .then(() => setAnalyticsRefreshedAt(new Date().toISOString()))
       .catch((error) => console.error(error));
-  }, [analyticsRange]);
+  }, [analyticsRange, analyticsRefreshKey]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    fetch('/api/admin/analytics/exposure', { headers: token ? { 'x-admin-token': token } : {} })
+      .then((response) => response.ok ? response.json() as Promise<ExposureReport> : Promise.reject(new Error('Could not load offer exposure.')))
+      .then(setExposureReport)
+      .catch((error) => console.error(error));
+  }, [analyticsRefreshKey]);
 
   const handleOutreachAssistant = async () => {
     if (!outreachTask.trim()) {
@@ -759,6 +777,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return clickDifference !== 0 ? clickDifference : b.incentiveValue - a.incentiveValue;
   });
 
+  const offerHealth = (offer: Offer) => {
+    const issues: string[] = [];
+    if (!offer.referralUrl || offer.referralUrl.includes('PENDING_ADMIN_CODE')) issues.push('Missing referral link');
+    if (offer.verificationExpiresAt && new Date(offer.verificationExpiresAt).getTime() < Date.now()) issues.push('Verification expired');
+    if ((offer.clicksCount || 0) >= 10 && !(offer.conversionsCount || 0)) issues.push('Clicks without conversions');
+    return issues;
+  };
+
   return (
     <div className="space-y-6">
       {serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
@@ -789,6 +815,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {range === 'all' ? 'All' : range === '30d' ? '30 days' : '7 days'}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setAnalyticsRefreshKey((current) => current + 1)}
+              className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:border-cyan-300/50 hover:text-cyan-200"
+            >
+              Refresh
+            </button>
+            {analyticsRefreshedAt && <span className="text-[10px] text-zinc-600">Updated {new Date(analyticsRefreshedAt).toLocaleTimeString()}</span>}
           </div>
           <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-4">
             <div>
@@ -846,6 +880,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="mt-3 text-[11px] text-zinc-500">
               Lifetime totals: {analyticsReport.totals.clicks.toLocaleString()} clicks, {analyticsReport.totals.pageViews.toLocaleString()} page views, {analyticsReport.totals.conversions.toLocaleString()} conversions.
             </div>
+            </div>
+          )}
+          {exposureReport && (
+            <div className="sm:col-span-3 rounded-xl border border-violet-300/20 bg-violet-300/5 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold text-violet-100">Offer exposure report</div>
+                  <p className="mt-1 text-[11px] text-zinc-500">Impressions are recorded when offers are shown, with clicks and conversions matched by offer.</p>
+                </div>
+                <div className="text-[11px] text-zinc-400">{exposureReport.totalImpressions.toLocaleString()} total impressions</div>
+              </div>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left text-xs">
+                  <thead className="border-b border-white/[0.08] text-zinc-500">
+                    <tr>
+                      <th className="px-2 py-2 font-medium">Offer</th>
+                      <th className="px-2 py-2 text-right font-medium">Shown</th>
+                      <th className="px-2 py-2 text-right font-medium">Clicks</th>
+                      <th className="px-2 py-2 text-right font-medium">CTR</th>
+                      <th className="px-2 py-2 text-right font-medium">Conversions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...exposureReport.offers].sort((a, b) => b.impressions - a.impressions).slice(0, 15).map((offer) => (
+                      <tr key={offer.offerId} className="border-b border-white/[0.05]">
+                        <td className="px-2 py-2 text-zinc-200">{offer.company}</td>
+                        <td className="px-2 py-2 text-right font-mono text-zinc-300">{offer.impressions.toLocaleString()}</td>
+                        <td className="px-2 py-2 text-right font-mono text-zinc-300">{offer.clicks.toLocaleString()}</td>
+                        <td className="px-2 py-2 text-right font-mono text-violet-200">{offer.ctr.toFixed(2)}%</td>
+                        <td className="px-2 py-2 text-right font-mono text-emerald-200">{offer.conversions.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
           <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
@@ -1483,6 +1552,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-5">
+              {[
+                ['Live offers', liveOffers.length],
+                ['Pending', pendingOffers.length],
+                ['Clicks', liveOffers.reduce((sum, offer) => sum + (offer.clicksCount || 0), 0)],
+                ['Conversions', liveOffers.reduce((sum, offer) => sum + (offer.conversionsCount || 0), 0)],
+                ['Subscribers', subscribers.length],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-white/[0.06] bg-[#141824] px-3 py-2">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">{label}</div>
+                  <div className="mt-1 text-lg font-mono font-bold text-white">{Number(value).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+
             <button
               type="button"
               onClick={() => setExpandedReferralLinks((current) => !current)}
@@ -1661,6 +1745,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             Conversions: <strong className="text-cyan-300">{offer.conversionsCount || 0}</strong>
                           </span>
                         </div>
+                        {offerHealth(offer).length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {offerHealth(offer).map((issue) => (
+                              <span key={issue} className="rounded border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-mono text-amber-200">
+                                {issue}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${expandedLiveOfferId === offer.id ? 'rotate-180' : ''}`} />
                     </button>
