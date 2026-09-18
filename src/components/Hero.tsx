@@ -10,8 +10,8 @@ interface HeroProps {
   onSearchSubmit?: (query: string) => void;
   selectedCategory: string;
   setSelectedCategory: (category: string) => void;
-  sortBy: 'highest' | 'fastest' | 'easiest';
-  setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
+  sortBy: 'random' | 'highest' | 'fastest' | 'easiest';
+  setSortBy: (sort: 'random' | 'highest' | 'fastest' | 'easiest') => void;
   offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast';
   setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast') => void;
   totalOffersCount: number;
@@ -187,9 +187,10 @@ export const Hero: React.FC<HeroProps> = ({
             <select
               id="sort-offers"
               value={sortBy}
-              onChange={(event) => setSortBy(event.target.value as 'highest' | 'fastest' | 'easiest')}
+              onChange={(event) => setSortBy(event.target.value as 'random' | 'highest' | 'fastest' | 'easiest')}
               className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#2dd4ee]"
             >
+              <option value="random">Random order</option>
               <option value="highest">Highest Cash</option>
               <option value="fastest">Fastest Payout</option>
               <option value="easiest">Lowest Deposit</option>

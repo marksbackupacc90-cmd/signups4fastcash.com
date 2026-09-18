@@ -51,6 +51,12 @@ function isAvailableOffer(offer: Offer) {
   return String(offer.category) !== 'surveys';
 }
 
+function shuffleOfferIds(offers: Offer[]) {
+  return [...offers]
+    .sort(() => Math.random() - 0.5)
+    .map((offer) => offer.id);
+}
+
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
   const [activeTab, setActiveTab] = useState<'offers' | 'admin'>('offers');
@@ -116,7 +122,8 @@ export default function App() {
   const [blastLogs, setBlastLogs] = useState<EmailBlastLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState<'highest' | 'fastest' | 'easiest'>('highest');
+  const [sortBy, setSortBy] = useState<'random' | 'highest' | 'fastest' | 'easiest'>('random');
+  const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast'>('all');
   const [compareIds, setCompareIds] = useState<string[]>(() => {
     try {
@@ -150,6 +157,15 @@ export default function App() {
       return 'unknown';
     }
   });
+  const liveOfferIds = liveOffers.map((offer) => offer.id).join('|');
+
+  useEffect(() => {
+    setRandomOfferOrder((current) => {
+      const currentIds = new Set(current);
+      const unchanged = liveOffers.length === current.length && liveOffers.every((offer) => currentIds.has(offer.id));
+      return unchanged ? current : shuffleOfferIds(liveOffers);
+    });
+  }, [liveOfferIds]);
 
   useEffect(() => {
     fetch('/api/site-settings')
@@ -614,6 +630,9 @@ export default function App() {
   };
 
   const orderedLiveOffers = [...liveOffers].sort((a, b) => {
+    if (sortBy === 'random') {
+      return randomOfferOrder.indexOf(a.id) - randomOfferOrder.indexOf(b.id);
+    }
     if (Number(b.featured ?? false) !== Number(a.featured ?? false)) {
       return Number(b.featured ?? false) - Number(a.featured ?? false);
     }
