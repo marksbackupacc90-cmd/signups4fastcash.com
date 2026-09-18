@@ -2571,6 +2571,8 @@ app.get(['/api/admin/analytics/exposure', '/api/admin/analytics/exposures'], req
         const conversions = Number(offer.conversionsCount) || 0;
         return {
           offerId: offer.id,
+          company: offer.company,
+          title: offer.title,
           impressions,
           clicks,
           conversions,
@@ -2600,6 +2602,8 @@ app.get(['/api/admin/analytics/exposure', '/api/admin/analytics/exposures'], req
       const conversions = Number(offer.conversionsCount) || 0;
       return {
         offerId: offer.id,
+        company: offer.company,
+        title: offer.title,
         impressions,
         clicks,
         conversions,

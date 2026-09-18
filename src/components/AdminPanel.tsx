@@ -98,7 +98,7 @@ interface AnalyticsReport {
 
 interface ExposureReport {
   totalImpressions: number;
-  offers: { offerId: string; company: string; impressions: number; clicks: number; conversions: number; ctr: number }[];
+  offers: { offerId: string; company?: string; title?: string; impressions: number; clicks: number; conversions: number; ctr: number }[];
   positions: { position: number; impressions: number }[];
 }
 
@@ -343,6 +343,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedBlastId, setExpandedBlastId] = useState<string | null>(null);
   const [expandedLocations, setExpandedLocations] = useState(false);
   const [expandedReferralLinks, setExpandedReferralLinks] = useState(false);
+  const [expandedOfferList, setExpandedOfferList] = useState(false);
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
 
   // For pending approval review state
@@ -905,7 +906,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <tbody>
                     {[...exposureReport.offers].sort((a, b) => b.impressions - a.impressions).slice(0, 15).map((offer) => (
                       <tr key={offer.offerId} className="border-b border-white/[0.05]">
-                        <td className="px-2 py-2 text-zinc-200">{offer.company}</td>
+                        <td className="px-2 py-2 text-zinc-200">{offer.company || liveOffers.find((candidate) => candidate.id === offer.offerId)?.company || offer.offerId}</td>
                         <td className="px-2 py-2 text-right font-mono text-zinc-300">{offer.impressions.toLocaleString()}</td>
                         <td className="px-2 py-2 text-right font-mono text-zinc-300">{offer.clicks.toLocaleString()}</td>
                         <td className="px-2 py-2 text-right font-mono text-violet-200">{offer.ctr.toFixed(2)}%</td>
@@ -1697,7 +1698,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Offers List with Dedicated In-Card Referral Editor */}
           <div className="space-y-4">
-            {filteredLiveOffers.map((offer) => {
+            <button
+              type="button"
+              onClick={() => setExpandedOfferList((current) => !current)}
+              aria-expanded={expandedOfferList}
+              className="flex w-full items-center justify-between rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] px-4 py-3 text-left hover:bg-cyan-300/10"
+            >
+              <span>
+                <span className="block text-xs font-bold uppercase tracking-wider text-cyan-100">Live offer list</span>
+                <span className="mt-1 block text-[11px] text-zinc-500">{filteredLiveOffers.length} offers sorted by clicks</span>
+              </span>
+              <span className="flex items-center gap-2 text-[11px] text-zinc-400">
+                {expandedOfferList ? 'Collapse' : 'Expand'}
+                <ChevronDown className={`h-4 w-4 transition-transform ${expandedOfferList ? 'rotate-180' : ''}`} />
+              </span>
+            </button>
+            {expandedOfferList && filteredLiveOffers.map((offer) => {
               const draftCode = draftCodes[offer.id] !== undefined ? draftCodes[offer.id] : (offer.referralCode || '');
               const draftUrl = draftUrls[offer.id] !== undefined ? draftUrls[offer.id] : (offer.referralUrl || '');
               const draftLogoUrl = draftLogoUrls[offer.id] !== undefined ? draftLogoUrls[offer.id] : (offer.logoUrl || '');
@@ -1933,7 +1949,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               );
             })}
 
-            {filteredLiveOffers.length === 0 && (
+            {expandedOfferList && filteredLiveOffers.length === 0 && (
               <div className="p-10 text-center rounded-xl bg-[#0e121a] border border-white/[0.08]">
                 <p className="text-xs font-mono text-zinc-400">
                   No offers matched your filter "{liveSearchFilter}".
