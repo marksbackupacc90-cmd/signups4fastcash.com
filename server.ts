@@ -2614,6 +2614,7 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
 app.get('/api/newsletter/confirm', async (req, res) => {
   const token = typeof req.query.token === 'string' ? req.query.token : '';
   if (!token || !database) return res.status(400).send('This confirmation link is invalid or expired.');
+  const appUrl = getRequestAppUrl(req);
   const result = await database.query(
     `UPDATE newsletter_subscribers SET verified = TRUE, confirmation_token = NULL
      WHERE confirmation_token = $1 AND unsubscribed_at IS NULL RETURNING email`,
@@ -2631,7 +2632,7 @@ app.get('/api/newsletter/confirm', async (req, res) => {
              <div style="display:inline-block;padding:6px 10px;border:1px solid rgba(134,239,172,.35);border-radius:999px;color:#86efac;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">You are in</div>
              <h1 style="margin:18px 0 12px;color:#fff;font-size:28px;line-height:1.2;">Your alerts are active</h1>
              <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.6;">We’ll send new offer drops according to the frequency you selected. Each alert links back to the official provider and keeps the requirements visible before you click.</p>
-             <a href="/" style="display:inline-block;margin-top:24px;background:#67e8f9;color:#06131a;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">Browse current offers</a>
+             <a href="${appUrl}/" style="display:inline-block;margin-top:24px;background:#67e8f9;color:#06131a;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">Browse current offers</a>
            </div>`,
           'You can unsubscribe from any alert in one click. We do not sell subscriber addresses.',
         ),
@@ -2641,7 +2642,7 @@ app.get('/api/newsletter/confirm', async (req, res) => {
     }
   }
   res.type('html').send(newsletterEmailLayout(
-    '<div style="text-align:center;"><div style="font-size:40px;color:#86efac;">✓</div><h1 style="margin:12px 0;color:#fff;">Email alerts confirmed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You are now subscribed to Signups4FastCash.com alerts.</p><a href="/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>',
+    `<div style="text-align:center;"><div style="font-size:40px;color:#86efac;">✓</div><h1 style="margin:12px 0;color:#fff;">Email alerts confirmed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You are now subscribed to Signups4FastCash.com alerts.</p><a href="${appUrl}/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>`,
   ));
 });
 
@@ -2656,9 +2657,10 @@ app.get('/api/newsletter/unsubscribe', async (req, res) => {
   if (!email || !signaturesMatch || !database) {
     return res.status(400).send('This unsubscribe link is invalid.');
   }
+  const appUrl = getRequestAppUrl(req);
   await database.query('UPDATE newsletter_subscribers SET unsubscribed_at = NOW(), verified = FALSE WHERE email = $1', [email]);
   res.type('html').send(newsletterEmailLayout(
-    '<div style="text-align:center;"><h1 style="margin:0 0 12px;color:#fff;">You are unsubscribed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You will not receive further alerts from this list.</p><a href="/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>',
+    `<div style="text-align:center;"><h1 style="margin:0 0 12px;color:#fff;">You are unsubscribed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You will not receive further alerts from this list.</p><a href="${appUrl}/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>`,
   ));
 });
 
