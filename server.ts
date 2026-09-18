@@ -182,13 +182,11 @@ app.use((req, res, next) => {
 // API: XML Sitemap for search engines (must be before static middleware)
 app.get('/sitemap.xml', (req, res) => {
   const baseUrl = getOAuthAppUrl(req);
-  const offers = getOfferCatalog();
   const urls = [
     { loc: baseUrl, changefreq: 'daily', priority: '1.0' },
-    { loc: `${baseUrl}/offers`, changefreq: 'daily', priority: '0.9' },
   ];
   
-  offers.live.forEach((offer) => {
+  liveOffersStore.filter(isVerificationCurrent).forEach((offer) => {
     urls.push({
       loc: `${baseUrl}/?offer=${encodeURIComponent(offer.id)}`,
       changefreq: 'weekly',
