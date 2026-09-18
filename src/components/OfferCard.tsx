@@ -15,9 +15,11 @@ import { CompanyLogo } from './CompanyLogo';
 interface OfferCardProps {
   offer: Offer;
   onClaimClick: (offerId: string) => void;
+  compared?: boolean;
+  onToggleCompare?: (offerId: string) => void;
 }
 
-export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => {
+export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, compared = false, onToggleCompare }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showHints, setShowHints] = useState(false);
   const [showTruth, setShowTruth] = useState(false);
@@ -35,7 +37,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
     year: 'numeric',
   });
   const isReviewed = offer.verificationStatus === 'reviewed';
-  const statusLabel = isReviewed ? 'Verified' : 'Updated';
+  const statusLabel = isReviewed ? 'Last verified' : 'Last updated';
   const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
   const sofiPaths = [
     {
@@ -138,6 +140,16 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           </button>
 
           <div className="flex shrink-0 items-center gap-2 pt-1">
+            {onToggleCompare && (
+              <button
+                type="button"
+                onClick={() => onToggleCompare(offer.id)}
+                aria-pressed={compared}
+                className={`focus-ring rounded-md border px-2 py-2 text-[10px] font-semibold transition-colors ${compared ? 'border-emerald-300/60 bg-emerald-300/10 text-emerald-200' : 'border-white/[0.1] bg-white/[0.04] text-zinc-400 hover:text-white'}`}
+              >
+                {compared ? 'Compared' : 'Compare'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowDetails((current) => !current)}
@@ -367,7 +379,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               <span className="text-emerald-400">Direct partner link</span>
               {' '}• payout by {offer.company} • no extra cost
               <div className="mt-0.5 text-zinc-600">
-                {isReviewed && offer.verifiedAt ? `Terms checked ${reviewLabel}.` : `Last updated ${updatedLabel}.`}
+                {isReviewed && offer.verifiedAt ? `${statusLabel} ${reviewLabel}.` : `${statusLabel} ${updatedLabel}.`}
                 {' '}Confirm current terms before applying.
               </div>
             </div>

@@ -117,6 +117,15 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'highest' | 'fastest' | 'easiest'>('highest');
+  const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast'>('all');
+  const [compareIds, setCompareIds] = useState<string[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('signups4fastcash_compare') || '[]');
+      return Array.isArray(saved) ? saved.slice(0, 2) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [isOwnerAdmin, setIsOwnerAdmin] = useState(false);
   const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
@@ -616,6 +625,9 @@ export default function App() {
       if (selectedCategory !== 'all' && offer.category !== selectedCategory) {
         return false;
       }
+      if (offerFilter === 'no-deposit' && !/\$0|no deposit/i.test(offer.depositRequired)) return false;
+      if (offerFilter === 'paypal' && !/paypal/i.test(`${offer.honestTruth.summary} ${offer.honestTruth.hiddenFeesWarning} ${offer.payoutSpeed}`)) return false;
+      if (offerFilter === 'fast' && !/instant|within \d+ (?:hours?|business days?)/i.test(offer.payoutSpeed)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -639,6 +651,19 @@ export default function App() {
       }
       return 0;
     });
+
+  const compareOffers = compareIds
+    .map((id) => liveOffers.find((offer) => offer.id === id))
+    .filter((offer): offer is Offer => Boolean(offer));
+  const toggleCompare = (offerId: string) => {
+    setCompareIds((current) => {
+      const next = current.includes(offerId)
+        ? current.filter((id) => id !== offerId)
+        : current.length < 2 ? [...current, offerId] : [current[1], offerId];
+      localStorage.setItem('signups4fastcash_compare', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const shareUrl = 'https://signups4fastcash.com/?utm_source=visitor_share&utm_medium=referral&utm_campaign=share_cta';
   const shareMessage = `I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: ${shareUrl}`;
@@ -748,6 +773,8 @@ export default function App() {
               setSelectedCategory={setSelectedCategory}
               sortBy={sortBy}
               setSortBy={setSortBy}
+              offerFilter={offerFilter}
+              setOfferFilter={setOfferFilter}
               totalOffersCount={liveOffers.length}
               featuredOffers={orderedLiveOffers}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
@@ -779,6 +806,29 @@ export default function App() {
                   </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                 </div>
+                {compareOffers.length > 0 && (
+                  <div className="mb-5 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.05] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-emerald-200">Compare offers</div>
+                        <div className="mt-1 text-[11px] text-zinc-400">Choose up to two offers to compare the visitor-facing requirements.</div>
+                      </div>
+                      <button type="button" onClick={() => { setCompareIds([]); localStorage.removeItem('signups4fastcash_compare'); }} className="text-[11px] text-zinc-400 hover:text-white">Clear</button>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {compareOffers.map((offer) => (
+                        <div key={offer.id} className="rounded-lg border border-white/[0.08] bg-[#0e121a] p-3">
+                          <div className="text-sm font-bold text-white">{offer.company}</div>
+                          <div className="mt-1 text-xs text-emerald-200">{offer.title}</div>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
+                            <span>Requirement: <strong className="text-zinc-200">{offer.depositRequired}</strong></span>
+                            <span>Payout: <strong className="text-zinc-200">{offer.payoutSpeed}</strong></span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <span className="text-xs font-mono text-zinc-500 hidden sm:inline">
                   Requirements and availability can change on the merchant site
                 </span>
@@ -797,6 +847,7 @@ export default function App() {
                     onClick={() => {
                       setSearchQuery('');
                       setSelectedCategory('all');
+                      setOfferFilter('all');
                     }}
                     className="mt-4 px-3 py-1.5 rounded bg-white/10 text-xs font-mono text-white hover:bg-white/20"
                   >
@@ -811,6 +862,8 @@ export default function App() {
                         key={offer.id}
                         offer={offer}
                         onClaimClick={handleClaimClick}
+                        compared={compareIds.includes(offer.id)}
+                        onToggleCompare={toggleCompare}
                       />
                     ))}
                   </div>

@@ -38,6 +38,10 @@ export const HowItWorks: React.FC = () => (
           </div>
         ))}
       </div>
+      <p className="border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-500 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+        Rewards are paid by the merchant after you meet the listed requirements. Amounts, approval,
+        eligibility, and payout timing can change, so check the offer terms before applying.
+      </p>
     </div>
   </section>
 );

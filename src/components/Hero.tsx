@@ -12,6 +12,8 @@ interface HeroProps {
   setSelectedCategory: (category: string) => void;
   sortBy: 'highest' | 'fastest' | 'easiest';
   setSortBy: (sort: 'highest' | 'fastest' | 'easiest') => void;
+  offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast';
+  setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast') => void;
   totalOffersCount: number;
   featuredOffers: Offer[];
   onOpenFinder?: () => void;
@@ -36,6 +38,8 @@ export const Hero: React.FC<HeroProps> = ({
   setSelectedCategory,
   sortBy,
   setSortBy,
+  offerFilter,
+  setOfferFilter,
   totalOffersCount,
   featuredOffers,
   onOpenFinder,
@@ -215,6 +219,28 @@ export const Hero: React.FC<HeroProps> = ({
                 </button>
               );
             })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2" aria-label="Filter offers by requirements">
+            {([
+              ['all', 'All requirements'],
+              ['no-deposit', 'No deposit'],
+              ['paypal', 'PayPal cashout'],
+              ['fast', 'Fast payout'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setOfferFilter(id)}
+                aria-pressed={offerFilter === id}
+                className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                  offerFilter === id
+                    ? 'border-emerald-300/60 bg-emerald-300 text-[#06131a]'
+                    : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-emerald-300/40 hover:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
           </div>
