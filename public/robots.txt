@@ -1,16 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /admin/
-Disallow: /private/
-
-User-agent: Googlebot
-Allow: /
-
-User-agent: Google-InspectionTool
-Allow: /
-
-User-agent: Googlebot Smartphone
-Allow: /
 
 Sitemap: https://signups4fastcash.com/sitemap.xml
