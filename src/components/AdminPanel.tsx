@@ -330,6 +330,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [providerLinkLabel, setProviderLinkLabel] = useState('');
   const [providerLinkUrl, setProviderLinkUrl] = useState('');
   const [providerLinkMessage, setProviderLinkMessage] = useState<string | null>(null);
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
+  const [expandedBlastId, setExpandedBlastId] = useState<string | null>(null);
+  const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -749,6 +752,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       (o.referralUrl && o.referralUrl.toLowerCase().includes(q)) ||
       o.category.toLowerCase().includes(q)
     );
+  }).sort((a, b) => {
+    const clickDifference = (b.clicksCount || 0) - (a.clicksCount || 0);
+    return clickDifference !== 0 ? clickDifference : b.incentiveValue - a.incentiveValue;
   });
 
   return (
@@ -1022,7 +1028,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {entry.role} {entry.actor ? `• ${entry.actor}` : ''}
                       </div>
                       {Object.keys(entry.details).length > 0 && (
-                        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[10px] text-zinc-400">{JSON.stringify(entry.details)}</pre>
+                        <details
+                          open={expandedAuditId === entry.id}
+                          onToggle={(event) => setExpandedAuditId(event.currentTarget.open ? entry.id : null)}
+                          className="mt-2 rounded border border-white/[0.06] bg-[#0e121a] px-2 py-1.5"
+                        >
+                          <summary className="cursor-pointer list-none text-[10px] font-semibold text-cyan-200">
+                            View event details
+                          </summary>
+                          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[10px] text-zinc-400">{JSON.stringify(entry.details, null, 2)}</pre>
+                        </details>
                       )}
                     </div>
                   ))}
@@ -1045,7 +1060,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </thead>
                 <tbody>
                   {accounts.filter((account) => `${account.email} ${account.username || ''}`.toLowerCase().includes(accountSearch.toLowerCase().trim())).map((account) => (
-                    <tr key={account.id} className="border-b border-white/[0.05] text-zinc-200">
+                    <React.Fragment key={account.id}>
+                    <tr className="border-b border-white/[0.05] text-zinc-200">
                       <td className="px-3 py-3">{account.email}</td>
                       <td className="px-3 py-3">{account.username ? `@${account.username}` : 'Not chosen'}</td>
                       <td className="px-3 py-3 text-zinc-400">{account.createdAt ? new Date(account.createdAt).toLocaleString() : 'Current session data'}</td>
@@ -1056,6 +1072,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex gap-2">
+                          <button type="button" onClick={() => setExpandedAccountId((current) => current === account.id ? null : account.id)} className="rounded border border-cyan-400/30 px-2 py-1 text-[11px] text-cyan-200 hover:bg-cyan-400/10">
+                            {expandedAccountId === account.id ? 'Hide' : 'View'}
+                          </button>
                           <button type="button" disabled={accountActionLoading === account.id} onClick={() => runAccountAction(account, 'toggle')} className="rounded border border-white/10 px-2 py-1 text-[11px] text-zinc-200 hover:border-cyan-400 disabled:opacity-50">
                             {account.status === 'blocked' ? 'Unblock' : 'Block'}
                           </button>
@@ -1065,6 +1084,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </td>
                     </tr>
+                    {expandedAccountId === account.id && (
+                      <tr className="border-b border-cyan-300/10 bg-[#090d15]">
+                        <td colSpan={6} className="px-4 py-3">
+                          <div className="grid gap-3 text-[11px] sm:grid-cols-3">
+                            <div><span className="block text-zinc-500">Account ID</span><code className="text-zinc-200">{account.id}</code></div>
+                            <div><span className="block text-zinc-500">Session activity</span><span className="text-zinc-200">{account.activeSessions} active session{account.activeSessions === 1 ? '' : 's'}</span></div>
+                            <div><span className="block text-zinc-500">Access state</span><span className={account.status === 'blocked' ? 'text-red-300' : 'text-emerald-300'}>{account.status === 'blocked' ? 'Sign-in blocked' : 'Can sign in'}</span></div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -2005,16 +2036,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ) : (
             <div className="space-y-2.5">
               {blastLogs.map((log) => (
-                <div key={log.id} className="p-3 rounded-lg bg-[#141824] border border-white/[0.06] text-xs font-mono flex items-center justify-between">
-                  <div>
+                <div key={log.id} className="rounded-lg bg-[#141824] border border-white/[0.06] text-xs font-mono">
+                  <button type="button" onClick={() => setExpandedBlastId((current) => current === log.id ? null : log.id)} className="flex w-full items-center justify-between gap-3 p-3 text-left">
+                  <div className="min-w-0">
                     <div className="text-white font-bold">{log.subject}</div>
                     <div className="text-[11px] text-zinc-500 mt-0.5">
                       Sent to {log.recipientCount} subscribers • {new Date(log.sentAt).toLocaleTimeString()}
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px]">
-                    Delivered
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px]">{log.status || 'Delivered'}</span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${expandedBlastId === log.id ? 'rotate-180' : ''}`} />
                   </span>
+                  </button>
+                  {expandedBlastId === log.id && (
+                    <div className="border-t border-white/[0.06] px-3 pb-3 pt-2 text-[11px] text-zinc-400">
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <span>Offer: <strong className="text-zinc-200">{log.offerTitle}</strong></span>
+                        <span>Sent: <strong className="text-zinc-200">{new Date(log.sentAt).toLocaleString()}</strong></span>
+                        <span>Push notification: <strong className="text-zinc-200">{log.pushSent ? 'Sent' : 'Not sent'}</strong></span>
+                      </div>
+                      {log.failureReason && <p className="mt-2 text-rose-300">Reason: {log.failureReason}</p>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
