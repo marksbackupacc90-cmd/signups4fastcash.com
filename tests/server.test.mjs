@@ -95,6 +95,12 @@ test('admin analytics requires an admin token', async () => {
   assert.equal(response.body.error, 'Admin authentication required');
 });
 
+test('analytics reports require an admin token', async () => {
+  const response = await request('/api/admin/analytics/report', { method: 'POST' });
+  assert.equal(response.status, 401);
+  assert.equal(response.body.error, 'Admin authentication required');
+});
+
 test('newsletter subscription fails explicitly when delivery is unconfigured', async () => {
   const response = await request('/api/newsletter/subscribe', {
     method: 'POST',

@@ -79,6 +79,23 @@ interface VisitorAnalytics {
   filtered?: boolean;
 }
 
+interface AnalyticsReport {
+  checkedAt: string;
+  previousCheckedAt: string | null;
+  new: {
+    clicks: number;
+    conversions: number;
+    pageViews: number;
+    uniqueVisitors: number;
+  };
+  totals: {
+    clicks: number;
+    conversions: number;
+    pageViews: number;
+  };
+  sources: { source: string; pageViews: number }[];
+}
+
 interface AdminAccount {
   id: string;
   email: string;
@@ -292,6 +309,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
   const [resettingAnalytics, setResettingAnalytics] = useState(false);
   const [analyticsResetMessage, setAnalyticsResetMessage] = useState<string | null>(null);
+  const [analyticsReport, setAnalyticsReport] = useState<AnalyticsReport | null>(null);
+  const [analyticsReportLoading, setAnalyticsReportLoading] = useState(false);
+  const [analyticsReportError, setAnalyticsReportError] = useState<string | null>(null);
   const [auditEntries, setAuditEntries] = useState<AdminAuditEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [serviceHealth, setServiceHealth] = useState<ServiceHealth | null>(null);
@@ -762,6 +782,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
             ))}
           </div>
+          <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-4">
+            <div>
+            <div className="text-xs font-semibold text-cyan-100">Report since last check</div>
+            <p className="mt-1 text-[11px] text-zinc-500">Capture new clicks, views, conversions, and visitor sources. The report becomes the next checkpoint.</p>
+            </div>
+            <button
+            type="button"
+            disabled={analyticsReportLoading}
+            onClick={async () => {
+              setAnalyticsReportLoading(true);
+              setAnalyticsReportError(null);
+              const token = localStorage.getItem('signups4fastcash_admin_token');
+              try {
+                const response = await fetch('/api/admin/analytics/report', {
+                  method: 'POST',
+                  headers: token ? { 'x-admin-token': token } : {},
+                });
+                const data = await response.json().catch(() => null) as AnalyticsReport & { error?: string } | null;
+                if (!response.ok) throw new Error(data?.error || 'Could not generate analytics report.');
+                setAnalyticsReport(data);
+              } catch (error) {
+                setAnalyticsReportError(error instanceof Error ? error.message : 'Could not generate analytics report.');
+              } finally {
+                setAnalyticsReportLoading(false);
+              }
+            }}
+            className="rounded-lg border border-cyan-300/60 bg-cyan-300 px-3 py-2 text-xs font-bold text-[#06131a] hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60"
+            >
+            {analyticsReportLoading ? 'Generating...' : 'Generate full report'}
+            </button>
+            {analyticsReportError && <div className="w-full text-xs text-rose-300">{analyticsReportError}</div>}
+          </div>
+          {analyticsReport && (
+            <div className="sm:col-span-3 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="text-xs font-semibold text-emerald-100">Latest report</div>
+              <div className="text-[11px] text-zinc-500">
+                {analyticsReport.previousCheckedAt ? `Since ${new Date(analyticsReport.previousCheckedAt).toLocaleString()}` : 'Since tracking began'}
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ['New clicks', analyticsReport.new.clicks],
+                ['New page views', analyticsReport.new.pageViews],
+                ['New visitors', analyticsReport.new.uniqueVisitors],
+                ['New conversions', analyticsReport.new.conversions],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-white/[0.08] bg-[#0e121a] p-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">{label}</div>
+                  <div className="mt-1 text-xl font-mono font-bold text-white">{Number(value).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-[11px] text-zinc-500">
+              Lifetime totals: {analyticsReport.totals.clicks.toLocaleString()} clicks, {analyticsReport.totals.pageViews.toLocaleString()} page views, {analyticsReport.totals.conversions.toLocaleString()} conversions.
+            </div>
+            </div>
+          )}
           <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
             <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Unique visitors</div>
             <div className="mt-2 text-2xl font-mono font-bold text-white">{visitorAnalytics.uniqueVisitors.toLocaleString()}</div>

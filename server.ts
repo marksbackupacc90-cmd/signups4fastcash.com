@@ -496,6 +496,13 @@ let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
 };
+let analyticsReportCheckpoint: {
+  checkedAt: string;
+  totalClicks: number;
+  totalConversions: number;
+  totalPageViews: number;
+  uniqueVisitors: Set<string>;
+} | null = null;
 let visitorAnalyticsStore = {
   totalPageViews: 0,
   uniqueVisitors: new Set<string>(),
@@ -736,6 +743,15 @@ async function initializeOfferStore() {
       id INTEGER PRIMARY KEY CHECK (id = 1),
       total_clicks INTEGER NOT NULL DEFAULT 0,
       total_conversions INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS analytics_report_checkpoints (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      checked_at TIMESTAMPTZ NOT NULL,
+      total_clicks INTEGER NOT NULL DEFAULT 0,
+      total_conversions INTEGER NOT NULL DEFAULT 0,
+      total_page_views INTEGER NOT NULL DEFAULT 0
     )
   `);
   await database.query(`
@@ -2469,8 +2485,97 @@ app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
   });
 });
 
+app.post('/api/admin/analytics/report', requireAdmin, async (_req, res) => {
+  const checkedAt = new Date();
+  if (database) {
+    try {
+      const checkpointResult = await database.query<{
+        checked_at: Date;
+        total_clicks: number;
+        total_conversions: number;
+        total_page_views: number;
+      }>('SELECT checked_at, total_clicks, total_conversions, total_page_views FROM analytics_report_checkpoints WHERE id = 1');
+      const previous = checkpointResult.rows[0];
+      const since = previous?.checked_at || null;
+      const pageviewResult = await database.query<{ total_page_views: string; unique_visitors: string }>(
+        `SELECT COUNT(*)::text AS total_page_views, COUNT(DISTINCT visitor_id)::text AS unique_visitors
+         FROM visitor_events
+         WHERE ($1::timestamptz IS NULL OR viewed_at > $1) AND viewed_at <= $2`,
+        [since, checkedAt.toISOString()],
+      );
+      const sourceRows = await database.query<{ source: string; page_views: string }>(
+        `SELECT source, COUNT(*)::text AS page_views
+         FROM visitor_events
+         WHERE ($1::timestamptz IS NULL OR viewed_at > $1) AND viewed_at <= $2
+         GROUP BY source ORDER BY COUNT(*) DESC`,
+        [since, checkedAt.toISOString()],
+      );
+      const currentPageViews = previous
+        ? previous.total_page_views + Number(pageviewResult.rows[0]?.total_page_views || 0)
+        : Number(pageviewResult.rows[0]?.total_page_views || 0);
+      await database.query(
+        `INSERT INTO analytics_report_checkpoints (id, checked_at, total_clicks, total_conversions, total_page_views)
+         VALUES (1, $1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET checked_at = EXCLUDED.checked_at,
+           total_clicks = EXCLUDED.total_clicks, total_conversions = EXCLUDED.total_conversions,
+           total_page_views = EXCLUDED.total_page_views`,
+        [checkedAt.toISOString(), analyticsStore.totalClicks, analyticsStore.totalConversions, currentPageViews],
+      );
+      return res.json({
+        checkedAt: checkedAt.toISOString(),
+        previousCheckedAt: previous?.checked_at?.toISOString() || null,
+        new: {
+          clicks: Math.max(0, analyticsStore.totalClicks - Number(previous?.total_clicks || 0)),
+          conversions: Math.max(0, analyticsStore.totalConversions - Number(previous?.total_conversions || 0)),
+          pageViews: Number(pageviewResult.rows[0]?.total_page_views || 0),
+          uniqueVisitors: Number(pageviewResult.rows[0]?.unique_visitors || 0),
+        },
+        totals: {
+          clicks: analyticsStore.totalClicks,
+          conversions: analyticsStore.totalConversions,
+          pageViews: currentPageViews,
+        },
+        sources: sourceRows.rows.map((row) => ({ source: row.source, pageViews: Number(row.page_views) })),
+      });
+    } catch (error) {
+      console.error('Could not generate analytics report:', error);
+      return res.status(500).json({ error: 'Could not generate analytics report.' });
+    }
+  }
+
+  const previous = analyticsReportCheckpoint;
+  const currentPageViews = visitorAnalyticsStore.totalPageViews;
+  const report = {
+    checkedAt: checkedAt.toISOString(),
+    previousCheckedAt: previous?.checkedAt || null,
+    new: {
+      clicks: Math.max(0, analyticsStore.totalClicks - (previous?.totalClicks || 0)),
+      conversions: Math.max(0, analyticsStore.totalConversions - (previous?.totalConversions || 0)),
+      pageViews: Math.max(0, currentPageViews - (previous?.totalPageViews || 0)),
+      uniqueVisitors: [...visitorAnalyticsStore.uniqueVisitors].filter((id) => !previous?.uniqueVisitors.has(id)).length,
+    },
+    totals: {
+      clicks: analyticsStore.totalClicks,
+      conversions: analyticsStore.totalConversions,
+      pageViews: currentPageViews,
+    },
+    sources: [...visitorAnalyticsStore.sources.entries()]
+      .map(([source, pageViews]) => ({ source, pageViews }))
+      .sort((a, b) => b.pageViews - a.pageViews),
+  };
+  analyticsReportCheckpoint = {
+    checkedAt: report.checkedAt,
+    totalClicks: report.totals.clicks,
+    totalConversions: report.totals.conversions,
+    totalPageViews: report.totals.pageViews,
+    uniqueVisitors: new Set(visitorAnalyticsStore.uniqueVisitors),
+  };
+  return res.json(report);
+});
+
 app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
   analyticsStore = { totalClicks: 0, totalConversions: 0 };
+  analyticsReportCheckpoint = null;
   visitorAnalyticsStore = {
     totalPageViews: 0,
     uniqueVisitors: new Set<string>(),
@@ -2488,6 +2593,7 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
       await database.query('BEGIN');
       await database.query('UPDATE analytics_counters SET total_clicks = 0, total_conversions = 0 WHERE id = 1');
       await database.query('DELETE FROM visitor_events');
+      await database.query('DELETE FROM analytics_report_checkpoints');
       await database.query('COMMIT');
       await saveLiveOffers();
     } catch (error) {
