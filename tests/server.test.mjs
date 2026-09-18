@@ -78,6 +78,29 @@ test('offer analytics rejects malformed telemetry payloads', async () => {
   assert.equal(response.body.error, 'A valid offerId and event type are required');
 });
 
+test('offer impressions validate offer placement and record position data', async () => {
+  const invalid = await request('/api/analytics/impression', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ offerId: 'offer-western-union-referral', position: 0 }),
+  });
+  assert.equal(invalid.status, 400);
+
+  const recorded = await request('/api/analytics/impression', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ offerId: 'offer-western-union-referral', position: 2, visitorId: 'test-visitor' }),
+  });
+  assert.equal(recorded.status, 201);
+  assert.deepEqual(recorded.body, { success: true });
+});
+
+test('offer exposure reports are owner-protected', async () => {
+  const response = await request('/api/admin/analytics/exposures');
+  assert.equal(response.status, 403);
+  assert.equal(response.body.error, 'Owner admin access is required.');
+});
+
 test('completion reports are separate from verified conversions', async () => {
   const response = await request('/api/offers/offer-western-union-referral/completion-report', {
     method: 'POST',

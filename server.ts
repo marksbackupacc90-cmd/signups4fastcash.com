@@ -504,6 +504,13 @@ let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
 };
+type OfferImpression = {
+  offerId: string;
+  position: number;
+  visitorId?: string;
+  recordedAt: string;
+};
+const offerImpressionsStore: OfferImpression[] = [];
 let analyticsReportCheckpoint: {
   checkedAt: string;
   totalClicks: number;
@@ -775,6 +782,16 @@ async function initializeOfferStore() {
   `);
   await database.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT \'Unknown\'');
   await database.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT \'Unknown\'');
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_impressions (
+      id TEXT PRIMARY KEY,
+      offer_id TEXT NOT NULL,
+      position INTEGER NOT NULL CHECK (position > 0),
+      visitor_id TEXT,
+      recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS offer_impressions_offer_position_idx ON offer_impressions (offer_id, position)');
   const configuredRetentionDays = Number.parseInt(env.VISITOR_ANALYTICS_RETENTION_DAYS || '365', 10);
   const retentionDays = Number.isFinite(configuredRetentionDays)
     ? Math.min(Math.max(configuredRetentionDays, 1), 3650)
@@ -2354,6 +2371,47 @@ Provide a structured consensus response answering the user's specific scenario w
   }
 });
 
+// API: Track offer exposure telemetry. Position is the 1-based catalog position
+// rendered to the visitor, so reports can compare placement performance.
+app.post('/api/analytics/impression', async (req, res) => {
+  const adminToken = req.header('x-admin-token');
+  const adminSession = adminToken ? adminTokens.get(adminToken) : undefined;
+  if (adminSession && adminSession.expiresAt > Date.now()) {
+    return res.json({ success: true, excluded: true });
+  }
+
+  const offerId = typeof req.body?.offerId === 'string' ? req.body.offerId.trim() : '';
+  const position = Number(req.body?.position);
+  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.trim().slice(0, 100) : undefined;
+  if (!offerId || !Number.isInteger(position) || position < 1 || position > 10000) {
+    return res.status(400).json({ error: 'A valid offerId and positive position are required' });
+  }
+  if (!liveOffersStore.some((offer) => offer.id === offerId)) {
+    return res.status(404).json({ error: 'Offer not found' });
+  }
+
+  const impression: OfferImpression = {
+    offerId,
+    position,
+    ...(visitorId ? { visitorId } : {}),
+    recordedAt: new Date().toISOString(),
+  };
+  offerImpressionsStore.push(impression);
+  if (database) {
+    try {
+      await database.query(
+        `INSERT INTO offer_impressions (id, offer_id, position, visitor_id, recorded_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [randomUUID(), offerId, position, visitorId || null, impression.recordedAt],
+      );
+    } catch (error) {
+      console.error('Could not persist offer impression:', error);
+      return res.status(500).json({ error: 'Could not record offer impression.' });
+    }
+  }
+  return res.status(201).json({ success: true });
+});
+
 // API: Track click & conversion telemetry
 app.post('/api/analytics/track', (req, res) => {
   const adminToken = req.header('x-admin-token');
@@ -2493,6 +2551,78 @@ app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
   });
 });
 
+// Owner-only exposure report. Delegated admins can view visitor analytics, but
+// offer placement performance is restricted because it informs monetization.
+app.get(['/api/admin/analytics/exposure', '/api/admin/analytics/exposures'], requireOwnerAdmin, async (_req, res) => {
+  try {
+    if (database) {
+      const impressionRows = await database.query<{
+        offer_id: string;
+        impressions: string;
+      }>('SELECT offer_id, COUNT(*)::text AS impressions FROM offer_impressions GROUP BY offer_id');
+      const positionRows = await database.query<{
+        position: number;
+        impressions: string;
+      }>('SELECT position, COUNT(*)::text AS impressions FROM offer_impressions GROUP BY position ORDER BY position');
+      const impressionsByOffer = new Map(impressionRows.rows.map((row) => [row.offer_id, Number(row.impressions)]));
+      const offers = liveOffersStore.map((offer) => {
+        const impressions = impressionsByOffer.get(offer.id) || 0;
+        const clicks = Number(offer.clicksCount) || 0;
+        const conversions = Number(offer.conversionsCount) || 0;
+        return {
+          offerId: offer.id,
+          impressions,
+          clicks,
+          conversions,
+          ctr: impressions ? Number((clicks / impressions * 100).toFixed(2)) : 0,
+        };
+      });
+      const totalImpressions = offers.reduce((sum, offer) => sum + offer.impressions, 0);
+      return res.json({
+        totalImpressions,
+        totalClicks: analyticsStore.totalClicks,
+        totalConversions: analyticsStore.totalConversions,
+        ctr: totalImpressions ? Number((analyticsStore.totalClicks / totalImpressions * 100).toFixed(2)) : 0,
+        offers,
+        positions: positionRows.rows.map((row) => ({ position: Number(row.position), impressions: Number(row.impressions) })),
+      });
+    }
+
+    const impressionsByOffer = new Map<string, number>();
+    const impressionsByPosition = new Map<number, number>();
+    offerImpressionsStore.forEach(({ offerId, position }) => {
+      impressionsByOffer.set(offerId, (impressionsByOffer.get(offerId) || 0) + 1);
+      impressionsByPosition.set(position, (impressionsByPosition.get(position) || 0) + 1);
+    });
+    const offers = liveOffersStore.map((offer) => {
+      const impressions = impressionsByOffer.get(offer.id) || 0;
+      const clicks = Number(offer.clicksCount) || 0;
+      const conversions = Number(offer.conversionsCount) || 0;
+      return {
+        offerId: offer.id,
+        impressions,
+        clicks,
+        conversions,
+        ctr: impressions ? Number((clicks / impressions * 100).toFixed(2)) : 0,
+      };
+    });
+    const totalImpressions = offerImpressionsStore.length;
+    return res.json({
+      totalImpressions,
+      totalClicks: analyticsStore.totalClicks,
+      totalConversions: analyticsStore.totalConversions,
+      ctr: totalImpressions ? Number((analyticsStore.totalClicks / totalImpressions * 100).toFixed(2)) : 0,
+      offers,
+      positions: [...impressionsByPosition.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([position, impressions]) => ({ position, impressions })),
+    });
+  } catch (error) {
+    console.error('Could not generate offer exposure report:', error);
+    return res.status(500).json({ error: 'Could not generate offer exposure report.' });
+  }
+});
+
 app.post('/api/admin/analytics/report', requireAdmin, async (_req, res) => {
   const checkedAt = new Date();
   if (database) {
@@ -2584,6 +2714,7 @@ app.post('/api/admin/analytics/report', requireAdmin, async (_req, res) => {
 app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
   analyticsStore = { totalClicks: 0, totalConversions: 0 };
   analyticsReportCheckpoint = null;
+  offerImpressionsStore.length = 0;
   visitorAnalyticsStore = {
     totalPageViews: 0,
     uniqueVisitors: new Set<string>(),
@@ -2601,6 +2732,7 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
       await database.query('BEGIN');
       await database.query('UPDATE analytics_counters SET total_clicks = 0, total_conversions = 0 WHERE id = 1');
       await database.query('DELETE FROM visitor_events');
+      await database.query('DELETE FROM offer_impressions');
       await database.query('DELETE FROM analytics_report_checkpoints');
       await database.query('COMMIT');
       await saveLiveOffers();
