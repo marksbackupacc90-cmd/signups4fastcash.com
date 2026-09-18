@@ -185,6 +185,13 @@ app.get('/sitemap.xml', (req, res) => {
   const urls = [
     { loc: baseUrl, changefreq: 'daily', priority: '1.0' },
   ];
+  Object.keys(seoPageRoutes).forEach((route) => {
+    urls.push({
+      loc: `${baseUrl}${route}`,
+      changefreq: 'weekly',
+      priority: '0.8',
+    });
+  });
   
   liveOffersStore.filter(isVerificationCurrent).forEach((offer) => {
     urls.push({
@@ -221,6 +228,7 @@ const seoPageRoutes: Record<string, string> = {
   '/best-rewards-apps': 'best-rewards-apps.html',
   '/best-free-stock-offers-for-beginners': 'best-free-stock-offers-for-beginners.html',
   '/best-fintech-bonuses-without-deposit': 'best-fintech-bonuses-without-deposit.html',
+  '/cashback-apps-that-pay-paypal': 'cashback-apps-that-pay-paypal.html',
 };
 
 const legacySeoRedirects: Record<string, string> = {
