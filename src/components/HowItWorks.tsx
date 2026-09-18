@@ -21,11 +21,11 @@ const STEPS = [
 
 export const HowItWorks: React.FC = () => (
   <section aria-labelledby="how-it-works-title" className="how-it-works-strip rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 sm:px-5">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+    <div className="flex flex-col gap-3">
       <h2 id="how-it-works-title" className="shrink-0 text-xs font-bold uppercase tracking-[0.14em] text-white">
         How it works
       </h2>
-      <div className="grid flex-1 gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-3 sm:gap-4">
         {STEPS.map(({ icon: Icon, title, description }, index) => (
           <div key={title} className="flex items-start gap-2.5">
             <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-300">
@@ -38,7 +38,7 @@ export const HowItWorks: React.FC = () => (
           </div>
         ))}
       </div>
-      <p className="border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-500 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+      <p className="border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-500">
         Rewards are paid by the merchant after you meet the listed requirements. Amounts, approval,
         eligibility, and payout timing can change, so check the offer terms before applying.
       </p>
