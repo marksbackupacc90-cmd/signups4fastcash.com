@@ -19,7 +19,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#00adb5',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'SoFi’s current referral page advertises up to $125 when a friend opens an eligible account within 21 days.',
+      summary: 'Up to $125 after eligible SoFi account setup and required funding.',
       theCatch: 'The current page says the friend must add at least $500. It also shows a limited-time SoFi Plus step; confirm which parts apply before enrolling.',
       minimumHoldTime: 'Review the current SoFi referral terms and eligibility window.',
       idVerificationRequired: true,
@@ -59,7 +59,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#25c974',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'The current Chime referral terms describe a $100 reward after a new account receives a qualifying $200 direct deposit and a physical card is activated.',
+      summary: '$100 after a new Chime account receives a qualifying $200 direct deposit and the physical card is activated.',
       theCatch: 'The account must be new, the qualifying deposit must arrive within 45 days, and a physical Chime card must be activated within 14 days of that deposit.',
       minimumHoldTime: 'Usually within 10 business days after all qualifying steps are complete.',
       idVerificationRequired: true,
@@ -96,7 +96,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#d03027',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Use the referral link and complete a qualifying $10 purchase through Capital One Shopping.',
+      summary: 'Reward eligibility begins after a qualifying $10 Capital One Shopping purchase.',
       theCatch: 'The referred-user reward amount was not provided in the referral details, so confirm the current terms before purchasing.',
       minimumHoldTime: 'Until Capital One Shopping confirms the qualifying purchase and current promotion terms.',
       idVerificationRequired: false,
@@ -134,7 +134,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#00e700',
     logoTextColor: '#000000',
     honestTruth: {
-      summary: 'Freecash offers rewards for completing available games, surveys, and partner tasks, with payout methods that may include PayPal or crypto.',
+      summary: 'Variable rewards for games, surveys, and partner tasks, with PayPal or crypto cashout options.',
       theCatch: 'The official site says rewards vary by offer and activity; most users earn a few dollars to around $50 in a typical month, so no fixed signup amount is guaranteed.',
       minimumHoldTime: 'Varies by offer completion, verification, and payout method.',
       idVerificationRequired: true,
@@ -172,9 +172,9 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#14233c',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Create a Stake.us account, complete identity verification with a valid government-issued ID, and receive 1 SC every 24 hours while your account remains eligible.',
-      theCatch: 'Identity verification, age and location requirements, and Stake.us redemption rules apply. Review the current terms before signing up.',
-      minimumHoldTime: 'The account must remain eligible for the 1 SC reward to be issued every 24 hours.',
+      summary: '1 SC credited every 24 hours after eligible account setup and identity verification.',
+      theCatch: 'Government ID, age, location, eligibility, and redemption rules apply.',
+      minimumHoldTime: 'Daily 1 SC credit continues every 24 hours while eligibility remains active.',
       idVerificationRequired: true,
       hiddenFeesWarning: 'Review Stake.us eligibility, age, location, identity-verification, and redemption terms before relying on any reward.',
       trustScore: 95,
@@ -210,7 +210,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#f5b401',
     logoTextColor: '#111827',
     honestTruth: {
-      summary: 'HeyCash can include a signup reward when you join through a referral link and complete the required steps.',
+      summary: 'Signup reward after account setup and completion of the current qualifying steps.',
       theCatch: 'Available rewards and qualification rules can change quickly, so verify the live offer before assuming it is guaranteed.',
       minimumHoldTime: 'Usually once the account is verified and the offer has been unlocked.',
       idVerificationRequired: true,
@@ -248,7 +248,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#0f172a',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Joko is a savings app that can pay a referral reward when you enter the code during signup.',
+      summary: '$5 reward after Joko signup and code entry, subject to the active offer terms.',
       theCatch: 'Reward conditions and payout timing can change, so check the current app terms before relying on a fixed bonus.',
       minimumHoldTime: 'Depends on the app’s posted reward rules.',
       idVerificationRequired: true,
@@ -286,7 +286,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#f97316',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Upside gives cashback on fuel and everyday purchases when you use a referral link or code.',
+      summary: 'Cashback on eligible fuel, grocery, and restaurant purchases.',
       theCatch: 'The exact bonus and qualification rules can change by region and by the live campaign in your app.',
       minimumHoldTime: 'Usually after the qualifying purchase is completed and verified.',
       idVerificationRequired: true,
@@ -323,7 +323,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#111827',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'New users can receive $25 after trading $50 in perpetuals, plus 10% off their fees for 3 months.',
+      summary: '$25 bonus after a qualifying $50 perpetuals trade, plus 10% off fees for 3 months.',
       theCatch: 'The referred user must use the referral link and complete the qualifying $50 perpetuals trade; terms, eligibility, and availability can change.',
       minimumHoldTime: 'Until Kalshi confirms the qualifying trade and referral attribution.',
       idVerificationRequired: true,
@@ -361,7 +361,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#3b82f6',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Earn $10 when a referred friend signs up with your code and shares data for 2 days or connects their bank. The friend may receive a separate $3 signup bonus.',
+      summary: 'Possible $3 signup bonus after Verb account setup and the current qualifying activity.',
       theCatch: 'The $10 referral reward is paid only after Verb verifies the friend completed one of the qualifying activities. Verb also displays separate earning options for data exports, approved posts, email forwarding, and connected purchase activity; those amounts and terms vary.',
       minimumHoldTime: 'Until Verb confirms the friend shared data for 2 days or connected a bank.',
       idVerificationRequired: true,
@@ -399,7 +399,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#d97706',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Cashback platform that can pay a sign-up bonus when you hit a qualifying cashback threshold.',
+      summary: '$10 signup bonus after reaching the qualifying cashback threshold.',
       theCatch: 'Payout timing depends on merchant confirmations and current member offers.',
       minimumHoldTime: 'Usually once the merchant confirms the purchase.',
       idVerificationRequired: false,
@@ -437,7 +437,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#7c3aed',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'New users can receive a $50 bonus after signing up and spending $50 on qualifying purchases within the first 90 days.',
+      summary: '$50 bonus after $50 in qualifying Rakuten purchases within 90 days.',
       theCatch: 'Purchases must qualify under Rakuten’s current terms, and the bonus is added after the purchases are confirmed.',
       minimumHoldTime: 'Until qualifying purchases are confirmed and the bonus is added to the pending balance.',
       idVerificationRequired: false,
@@ -475,7 +475,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#00c805',
     logoTextColor: '#000000',
     honestTruth: {
-      summary: 'Free stock offer available through the referral link with no deposit required.',
+      summary: '1 free stock with no deposit required; stock value varies.',
       theCatch: 'The stock value and availability can vary by account and current campaign terms.',
       minimumHoldTime: 'Eligible after account approval and stock issue.',
       idVerificationRequired: true,
@@ -513,7 +513,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#0075eb',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Global finance app that may pay a referral bonus after the account setup and qualifying purchases are complete.',
+      summary: '$30 cash incentive after account setup and three qualifying $5 card purchases.',
       theCatch: 'The current offer can change depending on region and account type, so confirm the exact eligibility before buying.',
       minimumHoldTime: 'Usually once the qualifying transactions clear.',
       idVerificationRequired: true,
@@ -553,7 +553,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#0052ff',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Coinbase currently describes a new-customer incentive for eligible users who purchase at least $50 in cryptocurrency.',
+      summary: 'Approximate $25 new-customer reward after an eligible $50 crypto purchase.',
       theCatch: 'Coinbase says the average reward is approximately $25, availability is limited, and it may change or revoke the incentive at its discretion.',
       minimumHoldTime: 'Depends on eligibility review and the current incentive terms.',
       idVerificationRequired: true,
@@ -591,7 +591,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#2b3c4d',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'New users can receive up to $300 after depositing at least $200 and trading at least $200.',
+      summary: 'Up to $300 after an eligible $200 deposit and $200 trade.',
       theCatch: 'The reward is available only in eligible regions and requires both the qualifying deposit and trade under the active campaign terms.',
       minimumHoldTime: 'Until Kraken confirms the qualifying deposit and trade.',
       idVerificationRequired: true,
@@ -629,7 +629,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#003087',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'PayPal referral links may include limited-time signup or transfer rewards depending on geography and campaign rules.',
+      summary: 'Signup or transfer reward when an eligible PayPal campaign is available.',
       theCatch: 'The current reward and eligibility can change or be region-specific, so check the live PayPal offer before relying on it.',
       minimumHoldTime: 'Depends on the active campaign.',
       idVerificationRequired: true,
@@ -666,7 +666,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#ffdd00',
     logoTextColor: '#000000',
     honestTruth: {
-      summary: 'The referral page shown for this link advertises a $10 e-gift card for the invited friend after they send $100 or more with Western Union.',
+      summary: '$10 Western Union e-gift card after a qualifying $100+ transfer.',
       theCatch: 'The promotion requires a qualifying transfer within the stated time window, and the screenshot says the offer can be limited by participating stores, locations, and an expiration date. Confirm the live terms before sending money.',
       minimumHoldTime: 'Until Western Union confirms the qualifying transfer and issues the e-gift card.',
       idVerificationRequired: true,
@@ -705,7 +705,7 @@ export const INITIAL_OFFERS: Offer[] = [
     logoBgColor: '#0f172a',
     logoTextColor: '#ffffff',
     honestTruth: {
-      summary: 'Shuffle sometimes offers a referral bonus when a new user joins through a partner link.',
+      summary: 'Signup reward when the active Shuffle promotion accepts a new account.',
       theCatch: 'Reward value, eligibility, and timing can change, so confirm the current offer terms before joining.',
       minimumHoldTime: 'Depends on the active promotion.',
       idVerificationRequired: true,
@@ -741,7 +741,7 @@ export const INITIAL_OFFERS: Offer[] = [
     sourceUrl: 'https://www.userinterviews.com/r/llwtaaqgd',
     verificationStatus: 'reviewed',
     honestTruth: {
-      summary: 'The referral page says the referrer earns $10 when a friend signs up and completes their first study, and the referred participant earns $10 too.',
+      summary: '$10 reward after signup and completion of a first eligible User Interviews study.',
       theCatch: 'User Interviews controls participant eligibility, study acceptance, completion approval, and payment timing. Confirm the current referral-program terms before participating.',
       minimumHoldTime: 'The referred participant must complete their first eligible study; timing depends on study availability and approval.',
       idVerificationRequired: true,
@@ -782,7 +782,7 @@ export const INITIAL_PENDING_OFFERS: Offer[] = [
     sourceUrl: 'https://polymarket.us/join/cmeheathyb',
     verificationStatus: 'unverified',
     honestTruth: {
-      summary: 'User-submitted promotion claimed to unlock a $50 bonus for both people after the referred person makes a $10 deposit.',
+      summary: 'Unverified claim of a $50 reward after a qualifying $10 deposit.',
       theCatch: 'This promotion has not been independently verified. Confirm that the code works, the site is official, and the $50 reward is available in your jurisdiction before publishing.',
       minimumHoldTime: 'Not confirmed; check the current provider terms.',
       idVerificationRequired: true,
