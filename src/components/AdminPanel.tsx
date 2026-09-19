@@ -369,6 +369,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   });
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [linkHealthMessage, setLinkHealthMessage] = useState<string | null>(null);
+  const [linkHealthLoading, setLinkHealthLoading] = useState(false);
   const [newsletterMetrics, setNewsletterMetrics] = useState<{ pending: number; verified: number; unsubscribed: number; recent: number } | null>(null);
   const [issueReports, setIssueReports] = useState<IssueReport[]>([]);
   const [issueReportsLoading, setIssueReportsLoading] = useState(false);
@@ -384,15 +385,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const checkReferralLinks = async () => {
     setLinkHealthMessage('Checking referral links...');
+    setLinkHealthLoading(true);
     const token = localStorage.getItem('signups4fastcash_admin_token');
-    const response = await fetch('/api/admin/link-health', { headers: token ? { 'x-admin-token': token } : {} }).catch(() => null);
-    if (!response?.ok) {
-      setLinkHealthMessage('Could not check referral links.');
-      return;
+    try {
+      const response = await fetch('/api/admin/link-health', { headers: token ? { 'x-admin-token': token } : {} });
+      const data = await response.json().catch(() => null) as { results?: { healthy: boolean }[]; error?: string } | null;
+      if (!response.ok) {
+        throw new Error(data?.error || 'Could not check referral links.');
+      }
+      const results = data?.results || [];
+      const failed = results.filter((result) => !result.healthy).length;
+      setLinkHealthMessage(failed ? `${failed} of ${results.length} referral links need attention.` : `All ${results.length} referral links responded successfully.`);
+    } catch (error) {
+      setLinkHealthMessage(error instanceof Error ? error.message : 'Could not check referral links.');
+    } finally {
+      setLinkHealthLoading(false);
     }
-    const data = await response.json() as { results?: { healthy: boolean }[] };
-    const failed = (data.results || []).filter((result) => !result.healthy).length;
-    setLinkHealthMessage(failed ? `${failed} referral link${failed === 1 ? '' : 's'} need attention.` : 'All referral links responded successfully.');
   };
 
   const exportAdminBackup = async () => {
@@ -941,6 +949,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       // Keep the in-memory status when browser storage is unavailable.
     }
     setOffersViewedDate(today);
+    setExpandedReferralLinks(false);
+    setExpandedOfferList(true);
   };
 
   return (
@@ -1167,7 +1177,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         ))}
         {activeAdminTab === 'live' && (
           <>
-            <button type="button" onClick={() => { setExpandedReferralLinks((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
+            <button type="button" onClick={() => { setExpandedReferralLinks((current) => !current); setExpandedOfferList(false); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
             <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">
               {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
             </button>
@@ -1184,7 +1194,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <>
             <span className="mx-1 hidden h-5 w-px bg-white/10 sm:block" aria-hidden="true" />
             <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">Backup</button>
-            <button type="button" onClick={() => void checkReferralLinks()} className="rounded-lg border border-violet-300/30 bg-violet-300/5 px-3 py-2 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10">Check links</button>
+            <button type="button" onClick={() => void checkReferralLinks()} disabled={linkHealthLoading} className="rounded-lg border border-violet-300/30 bg-violet-300/5 px-3 py-2 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10 disabled:cursor-wait disabled:opacity-60">{linkHealthLoading ? 'Checking...' : 'Check links'}</button>
           </>
         )}
       </div>
@@ -1724,7 +1734,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <button
               type="button"
-              onClick={() => setExpandedReferralLinks((current) => !current)}
+              onClick={() => { setExpandedReferralLinks((current) => !current); setExpandedOfferList(false); }}
               aria-expanded={expandedReferralLinks}
               className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between rounded-lg border border-white/[0.1] bg-[#141824] px-3 py-2.5 text-left text-xs font-semibold text-zinc-200 hover:border-emerald-300/40 hover:text-white"
             >
@@ -1851,6 +1861,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           {/* Offers List with Dedicated In-Card Referral Editor */}
+          {!expandedReferralLinks && (
           <div className="space-y-4">
             <button
               type="button"
@@ -2118,6 +2129,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
           </div>
+          )}
         </div>
       )}
 
