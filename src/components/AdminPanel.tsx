@@ -1168,7 +1168,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeAdminTab === 'live' && (
           <>
             <button type="button" onClick={() => { setExpandedReferralLinks((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
-            <button type="button" onClick={() => { setExpandedOfferList((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
             <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">
               {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
             </button>
