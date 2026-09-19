@@ -2252,6 +2252,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="rounded border border-white/10 bg-white/[0.03] p-2 text-zinc-400">Last 7 days <strong className="ml-1 text-cyan-200">{newsletterMetrics.recent}</strong></div>
             </div>
           )}
+          <div className="rounded-lg border border-white/[0.08] bg-[#141824] p-3">
+            <div className="mb-2 text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400">Subscriber list</div>
+            {subscribers.length === 0 ? (
+              <div className="text-xs text-zinc-500">No subscriber records are available.</div>
+            ) : (
+              <div className="max-h-56 space-y-1.5 overflow-y-auto">
+                {subscribers.map((subscriber) => (
+                  <div key={subscriber.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/[0.06] px-2.5 py-2 text-xs">
+                    <span className="text-zinc-200">{subscriber.email}</span>
+                    <span className={subscriber.verified ? 'text-emerald-300' : 'text-amber-200'}>
+                      {subscriber.verified ? 'Verified' : 'Pending confirmation'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {blastLogs.length === 0 ? (
             <div className="p-8 text-center text-xs text-zinc-500 font-mono">
