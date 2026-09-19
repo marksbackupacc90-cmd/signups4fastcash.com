@@ -304,7 +304,7 @@ export default function App() {
     setIsAdminUnlocked(true);
     setAdminPanelVisible(true);
     setIsOwnerAdmin(data.role === 'owner');
-    setActiveTab('offers');
+    setActiveTab('admin');
     if (data.role === 'owner') void loadAdminUsernames(data.token);
     showToast(data.role === 'owner' ? 'Owner admin access enabled.' : 'Delegated admin access enabled.');
   };
@@ -948,32 +948,32 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {activeTab === 'admin' && isAdminUnlocked && adminPanelVisible && (
-                <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                  <Suspense fallback={<div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-8 text-center text-xs font-mono text-zinc-400">Loading admin tools…</div>}>
-                    <AdminPanel
-                      pendingOffers={pendingOffers}
-                      liveOffers={liveOffers}
-                      subscribers={subscribers}
-                      onApproveOffer={handleApproveOffer}
-                      onRejectOffer={handleRejectOffer}
-                      onUpdateLiveOffer={handleUpdateLiveOffer}
-                      onDeleteLiveOffer={handleDeleteLiveOffer}
-                      onCreateCustomOffer={handleCreateCustomOffer}
-                      blastLogs={blastLogs}
-                      onLockAdmin={handleLockAdmin}
-                      siteSettings={siteSettings}
-                      onUpdateSiteSettings={handleUpdateSiteSettings}
-                      isOwnerAdmin={isOwnerAdmin}
-                      adminUsernames={adminUsernames}
-                      onUpdateAdminUsernames={handleUpdateAdminUsernames}
-                    />
-                  </Suspense>
-                </div>
-              )}
             </div>
 
             <TrustAndFaq siteSettings={siteSettings} />
+          </div>
+        )}
+        {activeTab === 'admin' && isAdminUnlocked && adminPanelVisible && (
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <Suspense fallback={<div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-8 text-center text-xs font-mono text-zinc-400">Loading admin tools…</div>}>
+              <AdminPanel
+                pendingOffers={pendingOffers}
+                liveOffers={liveOffers}
+                subscribers={subscribers}
+                onApproveOffer={handleApproveOffer}
+                onRejectOffer={handleRejectOffer}
+                onUpdateLiveOffer={handleUpdateLiveOffer}
+                onDeleteLiveOffer={handleDeleteLiveOffer}
+                onCreateCustomOffer={handleCreateCustomOffer}
+                blastLogs={blastLogs}
+                onLockAdmin={handleLockAdmin}
+                siteSettings={siteSettings}
+                onUpdateSiteSettings={handleUpdateSiteSettings}
+                isOwnerAdmin={isOwnerAdmin}
+                adminUsernames={adminUsernames}
+                onUpdateAdminUsernames={handleUpdateAdminUsernames}
+              />
+            </Suspense>
           </div>
         )}
 
