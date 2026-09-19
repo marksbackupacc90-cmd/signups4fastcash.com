@@ -787,6 +787,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return issues;
   };
 
+  const generateAnalyticsReport = async () => {
+    setAnalyticsReportLoading(true);
+    setAnalyticsReportError(null);
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    try {
+      const response = await fetch('/api/admin/analytics/report', {
+        method: 'POST',
+        headers: token ? { 'x-admin-token': token } : {},
+      });
+      const data = await response.json().catch(() => null) as AnalyticsReport & { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Could not generate analytics report.');
+      setAnalyticsReport(data);
+    } catch (error) {
+      setAnalyticsReportError(error instanceof Error ? error.message : 'Could not generate analytics report.');
+    } finally {
+      setAnalyticsReportLoading(false);
+    }
+  };
+
+  const resetAnalytics = async () => {
+    if (!window.confirm('Reset all visits, clicks, conversions, and offer counters to zero? This cannot be undone.')) return;
+    setResettingAnalytics(true);
+    setAnalyticsResetMessage(null);
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token');
+      const response = await fetch('/api/admin/analytics/reset', {
+        method: 'POST',
+        headers: token ? { 'x-admin-token': token } : {},
+      });
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Could not reset analytics.');
+      setAnalyticsResetMessage('All counters were reset to zero.');
+      window.setTimeout(() => window.location.reload(), 700);
+    } catch (error) {
+      setAnalyticsResetMessage(error instanceof Error ? error.message : 'Could not reset analytics.');
+    } finally {
+      setResettingAnalytics(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
@@ -831,31 +871,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="text-xs font-semibold text-cyan-100">Report since last check</div>
             <p className="mt-1 text-[11px] text-zinc-500">Capture new clicks, views, conversions, and visitor sources. The report becomes the next checkpoint.</p>
             </div>
-            <button
-            type="button"
-            disabled={analyticsReportLoading}
-            onClick={async () => {
-              setAnalyticsReportLoading(true);
-              setAnalyticsReportError(null);
-              const token = localStorage.getItem('signups4fastcash_admin_token');
-              try {
-                const response = await fetch('/api/admin/analytics/report', {
-                  method: 'POST',
-                  headers: token ? { 'x-admin-token': token } : {},
-                });
-                const data = await response.json().catch(() => null) as AnalyticsReport & { error?: string } | null;
-                if (!response.ok) throw new Error(data?.error || 'Could not generate analytics report.');
-                setAnalyticsReport(data);
-              } catch (error) {
-                setAnalyticsReportError(error instanceof Error ? error.message : 'Could not generate analytics report.');
-              } finally {
-                setAnalyticsReportLoading(false);
-              }
-            }}
-            className="rounded-lg border border-cyan-300/60 bg-cyan-300 px-3 py-2 text-xs font-bold text-[#06131a] hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60"
-            >
-            {analyticsReportLoading ? 'Generating...' : 'Generate full report'}
-            </button>
             {analyticsReportError && <div className="w-full text-xs text-rose-300">{analyticsReportError}</div>}
           </div>
           {analyticsReport && (
@@ -996,33 +1011,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="text-xs font-semibold text-[#8ad7f5]">Analytics controls</div>
                 <p className="mt-1 text-[11px] text-zinc-500">Reset visits, clicks, conversions, and offer counters to zero.</p>
               </div>
-              <button
-                type="button"
-                disabled={resettingAnalytics}
-                onClick={async () => {
-                  if (!window.confirm('Reset all visits, clicks, conversions, and offer counters to zero? This cannot be undone.')) return;
-                  setResettingAnalytics(true);
-                  setAnalyticsResetMessage(null);
-                  try {
-                    const token = localStorage.getItem('signups4fastcash_admin_token');
-                    const response = await fetch('/api/admin/analytics/reset', {
-                      method: 'POST',
-                      headers: token ? { 'x-admin-token': token } : {},
-                    });
-                    const data = await response.json().catch(() => null) as { error?: string } | null;
-                    if (!response.ok) throw new Error(data?.error || 'Could not reset analytics.');
-                    setAnalyticsResetMessage('All counters were reset to zero.');
-                    window.setTimeout(() => window.location.reload(), 700);
-                  } catch (error) {
-                    setAnalyticsResetMessage(error instanceof Error ? error.message : 'Could not reset analytics.');
-                  } finally {
-                    setResettingAnalytics(false);
-                  }
-                }}
-                className="rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2 text-xs font-bold text-[#06131a] hover:bg-[#67e8f9] disabled:cursor-wait disabled:opacity-60"
-              >
-                {resettingAnalytics ? 'Resetting...' : 'Reset analytics'}
-              </button>
               {analyticsResetMessage && <span className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</span>}
             </div>
           )}
@@ -1050,6 +1038,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Lock className="w-3 h-3 text-amber-400" />
                 <span>Lock & Hide</span>
               </button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
+            <span className="mr-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Quick actions</span>
+            <button type="button" onClick={() => { setActiveAdminTab('live'); setExpandedReferralLinks(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-200 hover:border-emerald-300/50 hover:text-white">
+              Referral links
+            </button>
+            <button type="button" onClick={() => { setActiveAdminTab('live'); setExpandedOfferList(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-200 hover:border-emerald-300/50 hover:text-white">
+              Live offers
+            </button>
+            {visitorAnalytics && (
+              <>
+                <button type="button" onClick={() => void generateAnalyticsReport()} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">
+                  {analyticsReportLoading ? 'Generating...' : 'Generate report'}
+                </button>
+                <button type="button" onClick={() => setAnalyticsRefreshKey((current) => current + 1)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-200 hover:border-cyan-300/50 hover:text-white">
+                  Refresh analytics
+                </button>
+                {isOwnerAdmin && <button type="button" onClick={() => void resetAnalytics()} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset analytics'}</button>}
+              </>
             )}
           </div>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
