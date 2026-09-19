@@ -84,7 +84,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
               <div>
                 <p className="text-[11px] font-mono uppercase tracking-wider text-cyan-300">Saved on this device</p>
                 <h2 id="my-offers-title" className="mt-1 text-2xl font-bold text-white">My Offers</h2>
-                <p className="mt-2 text-xs leading-relaxed text-zinc-400">Resume an offer, confirm that you completed it, or tell us when something went wrong.</p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">Resume an offer, confirm that you completed it, or tell us when something went wrong.</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white" aria-label="Close My Offers"><X className="h-4 w-4" /></button>
             </div>
@@ -105,7 +105,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                         <div className="min-w-0">
                           <p className="text-[10px] font-mono uppercase tracking-wider text-cyan-300">{offer.company}</p>
                           <h3 className="mt-1 text-sm font-bold text-white">{offer.title}</h3>
-                          <p className="mt-1 text-[11px] text-zinc-400">{offer.incentiveAmount} · {status === 'completed' ? 'Marked completed' : status === 'issue' ? 'Issue reported' : 'In progress'}</p>
+                          <p className="mt-1 text-xs text-zinc-300">{offer.incentiveAmount} · {status === 'completed' ? 'Marked completed' : status === 'issue' ? 'Issue reported' : 'In progress'}</p>
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${status === 'completed' ? 'bg-emerald-400/15 text-emerald-300' : status === 'issue' ? 'bg-amber-400/15 text-amber-200' : 'bg-cyan-400/15 text-cyan-200'}`}>
                           {status}
@@ -136,7 +136,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                 })}
               </div>
             )}
-            <p className="mt-5 text-[10px] leading-relaxed text-zinc-600">Your saved offers stay in this browser. Clearing site data or switching devices removes this list unless you are signed in and we add account sync later.</p>
+            <p className="mt-5 text-xs leading-relaxed text-zinc-300">Your saved offers stay in this browser. Clearing site data or switching devices removes this list unless you are signed in and we add account sync later.</p>
           </section>
         </div>
       )}

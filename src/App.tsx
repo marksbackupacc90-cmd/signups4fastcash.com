@@ -18,7 +18,6 @@ import { CommunityChat } from './components/CommunityChat';
 import { HowItWorks } from './components/HowItWorks';
 import { CashBlueprint } from './components/CashBlueprint';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
-import { RewardsLab } from './components/RewardsLab';
 
 interface AuthUser {
   id: string;
@@ -897,11 +896,6 @@ export default function App() {
                   void handleClaimClick(sofiOffer.id);
                   window.open(sofiOffer.referralUrl || sofiOffer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
                 }}
-              />
-              <RewardsLab
-                offers={orderedLiveOffers}
-                onOpenFinder={() => setOfferFinderOpen(true)}
-                onOpenNewsletter={() => setIsNewsletterOpen(true)}
               />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
