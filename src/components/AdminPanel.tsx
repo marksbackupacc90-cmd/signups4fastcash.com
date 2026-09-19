@@ -858,9 +858,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {adminPageOpen && serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100" role="alert">
+        <div className="order-3 flex items-start gap-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100" role="alert">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
           <div>
             <div className="font-semibold">Production configuration needs attention</div>
@@ -874,7 +874,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
       {adminPageOpen && activeAdminTab === 'analytics' && visitorAnalytics && (
-        <section className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
+        <section className="order-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
           <button
             type="button"
             onClick={() => setExpandedAnalytics((current) => !current)}
@@ -1051,7 +1051,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </section>
       )}
       
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
+      <div className="order-1 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
         {onLockAdmin && (
           <button
             id="btn-lock-admin"
@@ -1095,7 +1095,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </>
         )}
       </div>
-      {adminPageOpen && <div className="space-y-6">
+      {adminPageOpen && <div className="order-3 space-y-6">
       {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 
       {activeAdminTab === 'accounts' && isOwnerAdmin && (
