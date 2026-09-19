@@ -506,7 +506,7 @@ function extractPublicUrl(value: string) {
 let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
 let pendingOffersStore: any[] = [];
 let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string }[] = [];
-const issueReportsStore: { id: string; offerId: string; issue: string; reportedAt: string }[] = [];
+const issueReportsStore: { id: string; offerId: string; issue: string; description: string; status: string; reportedAt: string }[] = [];
 let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
@@ -850,9 +850,13 @@ async function initializeOfferStore() {
       id TEXT PRIMARY KEY,
       offer_id TEXT NOT NULL,
       issue TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open',
       reported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query(`ALTER TABLE offer_issue_reports ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''`);
+  await database.query(`ALTER TABLE offer_issue_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'`);
   const ownerUserId = ownerUserRow.rows[0]?.id;
   if (ownerUserId) {
     await database.query(
@@ -1240,21 +1244,66 @@ app.post('/api/offers/:id/completion-report', (req, res) => {
     message: 'Thanks. Your report was recorded as self-reported and is not a verified conversion.',
   });
 
-  app.post('/api/offers/:id/issue-report', async (req, res) => {
-    const offer = liveOffersStore.find((candidate) => candidate.id === req.params.id);
-    const allowedIssues = new Set(['expired', 'broken-link', 'terms-wrong']);
-    if (!offer || !isVerificationCurrent(offer)) return res.status(404).json({ error: 'Offer not found' });
-    if (typeof req.body?.issue !== 'string' || !allowedIssues.has(req.body.issue)) {
-      return res.status(400).json({ error: 'Choose a valid issue type.' });
-    }
-    const report = { id: randomUUID(), offerId: offer.id, issue: req.body.issue, reportedAt: new Date().toISOString() };
-    if (database) {
-      await database.query('INSERT INTO offer_issue_reports (id, offer_id, issue, reported_at) VALUES ($1, $2, $3, $4)', [report.id, report.offerId, report.issue, report.reportedAt]);
-    } else {
-      issueReportsStore.unshift(report);
-    }
-    return res.status(201).json({ success: true });
+});
+
+app.post('/api/offers/:id/issue-report', async (req, res) => {
+  const offer = liveOffersStore.find((candidate) => candidate.id === req.params.id);
+  const allowedIssues = new Set(['expired', 'broken-link', 'terms-wrong']);
+  if (!offer || !isVerificationCurrent(offer)) return res.status(404).json({ error: 'Offer not found' });
+  if (typeof req.body?.issue !== 'string' || !allowedIssues.has(req.body.issue)) {
+    return res.status(400).json({ error: 'Choose a valid issue type.' });
+  }
+  const description = typeof req.body?.description === 'string' ? req.body.description.trim().slice(0, 1000) : '';
+  const report = { id: randomUUID(), offerId: offer.id, issue: req.body.issue, description, status: 'open', reportedAt: new Date().toISOString() };
+  if (database) {
+    await database.query(
+      'INSERT INTO offer_issue_reports (id, offer_id, issue, description, reported_at) VALUES ($1, $2, $3, $4, $5)',
+      [report.id, report.offerId, report.issue, report.description, report.reportedAt],
+    );
+  } else {
+    issueReportsStore.unshift(report);
+  }
+  return res.status(201).json({ success: true });
+});
+
+app.get('/api/admin/offer-issue-reports', requireOwnerAdmin, async (_req, res) => {
+  if (database) {
+    const result = await database.query(
+      `SELECT r.id, r.offer_id AS "offerId", r.issue, r.description, r.status,
+              r.reported_at AS "reportedAt", o.title, o.company
+       FROM offer_issue_reports r
+       LEFT JOIN offers o ON o.id = r.offer_id
+       ORDER BY r.reported_at DESC`,
+    );
+    return res.json({ reports: result.rows });
+  }
+  return res.json({
+    reports: issueReportsStore.map((report) => ({
+      ...report,
+      status: report.status || 'open',
+      title: liveOffersStore.find((offer) => offer.id === report.offerId)?.title || report.offerId,
+      company: liveOffersStore.find((offer) => offer.id === report.offerId)?.company || '',
+    })),
   });
+});
+
+app.patch('/api/admin/offer-issue-reports/:id', requireOwnerAdmin, async (req, res) => {
+  const status = req.body?.status;
+  if (!['open', 'reviewing', 'resolved'].includes(status)) {
+    return res.status(400).json({ error: 'Choose a valid report status.' });
+  }
+  if (database) {
+    const result = await database.query(
+      'UPDATE offer_issue_reports SET status = $1 WHERE id = $2 RETURNING id, status',
+      [status, req.params.id],
+    );
+    if (!result.rowCount) return res.status(404).json({ error: 'Issue report not found.' });
+    return res.json({ report: result.rows[0] });
+  }
+  const report = issueReportsStore.find((candidate) => candidate.id === req.params.id);
+  if (!report) return res.status(404).json({ error: 'Issue report not found.' });
+  report.status = status;
+  return res.json({ report: { id: report.id, status } });
 });
 
 app.get('/api/site-settings', (_req, res) => {

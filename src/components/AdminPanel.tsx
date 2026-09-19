@@ -305,7 +305,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  type AdminTab = 'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit' | 'analytics';
+  type AdminTab = 'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit' | 'analytics' | 'issues';
+  type IssueReport = { id: string; offerId: string; issue: string; description: string; status: 'open' | 'reviewing' | 'resolved'; reportedAt: string; title?: string; company?: string };
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
@@ -369,6 +370,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [linkHealthMessage, setLinkHealthMessage] = useState<string | null>(null);
   const [newsletterMetrics, setNewsletterMetrics] = useState<{ pending: number; verified: number; unsubscribed: number; recent: number } | null>(null);
+  const [issueReports, setIssueReports] = useState<IssueReport[]>([]);
+  const [issueReportsLoading, setIssueReportsLoading] = useState(false);
 
   const toggleAdminTab = (tab: AdminTab) => {
     if (activeAdminTab === tab && adminPageOpen) {
@@ -417,6 +420,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       .then((data: { pending: number; verified: number; unsubscribed: number; recent: number }) => setNewsletterMetrics(data))
       .catch(() => setNewsletterMetrics(null));
   }, [activeAdminTab]);
+
+  useEffect(() => {
+    if (activeAdminTab !== 'issues' || !isOwnerAdmin) return;
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    setIssueReportsLoading(true);
+    fetch('/api/admin/offer-issue-reports', { headers: token ? { 'x-admin-token': token } : {} })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Could not load issue reports')))
+      .then((data: { reports?: IssueReport[] }) => setIssueReports(data.reports || []))
+      .catch(() => setIssueReports([]))
+      .finally(() => setIssueReportsLoading(false));
+  }, [activeAdminTab, isOwnerAdmin]);
+
+  const updateIssueStatus = async (id: string, status: IssueReport['status']) => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const response = await fetch(`/api/admin/offer-issue-reports/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) return;
+    setIssueReports((reports) => reports.map((report) => report.id === id ? { ...report, status } : report));
+  };
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -1132,10 +1157,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ['create', 'Create'],
           ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
           ['analytics', 'Analytics'],
-          ['assistant', 'Outreach'],
-          ['copilot', 'Copilot'],
           ['settings', 'Settings'],
           ...(isOwnerAdmin ? [['accounts', 'Accounts'], ['audit', 'Audit']] : []),
+          ...(isOwnerAdmin ? [['issues', 'Issue reports']] : []),
         ].map(([tab, label]) => (
           <button key={tab} type="button" onClick={() => toggleAdminTab(tab as AdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab && adminPageOpen ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
             {label}
@@ -1190,6 +1214,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {accountsError && <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{accountsError}</p>}
           {!accountsLoading && !accountsError && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
+          )}
+          {activeAdminTab === 'issues' && isOwnerAdmin && (
+            <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                <div>
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Visitor feedback</div>
+                  <h3 className="mt-1 text-lg font-bold text-white">Offer issue reports ({issueReports.length})</h3>
+                </div>
+                {issueReportsLoading && <span className="text-xs text-zinc-400">Loading...</span>}
+              </div>
+              {!issueReportsLoading && issueReports.length === 0 && <p className="py-8 text-center text-sm text-zinc-400">No issue reports yet.</p>}
+              <div className="mt-4 space-y-3">
+                {issueReports.map((report) => (
+                  <div key={report.id} className="rounded-lg border border-white/[0.08] bg-[#090d18] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-white">{report.company ? `${report.company} — ` : ''}{report.title || report.offerId}</div>
+                        <div className="mt-1 text-xs text-amber-200">{report.issue} · {new Date(report.reportedAt).toLocaleString()}</div>
+                      </div>
+                      <select value={report.status} onChange={(event) => void updateIssueStatus(report.id, event.target.value as IssueReport['status'])} className="rounded border border-white/10 bg-[#141824] px-2 py-1 text-xs text-zinc-200">
+                        <option value="open">Open</option>
+                        <option value="reviewing">Reviewing</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-300">{report.description || 'No additional description provided.'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {accounts.length > 0 && (

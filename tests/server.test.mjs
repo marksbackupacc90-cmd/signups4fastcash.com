@@ -107,6 +107,17 @@ test('completion reports are separate from verified conversions', async () => {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ confirmed: true }),
   });
+
+  test('issue reports accept visitor descriptions and remain owner-protected', async () => {
+    const created = await request('/api/offers/offer-western-union-referral/issue-report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ issue: 'terms-wrong', description: 'The requirements shown on the provider page do not match.' }),
+    });
+    assert.equal(created.status, 201);
+    const unauthorized = await request('/api/admin/offer-issue-reports');
+    assert.equal(unauthorized.status, 403);
+  });
   assert.equal(response.status, 201);
   assert.equal(response.body.status, 'pending_review');
   assert.match(response.body.message, /not a verified conversion/i);

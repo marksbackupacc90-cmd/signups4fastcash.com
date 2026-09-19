@@ -25,6 +25,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const [completionReportStatus, setCompletionReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [issueReportOpen, setIssueReportOpen] = useState(false);
   const [issueReport, setIssueReport] = useState<'expired' | 'broken-link' | 'terms-wrong'>('expired');
+  const [issueDescription, setIssueDescription] = useState('');
   const [issueReportStatus, setIssueReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [copied, setCopied] = useState(false);
   const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
@@ -87,7 +88,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       const response = await fetch(`/api/offers/${offer.id}/issue-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ issue: issueReport }),
+        body: JSON.stringify({ issue: issueReport, description: issueDescription }),
       });
       if (!response.ok) throw new Error('Could not submit issue report.');
       setIssueReportStatus('submitted');
@@ -385,6 +386,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                       <option value="broken-link">Referral link is broken</option>
                       <option value="terms-wrong">Requirements look incorrect</option>
                     </select>
+                    <textarea value={issueDescription} onChange={(event) => setIssueDescription(event.target.value)} maxLength={1000} rows={3} placeholder="Tell us what went wrong (optional but helpful)" className="mt-2 w-full resize-y rounded border border-white/10 bg-[#0a1220] px-2 py-1.5 text-[10px] text-zinc-200 placeholder:text-zinc-600" />
                     <button type="button" onClick={handleIssueReport} disabled={issueReportStatus === 'submitting'} className="mt-2 rounded bg-cyan-300 px-2 py-1 text-[10px] font-bold text-slate-950 disabled:opacity-50">{issueReportStatus === 'submitting' ? 'Sending...' : 'Send report'}</button>
                     {issueReportStatus === 'error' && <div className="mt-1 text-rose-300">Could not send report. Try again.</div>}
                   </>
