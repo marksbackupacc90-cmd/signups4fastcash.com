@@ -344,6 +344,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedLocations, setExpandedLocations] = useState(false);
   const [expandedReferralLinks, setExpandedReferralLinks] = useState(false);
   const [expandedOfferList, setExpandedOfferList] = useState(false);
+  const [expandedExposureReport, setExpandedExposureReport] = useState(false);
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
 
   // For pending approval review state
@@ -885,13 +886,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
           {exposureReport && (
             <div className="sm:col-span-3 rounded-xl border border-violet-300/20 bg-violet-300/5 p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setExpandedExposureReport((current) => !current)}
+                aria-expanded={expandedExposureReport}
+                className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+              >
                 <div>
-                  <div className="text-xs font-semibold text-violet-100">Offer exposure report</div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-violet-100">
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedExposureReport ? 'rotate-180' : ''}`} />
+                    Offer exposure report
+                  </div>
                   <p className="mt-1 text-[11px] text-zinc-500">Impressions are recorded when offers are shown, with clicks and conversions matched by offer.</p>
                 </div>
-                <div className="text-[11px] text-zinc-400">{exposureReport.totalImpressions.toLocaleString()} total impressions</div>
-              </div>
+                <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                  {exposureReport.totalImpressions.toLocaleString()} total impressions
+                  <span>{expandedExposureReport ? 'Collapse' : 'Expand'}</span>
+                </div>
+              </button>
+              {expandedExposureReport && (
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full min-w-[620px] text-left text-xs">
                   <thead className="border-b border-white/[0.08] text-zinc-500">
@@ -916,6 +929,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           )}
           <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
