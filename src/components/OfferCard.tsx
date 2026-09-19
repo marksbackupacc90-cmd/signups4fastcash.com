@@ -104,9 +104,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                 <span className="inline-flex rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-emerald-300">
                   {offer.incentiveAmount}
                 </span>
-                <span className="inline-flex rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[8px] font-mono uppercase tracking-[0.12em] text-zinc-300">
-                  {statusLabel}
-                </span>
               </div>
 
               <h2 className="mt-2 text-base sm:text-[1.05rem] font-black text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
