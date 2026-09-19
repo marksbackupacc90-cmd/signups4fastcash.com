@@ -98,20 +98,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Offers
           </button>
-        </nav>
-
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button
+            id="nav-in-progress"
             type="button"
             onClick={onOpenMyOffers}
-            className="retro-button focus-ring inline-flex items-center gap-1.5 rounded-md border border-cyan-300/35 px-2.5 py-1.5 text-xs font-semibold text-cyan-100 transition-colors hover:border-cyan-200/60 hover:bg-cyan-300/10 sm:px-3"
+            className="retro-button focus-ring hidden shrink-0 items-center gap-1.5 rounded-md border border-white/15 px-4 py-2 text-xs font-medium text-zinc-200 transition-all hover:bg-[#141824] hover:text-white md:inline-flex"
             aria-label={`Open In Progress, ${activeOfferCount} active`}
           >
             <ListChecks className="h-3.5 w-3.5 text-cyan-300" />
-            <span className="hidden sm:inline">In Progress</span>
-            <span className="sm:hidden">Progress</span>
+            In Progress
             {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeOfferCount}</span>}
           </button>
+        </nav>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           {username && canAccessAdmin && (
             <button
               onClick={onAdminAccess}
