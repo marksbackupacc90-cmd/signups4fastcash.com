@@ -187,23 +187,24 @@ app.use((req, res, next) => {
 // API: XML Sitemap for search engines (must be before static middleware)
 app.get('/sitemap.xml', (req, res) => {
   const baseUrl = getOAuthAppUrl(req);
-  const urls = [
+  const urls: { loc: string; changefreq: string; priority: string }[] = [
     { loc: baseUrl, changefreq: 'daily', priority: '1.0' },
   ];
+  const seen = new Set(urls.map((url) => url.loc));
   Object.keys(seoPageRoutes).forEach((route) => {
-    urls.push({
-      loc: `${baseUrl}${route}`,
-      changefreq: 'weekly',
-      priority: '0.8',
-    });
+    const loc = `${baseUrl}${route}`;
+    if (!seen.has(loc)) {
+      urls.push({ loc, changefreq: 'weekly', priority: '0.8' });
+      seen.add(loc);
+    }
   });
   
   liveOffersStore.filter(isVerificationCurrent).forEach((offer) => {
-    urls.push({
-      loc: `${baseUrl}/?offer=${encodeURIComponent(offer.id)}`,
-      changefreq: 'weekly',
-      priority: '0.8',
-    });
+    const loc = `${baseUrl}/?offer=${encodeURIComponent(offer.id)}`;
+    if (!seen.has(loc)) {
+      urls.push({ loc, changefreq: 'weekly', priority: '0.8' });
+      seen.add(loc);
+    }
   });
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
