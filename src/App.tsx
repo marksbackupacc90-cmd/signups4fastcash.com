@@ -135,6 +135,7 @@ export default function App() {
   });
   const recordedImpressions = useRef(new Set<string>());
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
+  const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [isOwnerAdmin, setIsOwnerAdmin] = useState(false);
   const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
@@ -294,6 +295,7 @@ export default function App() {
     const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
     localStorage.setItem('signups4fastcash_admin_token', data.token);
     setIsAdminUnlocked(true);
+    setAdminPanelVisible(true);
     setIsOwnerAdmin(data.role === 'owner');
     setActiveTab('offers');
     if (data.role === 'owner') void loadAdminUsernames(data.token);
@@ -317,6 +319,7 @@ export default function App() {
 
   const handleLockAdmin = () => {
     setIsAdminUnlocked(false);
+    setAdminPanelVisible(false);
     setIsOwnerAdmin(false);
     try {
       localStorage.removeItem('signups4fastcash_admin_token');
@@ -776,6 +779,7 @@ export default function App() {
         }}
         onAdminAccess={() => {
           if (isAdminUnlocked) {
+            setAdminPanelVisible((visible) => !visible);
             setActiveTab('offers');
             return;
           }
@@ -804,7 +808,7 @@ export default function App() {
         )}
         {activeTab === 'offers' && (
           <div>
-            {isAdminUnlocked && (
+            {isAdminUnlocked && adminPanelVisible && (
               <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
                 <Suspense fallback={<div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-8 text-center text-xs font-mono text-zinc-400">Loading admin tools…</div>}>
                   <AdminPanel
@@ -973,6 +977,7 @@ export default function App() {
         }}
         onSelectAdmin={() => {
           if (isAdminUnlocked) {
+            setAdminPanelVisible((visible) => !visible);
             setActiveTab('offers');
           }
         }}
