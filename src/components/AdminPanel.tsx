@@ -294,7 +294,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit'>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit' | 'analytics'>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
@@ -863,7 +863,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
-      {adminPageOpen && visitorAnalytics && (
+      {adminPageOpen && activeAdminTab === 'analytics' && visitorAnalytics && (
         <section className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
           <button
             type="button"
@@ -1060,6 +1060,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ['pending', `Review${pendingOffers.length ? ` (${pendingOffers.length})` : ''}`],
           ['create', 'Create'],
           ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
+          ['analytics', 'Analytics'],
           ['settings', 'Settings'],
           ...(isOwnerAdmin ? [['accounts', 'Accounts'], ['audit', 'Audit']] : []),
         ].map(([tab, label]) => (
@@ -1078,9 +1079,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
         {visitorAnalytics && (
           <>
-            <button type="button" onClick={() => { setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
-            <button type="button" onClick={() => { setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
-            {isOwnerAdmin && <button type="button" onClick={() => { setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
+            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
+            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
+            {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
           </>
         )}
       </div>
