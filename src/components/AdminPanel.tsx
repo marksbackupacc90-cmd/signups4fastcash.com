@@ -1541,21 +1541,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 2: Manage Live Offers & Referral Links */}
       {activeAdminTab === 'live' && (
         <div className="space-y-5">
-          {/* Header & Referral Vault Banner */}
-          <div className="p-5 rounded-xl bg-[#0e121a] border border-white/[0.08] space-y-4">
+          {/* Header & Referral Vault */}
+          <div className="rounded-xl bg-[#0e121a] border border-white/[0.08] space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div>
+              <div className="p-5 pb-0">
                 <h3 className="text-base font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <LinkIcon className="w-4 h-4 text-emerald-400" />
                   Your Referral Links & Live Offers ({liveOffers.length})
                 </h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Plug in your personal referral code and invite link for every offer on the site. When visitors click or copy, they will use your exact tracking parameters.
-                </p>
               </div>
 
               {/* Quick Search */}
-              <div className="relative w-full md:w-72 shrink-0">
+              <div className="relative w-full px-5 md:w-72 md:px-5 shrink-0">
                 <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -1586,11 +1583,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               type="button"
               onClick={() => setExpandedReferralLinks((current) => !current)}
               aria-expanded={expandedReferralLinks}
-              className="flex w-full items-center justify-between rounded-lg border border-emerald-300/20 bg-emerald-300/[0.05] px-3 py-2 text-left text-xs font-semibold text-emerald-100 hover:bg-emerald-300/10"
+              className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between rounded-lg border border-white/[0.1] bg-[#141824] px-3 py-2.5 text-left text-xs font-semibold text-zinc-200 hover:border-emerald-300/40 hover:text-white"
             >
               <span className="flex items-center gap-2">
                 <LinkIcon className="h-3.5 w-3.5 text-emerald-300" />
-                Referral links vault and provider dashboards
+                Referral links and provider dashboards
               </span>
               <span className="flex items-center gap-2 text-[10px] font-normal text-zinc-400">
                 {expandedReferralLinks ? 'Collapse' : 'Expand'}
@@ -1716,10 +1713,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               type="button"
               onClick={() => setExpandedOfferList((current) => !current)}
               aria-expanded={expandedOfferList}
-              className="flex w-full items-center justify-between rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] px-4 py-3 text-left hover:bg-cyan-300/10"
+              className="flex w-full items-center justify-between rounded-xl border border-white/[0.1] bg-[#0e121a] px-4 py-3 text-left hover:border-emerald-300/40"
             >
               <span>
-                <span className="block text-xs font-bold uppercase tracking-wider text-cyan-100">Live offer list</span>
+                <span className="block text-xs font-bold uppercase tracking-wider text-zinc-200">Live offer list</span>
                 <span className="mt-1 block text-[11px] text-zinc-500">{filteredLiveOffers.length} offers sorted by clicks</span>
               </span>
               <span className="flex items-center gap-2 text-[11px] text-zinc-400">
