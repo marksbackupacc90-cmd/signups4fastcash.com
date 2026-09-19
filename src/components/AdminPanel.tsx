@@ -1040,36 +1040,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </section>
       )}
       
-      {/* Top Banner */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#0f1420] border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-              Admin Control Center
-            </h2>
-            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono">
-              Owner Mode
-            </span>
-            {onLockAdmin && (
-              <button
-                id="btn-lock-admin"
-                onClick={onLockAdmin}
-                title="Lock and hide Admin Panel until secret code is entered in search"
-                className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Lock className="w-3 h-3 text-amber-400" />
-                <span>Lock & Hide</span>
-              </button>
-            )}
-          </div>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Manage live offers, review pending submissions, and keep referral details and terms accurate.
-          </p>
-        </div>
-
-      </div>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
+        {onLockAdmin && (
+          <button
+            id="btn-lock-admin"
+            onClick={onLockAdmin}
+            title="Lock and hide Admin Panel until secret code is entered in search"
+            className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] font-semibold text-amber-200 hover:bg-amber-400/10"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5" />
+              Lock
+            </span>
+          </button>
+        )}
         {[
           ['live', 'Offers'],
           ['pending', `Review${pendingOffers.length ? ` (${pendingOffers.length})` : ''}`],
