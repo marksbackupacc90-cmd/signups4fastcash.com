@@ -23,6 +23,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const [showTruth, setShowTruth] = useState(false);
   const [showCompletionReport, setShowCompletionReport] = useState(false);
   const [completionReportStatus, setCompletionReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
+  const [issueReportOpen, setIssueReportOpen] = useState(false);
+  const [issueReport, setIssueReport] = useState<'expired' | 'broken-link' | 'terms-wrong'>('expired');
+  const [issueReportStatus, setIssueReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [copied, setCopied] = useState(false);
   const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
   const sofiPaths = [
@@ -75,6 +78,21 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       setCompletionReportStatus('submitted');
     } catch {
       setCompletionReportStatus('error');
+    }
+  };
+
+  const handleIssueReport = async () => {
+    setIssueReportStatus('submitting');
+    try {
+      const response = await fetch(`/api/offers/${offer.id}/issue-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issue: issueReport }),
+      });
+      if (!response.ok) throw new Error('Could not submit issue report.');
+      setIssueReportStatus('submitted');
+    } catch {
+      setIssueReportStatus('error');
     }
   };
 
@@ -347,11 +365,32 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             </div>
 
             <div className="mt-2 border-t border-white/[0.06] pt-2 text-center text-[9px] text-zinc-500">
-              <span className="text-emerald-400">Direct partner link</span>
-              {' '}• payout by {offer.company} • no extra cost
-              <div className="mt-0.5 text-zinc-600">
-                Confirm current terms before applying.
+            <div className="mb-2 flex flex-wrap justify-center gap-1.5">
+              {offer.honestTruth.idVerificationRequired && <span className="rounded-full border border-amber-300/20 bg-amber-300/5 px-2 py-0.5 text-amber-200">ID verification may be required</span>}
+              {!/\$0|no deposit/i.test(offer.depositRequired) && <span className="rounded-full border border-orange-300/20 bg-orange-300/5 px-2 py-0.5 text-orange-200">Purchase or deposit may be required</span>}
+              {offer.availability.toLowerCase().includes('select') && <span className="rounded-full border border-violet-300/20 bg-violet-300/5 px-2 py-0.5 text-violet-200">Limited eligibility</span>}
               </div>
+            <span className="text-emerald-400">Direct partner link</span>
+            {' '}• payout by {offer.company} • no extra cost
+            <div className="mt-0.5 text-zinc-600">
+              Confirm current terms before applying.
+            </div>
+            <button type="button" onClick={() => setIssueReportOpen((current) => !current)} className="mt-2 text-[10px] text-zinc-500 underline decoration-zinc-700 underline-offset-2 hover:text-zinc-300">Report an issue</button>
+            {issueReportOpen && (
+              <div className="mx-auto mt-2 max-w-sm rounded-lg border border-white/10 bg-white/[0.03] p-2 text-left">
+                {issueReportStatus === 'submitted' ? <div className="text-emerald-300">Thanks — your report was recorded.</div> : (
+                  <>
+                    <select value={issueReport} onChange={(event) => setIssueReport(event.target.value as typeof issueReport)} className="w-full rounded border border-white/10 bg-[#0a1220] px-2 py-1 text-[10px] text-zinc-200">
+                      <option value="expired">Offer appears expired</option>
+                      <option value="broken-link">Referral link is broken</option>
+                      <option value="terms-wrong">Requirements look incorrect</option>
+                    </select>
+                    <button type="button" onClick={handleIssueReport} disabled={issueReportStatus === 'submitting'} className="mt-2 rounded bg-cyan-300 px-2 py-1 text-[10px] font-bold text-slate-950 disabled:opacity-50">{issueReportStatus === 'submitting' ? 'Sending...' : 'Send report'}</button>
+                    {issueReportStatus === 'error' && <div className="mt-1 text-rose-300">Could not send report. Try again.</div>}
+                  </>
+                )}
+              </div>
+            )}
             </div>
 
             </div>

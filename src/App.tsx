@@ -124,7 +124,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'random' | 'highest' | 'fastest' | 'easiest'>('random');
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
-  const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast'>('all');
+  const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
   const recordedImpressions = useRef(new Set<string>());
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
@@ -224,6 +224,18 @@ export default function App() {
     } catch {
       // ignore
     }
+  }, []);
+
+  useEffect(() => {
+    const reportError = (event: ErrorEvent) => {
+      void fetch('/api/telemetry/error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: event.message || 'Unknown frontend error', path: window.location.pathname }),
+      }).catch(() => {});
+    };
+    window.addEventListener('error', reportError);
+    return () => window.removeEventListener('error', reportError);
   }, []);
 
   useEffect(() => {
@@ -643,6 +655,8 @@ export default function App() {
       if (offerFilter === 'no-deposit' && !/\$0|no deposit/i.test(offer.depositRequired)) return false;
       if (offerFilter === 'paypal' && !/paypal/i.test(`${offer.honestTruth.summary} ${offer.honestTruth.hiddenFeesWarning} ${offer.payoutSpeed}`)) return false;
       if (offerFilter === 'fast' && !/instant|within \d+ (?:hours?|business days?)/i.test(offer.payoutSpeed)) return false;
+      if (offerFilter === 'beginner' && offer.difficulty === 'Standard (10 min)') return false;
+      if (offerFilter === 'purchase' && !/\$0|no deposit/i.test(offer.depositRequired)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (

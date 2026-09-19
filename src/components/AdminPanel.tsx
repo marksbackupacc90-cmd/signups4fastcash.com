@@ -356,6 +356,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   });
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
+  const [linkHealthMessage, setLinkHealthMessage] = useState<string | null>(null);
+  const [newsletterMetrics, setNewsletterMetrics] = useState<{ pending: number; verified: number; unsubscribed: number; recent: number } | null>(null);
 
   const toggleAdminTab = (tab: AdminTab) => {
     if (activeAdminTab === tab && adminPageOpen) {
@@ -365,6 +367,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setActiveAdminTab(tab);
     setAdminPageOpen(true);
   };
+
+  const checkReferralLinks = async () => {
+    setLinkHealthMessage('Checking referral links...');
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const response = await fetch('/api/admin/link-health', { headers: token ? { 'x-admin-token': token } : {} }).catch(() => null);
+    if (!response?.ok) {
+      setLinkHealthMessage('Could not check referral links.');
+      return;
+    }
+    const data = await response.json() as { results?: { healthy: boolean }[] };
+    const failed = (data.results || []).filter((result) => !result.healthy).length;
+    setLinkHealthMessage(failed ? `${failed} referral link${failed === 1 ? '' : 's'} need attention.` : 'All referral links responded successfully.');
+  };
+
+  const exportAdminBackup = async () => {
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const response = await fetch('/api/admin/export', { headers: token ? { 'x-admin-token': token } : {} }).catch(() => null);
+    if (!response?.ok) {
+      setLinkHealthMessage('Could not export the admin backup.');
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `s4fc-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setLinkHealthMessage('Backup downloaded.');
+  };
+
+  useEffect(() => {
+    if (activeAdminTab !== 'blasts') return;
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    fetch('/api/admin/newsletter/metrics', { headers: token ? { 'x-admin-token': token } : {} })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Could not load newsletter metrics')))
+      .then((data: { pending: number; verified: number; unsubscribed: number; recent: number }) => setNewsletterMetrics(data))
+      .catch(() => setNewsletterMetrics(null));
+  }, [activeAdminTab]);
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -1092,9 +1133,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
             <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
             {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
+            {isOwnerAdmin && <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-emerald-300/30 bg-emerald-300/5 px-3 py-2 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-300/10">Export backup</button>}
+            {isOwnerAdmin && <button type="button" onClick={() => void checkReferralLinks()} className="rounded-lg border border-violet-300/30 bg-violet-300/5 px-3 py-2 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10">Check links</button>}
           </>
         )}
       </div>
+      {linkHealthMessage && adminPageOpen && <div className="order-3 text-xs text-violet-200">{linkHealthMessage}</div>}
       {adminPageOpen && <div className="order-3 space-y-6">
       {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 
@@ -2200,6 +2244,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {subscribers.length} Active Subscribers
             </span>
           </div>
+          {newsletterMetrics && (
+            <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+              <div className="rounded border border-white/10 bg-white/[0.03] p-2 text-zinc-400">Pending <strong className="ml-1 text-amber-200">{newsletterMetrics.pending}</strong></div>
+              <div className="rounded border border-white/10 bg-white/[0.03] p-2 text-zinc-400">Verified <strong className="ml-1 text-emerald-200">{newsletterMetrics.verified}</strong></div>
+              <div className="rounded border border-white/10 bg-white/[0.03] p-2 text-zinc-400">Unsubscribed <strong className="ml-1 text-zinc-200">{newsletterMetrics.unsubscribed}</strong></div>
+              <div className="rounded border border-white/10 bg-white/[0.03] p-2 text-zinc-400">Last 7 days <strong className="ml-1 text-cyan-200">{newsletterMetrics.recent}</strong></div>
+            </div>
+          )}
 
           {blastLogs.length === 0 ? (
             <div className="p-8 text-center text-xs text-zinc-500 font-mono">

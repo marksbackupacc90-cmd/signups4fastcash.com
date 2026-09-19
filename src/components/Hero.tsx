@@ -12,8 +12,8 @@ interface HeroProps {
   setSelectedCategory: (category: string) => void;
   sortBy: 'random' | 'highest' | 'fastest' | 'easiest';
   setSortBy: (sort: 'random' | 'highest' | 'fastest' | 'easiest') => void;
-  offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast';
-  setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast') => void;
+  offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase';
+  setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase') => void;
   totalOffersCount: number;
   featuredOffers: Offer[];
   onOpenFinder?: () => void;
@@ -227,6 +227,8 @@ export const Hero: React.FC<HeroProps> = ({
               ['no-deposit', 'No deposit'],
               ['paypal', 'PayPal cashout'],
               ['fast', 'Fast payout'],
+              ['beginner', 'Beginner-friendly'],
+              ['purchase', 'Purchase required'],
             ] as const).map(([id, label]) => (
               <button
                 key={id}

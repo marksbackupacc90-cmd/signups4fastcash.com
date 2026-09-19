@@ -500,6 +500,7 @@ function extractPublicUrl(value: string) {
 let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
 let pendingOffersStore: any[] = [];
 let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string }[] = [];
+const issueReportsStore: { id: string; offerId: string; issue: string; reportedAt: string }[] = [];
 let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
@@ -838,6 +839,14 @@ async function initializeOfferStore() {
     'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
     [ownerEmail],
   );
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_issue_reports (
+      id TEXT PRIMARY KEY,
+      offer_id TEXT NOT NULL,
+      issue TEXT NOT NULL,
+      reported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
   const ownerUserId = ownerUserRow.rows[0]?.id;
   if (ownerUserId) {
     await database.query(
@@ -1223,6 +1232,22 @@ app.post('/api/offers/:id/completion-report', (req, res) => {
     success: true,
     status: 'pending_review',
     message: 'Thanks. Your report was recorded as self-reported and is not a verified conversion.',
+  });
+
+  app.post('/api/offers/:id/issue-report', async (req, res) => {
+    const offer = liveOffersStore.find((candidate) => candidate.id === req.params.id);
+    const allowedIssues = new Set(['expired', 'broken-link', 'terms-wrong']);
+    if (!offer || !isVerificationCurrent(offer)) return res.status(404).json({ error: 'Offer not found' });
+    if (typeof req.body?.issue !== 'string' || !allowedIssues.has(req.body.issue)) {
+      return res.status(400).json({ error: 'Choose a valid issue type.' });
+    }
+    const report = { id: randomUUID(), offerId: offer.id, issue: req.body.issue, reportedAt: new Date().toISOString() };
+    if (database) {
+      await database.query('INSERT INTO offer_issue_reports (id, offer_id, issue, reported_at) VALUES ($1, $2, $3, $4)', [report.id, report.offerId, report.issue, report.reportedAt]);
+    } else {
+      issueReportsStore.unshift(report);
+    }
+    return res.status(201).json({ success: true });
   });
 });
 
@@ -2531,6 +2556,42 @@ app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
       locations: [],
       filtered: true,
     });
+
+    app.get('/api/admin/export', requireOwnerAdmin, async (_req, res) => {
+      const offers = liveOffersStore;
+      const subscribers = database
+        ? (await database.query('SELECT id, email, subscribed_at, frequency, verified, unsubscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC')).rows
+        : subscribersStore;
+      res.setHeader('Content-Disposition', `attachment; filename="s4fc-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+      return res.json({ exportedAt: new Date().toISOString(), offers, subscribers, siteSettings: DEFAULT_SITE_SETTINGS, analytics: analyticsStore });
+    });
+
+    app.get('/api/admin/newsletter/metrics', requireAdmin, async (_req, res) => {
+      if (!database) {
+        return res.json({ pending: subscribersStore.length, verified: subscribersStore.length, unsubscribed: 0, recent: subscribersStore.slice(0, 10) });
+      }
+      const result = await database.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE verified = FALSE AND unsubscribed_at IS NULL)::int AS pending,
+          COUNT(*) FILTER (WHERE verified = TRUE AND unsubscribed_at IS NULL)::int AS verified,
+          COUNT(*) FILTER (WHERE unsubscribed_at IS NOT NULL)::int AS unsubscribed,
+          COUNT(*) FILTER (WHERE subscribed_at >= NOW() - INTERVAL '7 days')::int AS recent
+        FROM newsletter_subscribers
+      `);
+      return res.json(result.rows[0] || { pending: 0, verified: 0, unsubscribed: 0, recent: 0 });
+    });
+
+    app.get('/api/admin/link-health', requireOwnerAdmin, async (_req, res) => {
+      const results = await Promise.all(liveOffersStore.map(async (offer) => {
+        try {
+          const response = await fetch(offer.referralUrl || offer.officialMerchantUrl, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(8000) });
+          return { offerId: offer.id, company: offer.company, status: response.status, healthy: response.status >= 200 && response.status < 400 };
+        } catch (error) {
+          return { offerId: offer.id, company: offer.company, status: 0, healthy: false, error: error instanceof Error ? error.message : 'Request failed' };
+        }
+      }));
+      return res.json({ checkedAt: new Date().toISOString(), results });
+    });
   }
   const sources = [...visitorAnalyticsStore.sources.entries()]
     .map(([source, pageViews]) => ({ source, pageViews }))
@@ -2859,6 +2920,13 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
     }
   }
   return res.status(503).json({ error: 'Newsletter delivery is not configured yet.' });
+});
+
+app.post('/api/telemetry/error', (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.slice(0, 500) : '';
+  if (!message) return res.status(400).json({ error: 'Error message is required.' });
+  console.error('[frontend-error]', { message, path: req.body?.path, userAgent: req.get('user-agent') });
+  return res.status(204).end();
 });
 
 app.get('/api/newsletter/confirm', async (req, res) => {
