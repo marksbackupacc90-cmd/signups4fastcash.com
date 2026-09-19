@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "Rock Salt";
-  src: url("/fonts/RockSalt-Regular.ttf") format("truetype");
+  font-family: "Glory";
+  src: url("/fonts/Glory-Variable.ttf") format("truetype");
   font-display: swap;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
 }
 
 :root {
   --site-background: #04080d;
   --site-accent: #2dd4ee;
   --site-panel: #0d1724;
-  --display-font: "Rock Salt", cursive;
+  --display-font: "Glory", sans-serif;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
