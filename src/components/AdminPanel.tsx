@@ -345,6 +345,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedReferralLinks, setExpandedReferralLinks] = useState(false);
   const [expandedOfferList, setExpandedOfferList] = useState(false);
   const [expandedExposureReport, setExpandedExposureReport] = useState(false);
+  const [expandedAnalytics, setExpandedAnalytics] = useState(false);
+  const [offersViewedDate, setOffersViewedDate] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('s4fc_admin_offers_viewed_date');
+    } catch {
+      return null;
+    }
+  });
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
 
   // For pending approval review state
@@ -827,6 +835,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const markAllOffersViewedToday = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      localStorage.setItem('s4fc_admin_offers_viewed_date', today);
+      localStorage.setItem('s4fc_admin_offers_viewed_ids', JSON.stringify(liveOffers.map((offer) => offer.id)));
+    } catch {
+      // Keep the in-memory status when browser storage is unavailable.
+    }
+    setOffersViewedDate(today);
+  };
+
   return (
     <div className="space-y-6">
       {serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
@@ -844,7 +863,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
       {visitorAnalytics && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <section className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
+          <button
+            type="button"
+            onClick={() => setExpandedAnalytics((current) => !current)}
+            aria-expanded={expandedAnalytics}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <span>
+              <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-200">
+                <ChevronDown className={`h-4 w-4 transition-transform ${expandedAnalytics ? 'rotate-180' : ''}`} />
+                Analytics dashboard
+              </span>
+              <span className="mt-1 block text-[11px] text-zinc-500">
+                {visitorAnalytics.totalPageViews.toLocaleString()} page views · {visitorAnalytics.uniqueVisitors.toLocaleString()} unique visitors
+              </span>
+            </span>
+            <span className="text-[11px] text-zinc-500">{expandedAnalytics ? 'Collapse' : 'Expand'}</span>
+          </button>
+          {expandedAnalytics && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="sm:col-span-3 flex items-center justify-end gap-2">
             <span className="text-[11px] font-mono text-zinc-500">Analytics range</span>
             {(['all', '30d', '7d'] as const).map((range) => (
@@ -890,7 +928,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               Lifetime totals: {analyticsReport.totals.clicks.toLocaleString()} clicks, {analyticsReport.totals.pageViews.toLocaleString()} page views, {analyticsReport.totals.conversions.toLocaleString()} conversions.
             </div>
             </div>
-          )}
+              )}
           {exposureReport && (
             <div className="sm:col-span-3 rounded-xl border border-violet-300/20 bg-violet-300/5 p-4">
               <button
@@ -998,6 +1036,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ) : null}
           </div>
         </div>
+          )}
+        </section>
       )}
       
       {/* Top Banner */}
@@ -1046,6 +1086,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <>
             <button type="button" onClick={() => setExpandedReferralLinks(true)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
             <button type="button" onClick={() => setExpandedOfferList(true)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
+            <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-emerald-300/40 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-300/20">
+              {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
+            </button>
           </>
         )}
         {visitorAnalytics && (
