@@ -505,7 +505,7 @@ function extractPublicUrl(value: string) {
 // In-memory / server state for demo & persistence
 let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
 let pendingOffersStore: any[] = [];
-let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string }[] = [];
+let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string; verified: boolean; unsubscribedAt?: string | null }[] = [];
 const issueReportsStore: { id: string; offerId: string; issue: string; description: string; status: string; reportedAt: string }[] = [];
 let analyticsStore = {
   totalClicks: 0,
