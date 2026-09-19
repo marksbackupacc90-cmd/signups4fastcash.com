@@ -379,6 +379,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!isAdminUnlocked) return;
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    fetch('/api/newsletter/subscribers', {
+      headers: token ? { 'x-admin-token': token } : {},
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load subscribers'))))
+      .then((data: { subscribers?: NewsletterSubscriber[] }) => setSubscribers(data.subscribers || []))
+      .catch(() => {
+        // Keep the current list available if the admin endpoint is temporarily unavailable.
+      });
+  }, [isAdminUnlocked]);
+
+  useEffect(() => {
     if (activeTab !== 'admin') return;
 
     const refreshOffers = () => {
