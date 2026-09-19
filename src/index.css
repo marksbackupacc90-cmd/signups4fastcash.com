@@ -1,12 +1,28 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Rock Salt";
+  src: url("/fonts/RockSalt-Regular.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
 :root {
   --site-background: #04080d;
   --site-accent: #2dd4ee;
   --site-panel: #0d1724;
+  --display-font: "Rock Salt", cursive;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+.retro-titlebar {
+  font-family: var(--display-font);
 }
 
 html {

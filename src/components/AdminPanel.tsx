@@ -118,6 +118,17 @@ interface ProviderAccountLink {
   url: string;
 }
 
+const DEFAULT_PROVIDER_ACCOUNT_LINKS: ProviderAccountLink[] = [
+  { id: 'provider-stake', label: 'Stake Affiliate', url: 'https://stake.us/affiliate/overview' },
+  { id: 'provider-acebet', label: 'AceBet Affiliate', url: 'https://acebet.cc/affiliates?tab=referrals' },
+  { id: 'provider-kraken', label: 'Kraken Referrals', url: 'https://www.kraken.com/c/offers?tab=referrals' },
+  { id: 'provider-myprize', label: 'MyPrize Referrals', url: 'https://myprize.us/referrals' },
+  { id: 'provider-sofi', label: 'SoFi Referral Program', url: 'https://www.sofi.com/referral-program/' },
+  { id: 'provider-joko', label: 'Joko Dashboard', url: 'https://app.joko.com/home' },
+  { id: 'provider-chime', label: 'Chime Invite Friends', url: 'https://app.chime.com/invite-friends' },
+  { id: 'provider-coinsbackcasino', label: 'CoinsBackCasino Referrals', url: 'https://www.coinsbackcasino.com/refer' },
+];
+
 interface AdminAuditEntry {
   id: string;
   action: string;
@@ -467,9 +478,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('s4fc_provider_account_links') || '[]') as ProviderAccountLink[];
-      if (Array.isArray(saved)) setProviderAccountLinks(saved.filter((link) => link && typeof link.label === 'string' && typeof link.url === 'string'));
+      const validSaved = Array.isArray(saved)
+        ? saved.filter((link) => link && typeof link.label === 'string' && typeof link.url === 'string')
+        : [];
+      const savedUrls = new Set(validSaved.map((link) => link.url));
+      const merged = [
+        ...validSaved,
+        ...DEFAULT_PROVIDER_ACCOUNT_LINKS.filter((link) => !savedUrls.has(link.url)),
+      ];
+      setProviderAccountLinks(merged);
+      localStorage.setItem('s4fc_provider_account_links', JSON.stringify(merged));
     } catch {
-      setProviderAccountLinks([]);
+      setProviderAccountLinks(DEFAULT_PROVIDER_ACCOUNT_LINKS);
     }
   }, []);
 
