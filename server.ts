@@ -19,7 +19,12 @@ const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
 const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
-const ownerEmail = (env.OWNER_EMAIL || 'winters.mark1990@gmail.com').trim().toLowerCase();
+const ownerEmails = new Set(
+  [env.OWNER_EMAIL || 'winters.mark1990@gmail.com', env.OWNER_EMAIL_ALIASES || '', 'gamingbiz777@gmail.com']
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 function getRequestAppUrl(req: express.Request) {
   const configuredAppUrl = env.APP_URL?.trim().replace(/\/$/, '');
@@ -535,7 +540,7 @@ async function syncOwnerFriendListForUser(userId: string) {
   if (!database) return;
   const owner = await database.query<{ id: string }>(
     'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
-    [ownerEmail],
+    [Array.from(ownerEmails)[0]],
   );
   const ownerUserId = owner.rows[0]?.id;
   if (!ownerUserId) return;
@@ -837,7 +842,7 @@ async function initializeOfferStore() {
   `);
   const ownerUserRow = await database.query<{ id: string }>(
     'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
-    [ownerEmail],
+    [Array.from(ownerEmails)[0]],
   );
   await database.query(`
     CREATE TABLE IF NOT EXISTS offer_issue_reports (
@@ -1308,7 +1313,7 @@ app.post('/api/admin/unlock-user', async (req, res) => {
   }
   const user = await getAuthenticatedUser(req);
   const username = user?.username?.trim().toLowerCase();
-  const isOwner = Boolean(user && user.email.trim().toLowerCase() === ownerEmail);
+  const isOwner = Boolean(user && ownerEmails.has(user.email.trim().toLowerCase()));
   if (!user || (!isOwner && (!username || !delegatedAdminUsernames.has(username)))) {
     return res.status(403).json({ error: 'This account has not been granted admin access.' });
   }
@@ -1327,8 +1332,9 @@ app.post('/api/admin/unlock-user', async (req, res) => {
 app.get('/api/admin/can-access', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   const username = user?.username?.trim().toLowerCase();
-  const canAccess = Boolean(user && (user.email.trim().toLowerCase() === ownerEmail || (username && delegatedAdminUsernames.has(username))));
-  res.json({ canAccess, role: user?.email.trim().toLowerCase() === ownerEmail ? 'owner' : 'delegated' });
+  const isOwner = Boolean(user && ownerEmails.has(user.email.trim().toLowerCase()));
+  const canAccess = Boolean(user && (isOwner || (username && delegatedAdminUsernames.has(username))));
+  res.json({ canAccess, role: isOwner ? 'owner' : 'delegated' });
 });
 
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
