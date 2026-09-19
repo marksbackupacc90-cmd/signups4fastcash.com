@@ -294,7 +294,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit' | 'analytics'>('live');
+  type AdminTab = 'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit' | 'analytics';
+  const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('live');
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
@@ -355,6 +356,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   });
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
+
+  const toggleAdminTab = (tab: AdminTab) => {
+    if (activeAdminTab === tab && adminPageOpen) {
+      setAdminPageOpen(false);
+      return;
+    }
+    setActiveAdminTab(tab);
+    setAdminPageOpen(true);
+  };
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
@@ -1064,14 +1074,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ['settings', 'Settings'],
           ...(isOwnerAdmin ? [['accounts', 'Accounts'], ['audit', 'Audit']] : []),
         ].map(([tab, label]) => (
-          <button key={tab} type="button" onClick={() => { setActiveAdminTab(tab as typeof activeAdminTab); setAdminPageOpen(true); }} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
+          <button key={tab} type="button" onClick={() => toggleAdminTab(tab as AdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab && adminPageOpen ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
             {label}
           </button>
         ))}
         {activeAdminTab === 'live' && (
           <>
-            <button type="button" onClick={() => { setExpandedReferralLinks(true); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
-            <button type="button" onClick={() => { setExpandedOfferList(true); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
+            <button type="button" onClick={() => { setExpandedReferralLinks((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
+            <button type="button" onClick={() => { setExpandedOfferList((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
             <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-emerald-300/40 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-300/20">
               {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
             </button>

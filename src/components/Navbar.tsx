@@ -113,6 +113,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {username && canAccessAdmin && (
+            <button
+              onClick={onAdminAccess}
+              className="retro-button focus-ring border border-amber-300/40 px-2.5 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-300/10 sm:px-3"
+            >
+              Admin
+            </button>
+          )}
           {username ? (
             <div ref={accountMenuRef} className="relative">
               <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[10rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>
@@ -131,7 +139,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button onClick={() => { onOpenNewsletter(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Bell className="h-3.5 w-3.5" /> Subscribe to alerts</button>
                   <button onClick={() => { onOpenFinder(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Search className="h-3.5 w-3.5" /> Find my best offers</button>
                   <button onClick={() => { onShare(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Share2 className="h-3.5 w-3.5" /> {shareCopied ? 'Message copied' : 'Share site'}</button>
-                  {canAccessAdmin && <button onClick={() => { onAdminAccess(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-amber-200 hover:bg-white/10">Admin panel</button>}
                   <button onClick={() => { onSignOut(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-300 hover:bg-white/10">Sign out</button>
                 </div>
               )}
