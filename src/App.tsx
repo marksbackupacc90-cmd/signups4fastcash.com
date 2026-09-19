@@ -17,6 +17,7 @@ import { OfferFinder } from './components/OfferFinder';
 import { CommunityChat } from './components/CommunityChat';
 import { HowItWorks } from './components/HowItWorks';
 import { CashBlueprint } from './components/CashBlueprint';
+import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 
 interface AuthUser {
   id: string;
@@ -143,6 +144,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
+  const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
     try {
@@ -480,6 +482,15 @@ export default function App() {
     const adminToken = localStorage.getItem('signups4fastcash_admin_token');
     if (adminToken) return;
 
+    const savedEntries = readMyOfferEntries();
+    const existing = savedEntries.find((entry) => entry.offerId === offerId);
+    if (!existing) {
+      const nextEntries = [...savedEntries, { offerId, status: 'active' as const, updatedAt: new Date().toISOString() }];
+      localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(nextEntries));
+      setMyOfferIds(nextEntries.map((entry) => entry.offerId));
+      showToast('Saved to My Offers so you can resume it later.');
+    }
+
     setLiveOffers((prev) =>
       prev.map((o) => (o.id === offerId ? { ...o, clicksCount: o.clicksCount + 1 } : o))
     );
@@ -737,6 +748,30 @@ export default function App() {
     window.setTimeout(() => document.getElementById(`offer-card-${offer.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
   };
 
+  const handleResumeOffer = (offer: Offer) => {
+    void handleClaimClick(offer.id);
+    window.open(offer.referralUrl || offer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleMyOfferStatusChange = async (offerId: string, status: MyOfferStatus) => {
+    if (status !== 'completed') return;
+    const response = await fetch(`/api/offers/${offerId}/completion-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmed: true }),
+    }).catch(() => null);
+    showToast(response?.ok ? 'Thanks — your completion was saved.' : 'Saved locally, but we could not send the confirmation.');
+  };
+
+  const handleMyOfferIssue = async (offerId: string) => {
+    await fetch(`/api/offers/${offerId}/issue-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issue: 'broken-link' }),
+    }).catch(() => {});
+    showToast('Issue noted. We will review this offer.');
+  };
+
   const handleUpdateSiteSettings = async (updates: Partial<SiteSettings>) => {
     const next = { ...siteSettings, ...updates };
     setSiteSettings(next);
@@ -818,6 +853,13 @@ export default function App() {
       )}
 
       <main className="flex-1">
+        <MyOffers
+          offers={liveOffers}
+          trackedOfferIds={myOfferIds}
+          onResume={handleResumeOffer}
+          onStatusChange={handleMyOfferStatusChange}
+          onReportIssue={handleMyOfferIssue}
+        />
         {authUser && activeTab === 'offers' && (
           <>
             <CommunityChat username={authUser?.username} userId={authUser?.id} avatarUrl={authUser?.avatarUrl} />
