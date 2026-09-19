@@ -857,14 +857,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {range === 'all' ? 'All' : range === '30d' ? '30 days' : '7 days'}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => setAnalyticsRefreshKey((current) => current + 1)}
-              className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:border-cyan-300/50 hover:text-cyan-200"
-            >
-              Refresh
-            </button>
-            {analyticsRefreshedAt && <span className="text-[10px] text-zinc-600">Updated {new Date(analyticsRefreshedAt).toLocaleTimeString()}</span>}
           </div>
           <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-4">
             <div>
@@ -1005,15 +997,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="mt-3 text-xs text-zinc-500">No location data has been recorded yet.</div>
             ) : null}
           </div>
-          {isOwnerAdmin && (
-            <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#9b7650]/35 bg-[#10131d] p-4">
-              <div>
-                <div className="text-xs font-semibold text-[#8ad7f5]">Analytics controls</div>
-                <p className="mt-1 text-[11px] text-zinc-500">Reset visits, clicks, conversions, and offer counters to zero.</p>
-              </div>
-              {analyticsResetMessage && <span className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</span>}
-            </div>
-          )}
         </div>
       )}
       
@@ -1040,49 +1023,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
-            <span className="mr-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Quick actions</span>
-            <button type="button" onClick={() => { setActiveAdminTab('live'); setExpandedReferralLinks(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-200 hover:border-emerald-300/50 hover:text-white">
-              Referral links
-            </button>
-            <button type="button" onClick={() => { setActiveAdminTab('live'); setExpandedOfferList(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-200 hover:border-emerald-300/50 hover:text-white">
-              Live offers
-            </button>
-            {visitorAnalytics && (
-              <>
-                <button type="button" onClick={() => void generateAnalyticsReport()} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">
-                  {analyticsReportLoading ? 'Generating...' : 'Generate report'}
-                </button>
-                <button type="button" onClick={() => setAnalyticsRefreshKey((current) => current + 1)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-200 hover:border-cyan-300/50 hover:text-white">
-                  Refresh analytics
-                </button>
-                {isOwnerAdmin && <button type="button" onClick={() => void resetAnalytics()} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset analytics'}</button>}
-              </>
-            )}
-          </div>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
             Manage live offers, review pending submissions, and keep referral details and terms accurate.
           </p>
         </div>
 
-        {/* Compact admin section menu */}
-        <label className="flex shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#07090e] p-1 font-mono text-xs text-zinc-400">
-          <span className="sr-only">Admin section</span>
-          <select
-            value={activeAdminTab}
-            onChange={(event) => setActiveAdminTab(event.target.value as typeof activeAdminTab)}
-            className="max-w-[15rem] rounded-md bg-[#07090e] px-3 py-2 text-xs font-semibold text-zinc-200 outline-none"
-          >
-            <option value="live">Referral Links & Offers ({liveOffers.length})</option>
-            <option value="pending">Review Queue{pendingOffers.length > 0 ? ` (${pendingOffers.length})` : ''}</option>
-            <option value="create">Create Offer</option>
-            <option value="blasts">Email History ({blastLogs.length})</option>
-            <option value="settings">Site Settings</option>
-            {isOwnerAdmin && <option value="accounts">Accounts</option>}
-            {isOwnerAdmin && <option value="audit">Audit Log</option>}
-          </select>
-        </label>
       </div>
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
+        {[
+          ['live', 'Offers'],
+          ['pending', `Review${pendingOffers.length ? ` (${pendingOffers.length})` : ''}`],
+          ['create', 'Create'],
+          ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
+          ['settings', 'Settings'],
+          ...(isOwnerAdmin ? [['accounts', 'Accounts'], ['audit', 'Audit']] : []),
+        ].map(([tab, label]) => (
+          <button key={tab} type="button" onClick={() => setActiveAdminTab(tab as typeof activeAdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
+            {label}
+          </button>
+        ))}
+        {activeAdminTab === 'live' && (
+          <>
+            <button type="button" onClick={() => setExpandedReferralLinks(true)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
+            <button type="button" onClick={() => setExpandedOfferList(true)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
+          </>
+        )}
+        {visitorAnalytics && (
+          <>
+            <button type="button" onClick={() => void generateAnalyticsReport()} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
+            <button type="button" onClick={() => setAnalyticsRefreshKey((current) => current + 1)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
+            {isOwnerAdmin && <button type="button" onClick={() => void resetAnalytics()} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
+          </>
+        )}
+      </div>
+      {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 
       {activeAdminTab === 'accounts' && isOwnerAdmin && (
         <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
