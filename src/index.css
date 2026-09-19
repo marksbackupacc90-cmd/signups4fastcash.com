@@ -229,3 +229,7 @@ textarea:disabled {
   font-family: inherit;
   letter-spacing: 0;
 }
+
+.font-sans {
+  font-family: var(--display-font);
+}
