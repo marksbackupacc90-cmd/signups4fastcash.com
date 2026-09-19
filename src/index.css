@@ -13,7 +13,7 @@
   --site-accent: #2dd4ee;
   --site-panel: #0d1724;
   --display-font: "Glory", sans-serif;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+  font-family: var(--display-font);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
