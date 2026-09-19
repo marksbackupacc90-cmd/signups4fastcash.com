@@ -33,6 +33,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
 
   const simpleIconSlugMap: Record<string, string> = {
     sofi: 'sofi',
+    onepay: 'onepay',
     chime: 'chime',
     capitalone: 'capitalone',
     freecash: 'freecash',
@@ -50,6 +51,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
 
   const localLogoMap: Record<string, string> = {
     sofi: '/company-logos/sofi-logo.png',
+    onepay: '/company-logos/onepay-logo.png',
     chime: '/company-logos/chime-logo.jpg',
     capitalone: '/company-logos/capital-one.png',
     coinbase: '/company-logos/coinbase-logo.png',

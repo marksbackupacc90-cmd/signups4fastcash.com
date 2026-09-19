@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, Flag, ListChecks, RotateCcw, X } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Flag, RotateCcw, X } from 'lucide-react';
 import { Offer } from '../types';
 
 export type MyOfferStatus = 'active' | 'completed' | 'issue';
@@ -13,6 +13,8 @@ interface MyOfferEntry {
 interface MyOffersProps {
   offers: Offer[];
   trackedOfferIds: string[];
+  open: boolean;
+  onClose: () => void;
   onResume: (offer: Offer) => void;
   onStatusChange: (offerId: string, status: MyOfferStatus) => void;
   onReportIssue: (offerId: string) => void;
@@ -32,11 +34,12 @@ export function readMyOfferEntries(): MyOfferEntry[] {
 export const MyOffers: React.FC<MyOffersProps> = ({
   offers,
   trackedOfferIds,
+  open,
+  onClose,
   onResume,
   onStatusChange,
   onReportIssue,
 }) => {
-  const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<MyOfferEntry[]>(readMyOfferEntries);
   const trackedOffers = useMemo(
     () => trackedOfferIds.map((id) => offers.find((offer) => offer.id === id)).filter((offer): offer is Offer => Boolean(offer)),
@@ -62,21 +65,8 @@ export const MyOffers: React.FC<MyOffersProps> = ({
     onStatusChange(offerId, status);
   };
 
-  const activeCount = entries.filter((entry) => entry.status === 'active').length;
-
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-xl border border-cyan-300/35 bg-[#101a28] px-3 py-2.5 text-xs font-bold text-cyan-100 shadow-xl transition-colors hover:border-cyan-200/60 hover:bg-cyan-300/10"
-        aria-label={`Open My Offers, ${activeCount} active`}
-      >
-        <ListChecks className="h-4 w-4 text-cyan-300" />
-        My Offers
-        {activeCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeCount}</span>}
-      </button>
-
       {open && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 px-4 py-8 backdrop-blur-sm">
           <section role="dialog" aria-modal="true" aria-labelledby="my-offers-title" className="mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 shadow-2xl sm:p-7">
@@ -86,7 +76,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                 <h2 id="my-offers-title" className="mt-1 text-2xl font-bold text-white">My Offers</h2>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-300">Resume an offer, confirm that you completed it, or tell us when something went wrong.</p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white" aria-label="Close My Offers"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={onClose} className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white" aria-label="Close My Offers"><X className="h-4 w-4" /></button>
             </div>
 
             {trackedOffers.length === 0 ? (

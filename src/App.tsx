@@ -137,6 +137,7 @@ export default function App() {
   const [legalSection, setLegalSection] = useState<LegalSection | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -785,6 +786,7 @@ export default function App() {
   };
 
   const handleMyOfferStatusChange = async (offerId: string, status: MyOfferStatus) => {
+    setMyOfferIds(readMyOfferEntries().map((entry) => entry.offerId));
     if (authUser) {
       await fetch(`/api/account/offer-entries/${offerId}`, {
         method: 'PUT',
@@ -842,8 +844,8 @@ export default function App() {
         siteSettings={siteSettings}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onInstallApp={handleInstallApp}
-        installAvailable={Boolean(installPrompt)}
+        onOpenMyOffers={() => setMyOffersOpen(true)}
+        activeOfferCount={readMyOfferEntries().filter((entry) => entry.status === 'active').length}
         username={authUser?.username}
         avatarUrl={authUser?.avatarUrl}
         userId={authUser?.id}
@@ -894,6 +896,8 @@ export default function App() {
         {activeTab === 'offers' && <MyOffers
           offers={liveOffers}
           trackedOfferIds={myOfferIds}
+          open={myOffersOpen}
+          onClose={() => setMyOffersOpen(false)}
           onResume={handleResumeOffer}
           onStatusChange={handleMyOfferStatusChange}
           onReportIssue={handleMyOfferIssue}

@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
-import { Bell, ChevronDown, Search, Share2 } from 'lucide-react';
+import { Bell, ChevronDown, ListChecks, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
   siteSettings?: SiteSettings;
   activeTab: 'offers' | 'admin';
   setActiveTab: (tab: 'offers' | 'admin') => void;
-  onInstallApp: () => void;
-  installAvailable: boolean;
+  onOpenMyOffers: () => void;
+  activeOfferCount: number;
   username?: string | null;
   avatarUrl?: string | null;
   onSignUp: () => void;
@@ -29,8 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   siteSettings,
   activeTab,
   setActiveTab,
-  onInstallApp,
-  installAvailable,
+  onOpenMyOffers,
+  activeOfferCount,
   username,
   avatarUrl,
   onSignUp,
@@ -98,21 +98,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Offers
           </button>
-          <button
-            id="nav-install-app"
-            onClick={onInstallApp}
-            className={`retro-button focus-ring hidden shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all md:inline-flex ${
-              installAvailable
-                ? 'text-blue-800'
-                : 'text-zinc-200 hover:text-white'
-            }`}
-            title={installAvailable ? 'Install signups4fastcash as an app' : 'View app installation instructions'}
-          >
-            Install App
-          </button>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={onOpenMyOffers}
+            className="retro-button focus-ring inline-flex items-center gap-1.5 rounded-md border border-cyan-300/35 px-2.5 py-1.5 text-xs font-semibold text-cyan-100 transition-colors hover:border-cyan-200/60 hover:bg-cyan-300/10 sm:px-3"
+            aria-label={`Open In Progress, ${activeOfferCount} active`}
+          >
+            <ListChecks className="h-3.5 w-3.5 text-cyan-300" />
+            <span className="hidden sm:inline">In Progress</span>
+            <span className="sm:hidden">Progress</span>
+            {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeOfferCount}</span>}
+          </button>
           {username && canAccessAdmin && (
             <button
               onClick={onAdminAccess}
