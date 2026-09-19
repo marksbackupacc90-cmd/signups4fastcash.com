@@ -125,14 +125,6 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'random' | 'highest' | 'fastest' | 'easiest'>('random');
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast'>('all');
-  const [compareIds, setCompareIds] = useState<string[]>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('signups4fastcash_compare') || '[]');
-      return Array.isArray(saved) ? saved.slice(0, 2) : [];
-    } catch {
-      return [];
-    }
-  });
   const recordedImpressions = useRef(new Set<string>());
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
@@ -690,19 +682,6 @@ export default function App() {
     });
   }, [activeTab, filteredOffers.map((offer) => offer.id).join('|')]);
 
-  const compareOffers = compareIds
-    .map((id) => liveOffers.find((offer) => offer.id === id))
-    .filter((offer): offer is Offer => Boolean(offer));
-  const toggleCompare = (offerId: string) => {
-    setCompareIds((current) => {
-      const next = current.includes(offerId)
-        ? current.filter((id) => id !== offerId)
-        : current.length < 2 ? [...current, offerId] : [current[1], offerId];
-      localStorage.setItem('signups4fastcash_compare', JSON.stringify(next));
-      return next;
-    });
-  };
-
   const shareUrl = 'https://signups4fastcash.com/?utm_source=visitor_share&utm_medium=referral&utm_campaign=share_cta';
   const shareMessage = `I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: ${shareUrl}`;
   const handleShare = async () => {
@@ -874,29 +853,6 @@ export default function App() {
                   </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                 </div>
-                {compareOffers.length > 0 && (
-                  <div className="mb-5 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.05] p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs font-bold uppercase tracking-wider text-emerald-200">Compare offers</div>
-                        <div className="mt-1 text-[11px] text-zinc-400">Choose up to two offers to compare the visitor-facing requirements.</div>
-                      </div>
-                      <button type="button" onClick={() => { setCompareIds([]); localStorage.removeItem('signups4fastcash_compare'); }} className="text-[11px] text-zinc-400 hover:text-white">Clear</button>
-                    </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {compareOffers.map((offer) => (
-                        <div key={offer.id} className="rounded-lg border border-white/[0.08] bg-[#0e121a] p-3">
-                          <div className="text-sm font-bold text-white">{offer.company}</div>
-                          <div className="mt-1 text-xs text-emerald-200">{offer.title}</div>
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-zinc-400">
-                            <span>Requirement: <strong className="text-zinc-200">{offer.depositRequired}</strong></span>
-                            <span>Payout: <strong className="text-zinc-200">{offer.payoutSpeed}</strong></span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <span className="text-xs font-mono text-zinc-500 hidden sm:inline">
                   Requirements and availability can change on the merchant site
                 </span>
@@ -930,8 +886,6 @@ export default function App() {
                         key={offer.id}
                         offer={offer}
                         onClaimClick={handleClaimClick}
-                        compared={compareIds.includes(offer.id)}
-                        onToggleCompare={toggleCompare}
                       />
                     ))}
                   </div>
