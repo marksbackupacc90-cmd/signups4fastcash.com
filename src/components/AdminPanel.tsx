@@ -346,6 +346,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedOfferList, setExpandedOfferList] = useState(false);
   const [expandedExposureReport, setExpandedExposureReport] = useState(false);
   const [expandedAnalytics, setExpandedAnalytics] = useState(false);
+  const [adminPageOpen, setAdminPageOpen] = useState(false);
   const [offersViewedDate, setOffersViewedDate] = useState<string | null>(() => {
     try {
       return localStorage.getItem('s4fc_admin_offers_viewed_date');
@@ -848,7 +849,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
+      {adminPageOpen && serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100" role="alert">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
           <div>
@@ -862,7 +863,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
-      {visitorAnalytics && (
+      {adminPageOpen && visitorAnalytics && (
         <section className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
           <button
             type="button"
@@ -1062,14 +1063,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ['settings', 'Settings'],
           ...(isOwnerAdmin ? [['accounts', 'Accounts'], ['audit', 'Audit']] : []),
         ].map(([tab, label]) => (
-          <button key={tab} type="button" onClick={() => setActiveAdminTab(tab as typeof activeAdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
+          <button key={tab} type="button" onClick={() => { setActiveAdminTab(tab as typeof activeAdminTab); setAdminPageOpen(true); }} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
             {label}
           </button>
         ))}
         {activeAdminTab === 'live' && (
           <>
-            <button type="button" onClick={() => setExpandedReferralLinks(true)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
-            <button type="button" onClick={() => setExpandedOfferList(true)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
+            <button type="button" onClick={() => { setExpandedReferralLinks(true); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
+            <button type="button" onClick={() => { setExpandedOfferList(true); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
             <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-emerald-300/40 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-300/20">
               {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
             </button>
@@ -1077,12 +1078,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
         {visitorAnalytics && (
           <>
-            <button type="button" onClick={() => void generateAnalyticsReport()} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-300/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
-            <button type="button" onClick={() => setAnalyticsRefreshKey((current) => current + 1)} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
-            {isOwnerAdmin && <button type="button" onClick={() => void resetAnalytics()} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
+            <button type="button" onClick={() => { setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
+            <button type="button" onClick={() => { setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
+            {isOwnerAdmin && <button type="button" onClick={() => { setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
           </>
         )}
       </div>
+      {adminPageOpen && <div className="space-y-6">
       {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 
       {activeAdminTab === 'accounts' && isOwnerAdmin && (
@@ -2354,6 +2356,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
+      </div>}
 
     </div>
   );
