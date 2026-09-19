@@ -119,6 +119,7 @@ export default function App() {
   });
 
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+  const [subscriberCount, setSubscriberCount] = useState(0);
   const [blastLogs, setBlastLogs] = useState<EmailBlastLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -365,6 +366,15 @@ export default function App() {
       .then((data: { offers: Offer[] }) => setLiveOffers(data.offers.filter(isAvailableOffer)))
       .catch(() => {
         // Keep the local catalog available when the API is offline.
+      });
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/newsletter/subscribers')
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load subscriber count'))))
+      .then((data: { count?: number }) => setSubscriberCount(Number(data.count || 0)))
+      .catch(() => {
+        // Keep the count at zero if the public count endpoint is temporarily unavailable.
       });
   }, []);
 
@@ -618,7 +628,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, frequency }),
       });
-      const data = await response.json().catch(() => null) as { error?: string; pendingConfirmation?: boolean } | null;
+      const data = await response.json().catch(() => null) as { error?: string; pendingConfirmation?: boolean; subscriberCount?: number } | null;
       if (!response.ok) {
         showToast(data?.error || 'Could not start your subscription.');
         return;
@@ -631,6 +641,7 @@ export default function App() {
         frequency,
       };
       setSubscribers((prev) => [newSub, ...prev.filter((subscriber) => subscriber.email !== email)]);
+      if (typeof data?.subscriberCount === 'number') setSubscriberCount(data.subscriberCount);
       showToast(data?.pendingConfirmation ? 'Check your email to confirm the alerts.' : `Subscribed ${email} to ${frequency} earning alerts.`);
     } catch {
       showToast('Could not reach the newsletter service. Please try again.');
@@ -917,7 +928,7 @@ export default function App() {
         isOpen={isNewsletterOpen}
         onClose={() => setIsNewsletterOpen(false)}
         onSubscribe={handleSubscribeNewsletter}
-        subscriberCount={subscribers.length}
+        subscriberCount={subscriberCount}
       />
 
       <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} mode={authMode} disabled={recordingMode} />

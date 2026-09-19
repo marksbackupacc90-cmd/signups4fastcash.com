@@ -1123,7 +1123,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <>
             <button type="button" onClick={() => { setExpandedReferralLinks((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
             <button type="button" onClick={() => { setExpandedOfferList((current) => !current); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Offer list</button>
-            <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-emerald-300/40 bg-emerald-300/10 px-3 py-2 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-300/20">
+            <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">
               {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
             </button>
           </>
@@ -1133,7 +1133,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
             <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
             {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
-            {isOwnerAdmin && <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-emerald-300/30 bg-emerald-300/5 px-3 py-2 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-300/10">Export backup</button>}
+            {isOwnerAdmin && <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">Export backup</button>}
             {isOwnerAdmin && <button type="button" onClick={() => void checkReferralLinks()} className="rounded-lg border border-violet-300/30 bg-violet-300/5 px-3 py-2 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10">Check links</button>}
           </>
         )}

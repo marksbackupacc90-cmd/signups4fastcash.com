@@ -2985,10 +2985,12 @@ app.get('/api/newsletter/unsubscribe', async (req, res) => {
 // API: Newsletter subscriber count
 app.get('/api/newsletter/subscribers', async (req, res) => {
   if (!database) {
-    return res.json({ count: subscribersStore.length });
+    return res.json({ count: subscribersStore.filter((subscriber) => subscriber.verified).length });
   }
   try {
-    const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers');
+    const count = await database.query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM newsletter_subscribers WHERE verified = TRUE AND unsubscribed_at IS NULL',
+    );
     const response: { count: number; subscribers?: typeof subscribersStore } = { count: Number(count.rows[0]?.count || 0) };
     if (hasValidAdminToken(req.header('x-admin-token'))) {
       const subscribers = await database.query<{ id: string; email: string; subscribed_at: Date; frequency: string; verified: boolean }>(
