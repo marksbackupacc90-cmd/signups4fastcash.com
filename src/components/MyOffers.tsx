@@ -82,7 +82,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
           <section role="dialog" aria-modal="true" aria-labelledby="my-offers-title" className="mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-cyan-300">Saved on this device</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">Saved offers</p>
                 <h2 id="my-offers-title" className="mt-1 text-2xl font-bold text-white">My Offers</h2>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-300">Resume an offer, confirm that you completed it, or tell us when something went wrong.</p>
               </div>
@@ -136,7 +136,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                 })}
               </div>
             )}
-            <p className="mt-5 text-xs leading-relaxed text-zinc-300">Your saved offers stay in this browser. Clearing site data or switching devices removes this list unless you are signed in and we add account sync later.</p>
+            <p className="mt-5 text-xs leading-relaxed text-zinc-300">Signed-in offers sync to your account. If you are browsing as a guest, saved offers stay on this device.</p>
           </section>
         </div>
       )}

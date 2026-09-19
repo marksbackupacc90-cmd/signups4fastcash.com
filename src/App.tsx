@@ -263,6 +263,30 @@ export default function App() {
       .catch(() => setCanAccessAdmin(false));
   }, [authUser]);
 
+  useEffect(() => {
+    if (!authUser) return;
+    fetch('/api/account/offer-entries')
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Could not load saved offers')))
+      .then(async (data: { entries?: { offerId: string; status: MyOfferStatus; updatedAt: string }[] }) => {
+        const accountEntries = Array.isArray(data.entries) ? data.entries : [];
+        const browserEntries = readMyOfferEntries();
+        const merged = [...accountEntries];
+        for (const entry of browserEntries) {
+          if (!merged.some((candidate) => candidate.offerId === entry.offerId)) {
+            merged.push(entry);
+            await fetch(`/api/account/offer-entries/${entry.offerId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: entry.status }),
+            });
+          }
+        }
+        localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(merged));
+        setMyOfferIds(merged.map((entry) => entry.offerId));
+      })
+      .catch(() => {});
+  }, [authUser]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     window.setTimeout(() => setToastMessage(null), 4000);
@@ -488,6 +512,13 @@ export default function App() {
       const nextEntries = [...savedEntries, { offerId, status: 'active' as const, updatedAt: new Date().toISOString() }];
       localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(nextEntries));
       setMyOfferIds(nextEntries.map((entry) => entry.offerId));
+      if (authUser) {
+        void fetch(`/api/account/offer-entries/${offerId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' }),
+        });
+      }
       showToast('Saved to My Offers so you can resume it later.');
     }
 
@@ -754,6 +785,13 @@ export default function App() {
   };
 
   const handleMyOfferStatusChange = async (offerId: string, status: MyOfferStatus) => {
+    if (authUser) {
+      await fetch(`/api/account/offer-entries/${offerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      }).catch(() => {});
+    }
     if (status !== 'completed') return;
     const response = await fetch(`/api/offers/${offerId}/completion-report`, {
       method: 'POST',

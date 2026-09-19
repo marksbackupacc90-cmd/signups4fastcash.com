@@ -507,6 +507,7 @@ let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHidde
 let pendingOffersStore: any[] = [];
 let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string; verified: boolean; unsubscribedAt?: string | null }[] = [];
 const issueReportsStore: { id: string; offerId: string; issue: string; description: string; status: string; reportedAt: string }[] = [];
+const userOfferEntriesStore = new Map<string, { offerId: string; status: 'active' | 'completed' | 'issue'; updatedAt: string }[]>();
 let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
@@ -693,6 +694,15 @@ async function initializeOfferStore() {
       token TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       expires_at TIMESTAMPTZ NOT NULL
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS user_offer_entries (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'issue')),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, offer_id)
     )
   `);
   await database.query(`
@@ -1224,6 +1234,45 @@ app.get('/api/offers', (req, res) => {
   res.json({ offers: liveOffersStore.filter(isVerificationCurrent) });
 });
 
+app.get('/api/account/offer-entries', requireAuthenticatedUser, async (_req, res) => {
+  const user = res.locals.authenticatedUser as { id: string };
+  if (database) {
+    const result = await database.query(
+      `SELECT offer_id AS "offerId", status, updated_at AS "updatedAt"
+       FROM user_offer_entries WHERE user_id = $1 ORDER BY updated_at DESC`,
+      [user.id],
+    );
+    return res.json({ entries: result.rows });
+  }
+  return res.json({ entries: userOfferEntriesStore.get(user.id) || [] });
+});
+
+app.put('/api/account/offer-entries/:offerId', requireAuthenticatedUser, async (req, res) => {
+  const user = res.locals.authenticatedUser as { id: string };
+  const offer = liveOffersStore.find((candidate) => candidate.id === req.params.offerId);
+  const status = req.body?.status;
+  if (!offer) return res.status(404).json({ error: 'Offer not found.' });
+  if (!['active', 'completed', 'issue'].includes(status)) {
+    return res.status(400).json({ error: 'Choose a valid offer status.' });
+  }
+  const updatedAt = new Date().toISOString();
+  if (database) {
+    await database.query(
+      `INSERT INTO user_offer_entries (user_id, offer_id, status, updated_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, offer_id)
+       DO UPDATE SET status = EXCLUDED.status, updated_at = EXCLUDED.updated_at`,
+      [user.id, offer.id, status, updatedAt],
+    );
+  } else {
+    const entries = userOfferEntriesStore.get(user.id) || [];
+    const next = entries.filter((entry) => entry.offerId !== offer.id);
+    next.push({ offerId: offer.id, status, updatedAt });
+    userOfferEntriesStore.set(user.id, next);
+  }
+  return res.json({ entry: { offerId: offer.id, status, updatedAt } });
+});
+
 app.post('/api/offers/:id/completion-report', (req, res) => {
   const offer = liveOffersStore.find((candidate) => candidate.id === req.params.id);
   if (!offer || !isVerificationCurrent(offer)) {
@@ -1386,6 +1435,13 @@ app.get('/api/admin/can-access', async (req, res) => {
   const canAccess = Boolean(user && (isOwner || (username && delegatedAdminUsernames.has(username))));
   res.json({ canAccess, role: isOwner ? 'owner' : 'delegated' });
 });
+
+async function requireAuthenticatedUser(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to save offers to your account.' });
+  res.locals.authenticatedUser = user;
+  return next();
+}
 
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const token = req.header('x-admin-token');
