@@ -265,7 +265,7 @@ export default function App() {
         const canAccess = Boolean(data.canAccess);
         setCanAccessAdmin(canAccess);
         if (canAccess && data.role === 'owner') {
-          await handleDelegatedAdminAccess();
+          await handleDelegatedAdminAccess(false);
         }
       })
       .catch(() => setCanAccessAdmin(false));
@@ -318,7 +318,7 @@ export default function App() {
     setAdminUsernames(data.usernames || []);
   };
 
-  const handleDelegatedAdminAccess = async () => {
+  const handleDelegatedAdminAccess = async (openPanel = true) => {
     if (!authUser) {
       showToast('Sign in first to use delegated admin access.');
       setAuthMode('signin');
@@ -334,9 +334,11 @@ export default function App() {
     const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
     localStorage.setItem('signups4fastcash_admin_token', data.token);
     setIsAdminUnlocked(true);
-    setAdminPanelVisible(true);
+    if (openPanel) {
+      setAdminPanelVisible(true);
+      setActiveTab('admin');
+    }
     setIsOwnerAdmin(data.role === 'owner');
-    setActiveTab('admin');
     if (data.role === 'owner') void loadAdminUsernames(data.token);
     showToast(data.role === 'owner' ? 'Owner admin access enabled.' : 'Delegated admin access enabled.');
   };
