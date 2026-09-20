@@ -26,7 +26,7 @@ export interface Offer {
   incentiveAmount: string; // e.g. "$100 Cash", "Up to $200", "$25 Instant"
   incentiveValue: number; // numeric value in USD for sorting and stats
   payoutSpeed: string; // e.g. "Instant", "Within 24 hours", "2-3 business days"
-  difficulty: 'Easy (2 min)' | 'Fast (5 min)' | 'Standard (10 min)';
+  difficulty: 'Easy (2 min)' | 'Fast (5 min)' | 'Standard (10 min)' | 'Moderate (10 min)';
   depositRequired: string; // e.g. "$0", "$1 deposit", "$10 purchase"
   availability: string;
   officialMerchantUrl: string;

@@ -366,9 +366,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     id: String(offer?.id || ''),
     company: String(offer?.company || 'Unknown provider'),
     title: String(offer?.title || 'Untitled offer'),
+    companySlug: String(offer?.companySlug || ''),
     category: offer?.category || 'apps',
     referralCode: String(offer?.referralCode || ''),
     referralUrl: String(offer?.referralUrl || ''),
+    officialMerchantUrl: String(offer?.officialMerchantUrl || ''),
   });
   const liveOfferList = Array.isArray(liveOffers) ? liveOffers.filter(Boolean).map(normalizeOffer) : [];
   const pendingOfferList = Array.isArray(pendingOffers) ? pendingOffers.filter(Boolean).map(normalizeOffer) : [];
