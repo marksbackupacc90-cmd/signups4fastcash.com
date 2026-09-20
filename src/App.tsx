@@ -1,10 +1,10 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
-const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })));
+import { AdminPanel } from './components/AdminPanel';
 import { NewsletterModal } from './components/NewsletterModal';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
@@ -1005,25 +1005,23 @@ export default function App() {
         )}
         {activeTab === 'admin' && isAdminUnlocked && adminPanelVisible && (
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <Suspense fallback={<div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-8 text-center text-xs font-mono text-zinc-400">Loading admin tools…</div>}>
-              <AdminPanel
-                pendingOffers={pendingOffers}
-                liveOffers={liveOffers}
-                subscribers={subscribers}
-                onApproveOffer={handleApproveOffer}
-                onRejectOffer={handleRejectOffer}
-                onUpdateLiveOffer={handleUpdateLiveOffer}
-                onDeleteLiveOffer={handleDeleteLiveOffer}
-                onCreateCustomOffer={handleCreateCustomOffer}
-                blastLogs={blastLogs}
-                siteSettings={siteSettings}
-                onUpdateSiteSettings={handleUpdateSiteSettings}
-                isOwnerAdmin={isOwnerAdmin}
-                adminUsernames={adminUsernames}
-                onUpdateAdminUsernames={handleUpdateAdminUsernames}
-                initialTab={adminSection}
-              />
-            </Suspense>
+            <AdminPanel
+              pendingOffers={pendingOffers}
+              liveOffers={liveOffers}
+              subscribers={subscribers}
+              onApproveOffer={handleApproveOffer}
+              onRejectOffer={handleRejectOffer}
+              onUpdateLiveOffer={handleUpdateLiveOffer}
+              onDeleteLiveOffer={handleDeleteLiveOffer}
+              onCreateCustomOffer={handleCreateCustomOffer}
+              blastLogs={blastLogs}
+              siteSettings={siteSettings}
+              onUpdateSiteSettings={handleUpdateSiteSettings}
+              isOwnerAdmin={isOwnerAdmin}
+              adminUsernames={adminUsernames}
+              onUpdateAdminUsernames={handleUpdateAdminUsernames}
+              initialTab={adminSection}
+            />
           </div>
         )}
 
