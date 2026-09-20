@@ -18,6 +18,7 @@ interface NavbarProps {
   onSignOut: () => void;
   onAdminAccess: () => void;
   canAccessAdmin?: boolean;
+  isAdminUnlocked?: boolean;
   userId?: string;
   onShare: () => void;
   shareCopied: boolean;
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignOut,
   onAdminAccess,
   canAccessAdmin = false,
+  isAdminUnlocked = false,
   userId,
   onShare,
   shareCopied,
@@ -115,6 +117,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           {username && canAccessAdmin && (
             <button
               onClick={onAdminAccess}
+              title={isAdminUnlocked ? 'Lock and hide the Admin Panel' : 'Open the Admin Panel'}
+              aria-label={isAdminUnlocked ? 'Lock and hide the Admin Panel' : 'Open the Admin Panel'}
               className="retro-button focus-ring border border-amber-300/40 px-2.5 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-300/10 sm:px-3"
             >
               Admin

@@ -15,7 +15,6 @@ import {
   FileText,
   AlertCircle,
   ExternalLink,
-  Lock,
   Copy,
   Check,
   Search,
@@ -44,7 +43,6 @@ interface AdminPanelProps {
   onDeleteLiveOffer: (offerId: string) => void;
   onCreateCustomOffer: (newOffer: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>) => void;
   blastLogs: EmailBlastLog[];
-  onLockAdmin?: () => void;
   siteSettings: SiteSettings;
   onUpdateSiteSettings: (updates: Partial<SiteSettings>) => void;
   isOwnerAdmin?: boolean;
@@ -298,7 +296,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteLiveOffer,
   onCreateCustomOffer,
   blastLogs,
-  onLockAdmin,
   siteSettings,
   onUpdateSiteSettings,
   isOwnerAdmin = false,
@@ -1148,19 +1145,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
       
       <div className="order-1 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
-        {onLockAdmin && (
-          <button
-            id="btn-lock-admin"
-            onClick={onLockAdmin}
-            title="Lock and hide Admin Panel until secret code is entered in search"
-            className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] font-semibold text-amber-200 hover:bg-amber-400/10"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5" />
-              Lock
-            </span>
-          </button>
-        )}
         {[
           ['live', 'Offers'],
           ['pending', `Review${pendingOffers.length ? ` (${pendingOffers.length})` : ''}`],
@@ -1185,16 +1169,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
         {activeAdminTab === 'analytics' && visitorAnalytics && (
           <>
-            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-cyan-300/50 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
-            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-cyan-300/50 hover:text-white">Refresh</button>
-            {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-red-400/30 bg-red-400/5 px-3 py-2 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
+            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
+            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white">Refresh</button>
+            {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
           </>
         )}
         {isOwnerAdmin && (
           <>
             <span className="mx-1 hidden h-5 w-px bg-white/10 sm:block" aria-hidden="true" />
-            <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">Backup</button>
-            <button type="button" onClick={() => void checkReferralLinks()} disabled={linkHealthLoading} className="rounded-lg border border-violet-300/30 bg-violet-300/5 px-3 py-2 text-[11px] font-semibold text-violet-200 hover:bg-violet-300/10 disabled:cursor-wait disabled:opacity-60">{linkHealthLoading ? 'Checking...' : 'Check links'}</button>
+            <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white">Backup</button>
+            <button type="button" onClick={() => void checkReferralLinks()} disabled={linkHealthLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:cursor-wait disabled:opacity-60">{linkHealthLoading ? 'Checking...' : 'Check links'}</button>
           </>
         )}
       </div>

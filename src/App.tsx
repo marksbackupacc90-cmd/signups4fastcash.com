@@ -871,13 +871,13 @@ export default function App() {
         }}
         onAdminAccess={() => {
           if (isAdminUnlocked) {
-            setAdminPanelVisible(true);
-            setActiveTab('admin');
+            handleLockAdmin();
             return;
           }
           void handleDelegatedAdminAccess();
         }}
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
+        isAdminUnlocked={isAdminUnlocked}
       />
 
       {installPrompt && (
@@ -1008,7 +1008,6 @@ export default function App() {
                 onDeleteLiveOffer={handleDeleteLiveOffer}
                 onCreateCustomOffer={handleCreateCustomOffer}
                 blastLogs={blastLogs}
-                onLockAdmin={handleLockAdmin}
                 siteSettings={siteSettings}
                 onUpdateSiteSettings={handleUpdateSiteSettings}
                 isOwnerAdmin={isOwnerAdmin}
