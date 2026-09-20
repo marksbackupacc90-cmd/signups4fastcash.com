@@ -141,6 +141,7 @@ export default function App() {
   const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
+  const ownerUnlockAttempted = useRef(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -255,6 +256,7 @@ export default function App() {
 
   useEffect(() => {
     if (!authUser) {
+      ownerUnlockAttempted.current = false;
       setCanAccessAdmin(false);
       return;
     }
@@ -264,8 +266,9 @@ export default function App() {
       .then(async (data: { canAccess?: boolean; role?: 'owner' | 'delegated' }) => {
         const canAccess = Boolean(data.canAccess);
         setCanAccessAdmin(canAccess);
-        if (canAccess && data.role === 'owner') {
-          await handleDelegatedAdminAccess(false);
+        if (canAccess && data.role === 'owner' && !ownerUnlockAttempted.current) {
+          ownerUnlockAttempted.current = true;
+          await handleDelegatedAdminAccess(false, true);
         }
       })
       .catch(() => setCanAccessAdmin(false));
@@ -318,9 +321,9 @@ export default function App() {
     setAdminUsernames(data.usernames || []);
   };
 
-  const handleDelegatedAdminAccess = async (openPanel = true) => {
+  const handleDelegatedAdminAccess = async (openPanel = true, silent = false) => {
     if (!authUser) {
-      showToast('Sign in first to use delegated admin access.');
+      if (!silent) showToast('Sign in first to use delegated admin access.');
       setAuthMode('signin');
       setAuthOpenRequest((request) => request + 1);
       return;
@@ -328,7 +331,7 @@ export default function App() {
     const response = await fetch('/api/admin/unlock-user', { method: 'POST' }).catch(() => null);
     if (!response?.ok) {
       const data = await response?.json().catch(() => null) as { error?: string } | null;
-      showToast(data?.error || 'This account does not have admin access.');
+      if (!silent) showToast(data?.error || 'This account does not have admin access.');
       return;
     }
     const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
@@ -340,7 +343,7 @@ export default function App() {
     }
     setIsOwnerAdmin(data.role === 'owner');
     if (data.role === 'owner') void loadAdminUsernames(data.token);
-    showToast(data.role === 'owner' ? 'Owner admin access enabled.' : 'Delegated admin access enabled.');
+    if (!silent) showToast(data.role === 'owner' ? 'Owner admin access enabled.' : 'Delegated admin access enabled.');
   };
 
   const handleUpdateAdminUsernames = async (usernames: string[]) => {
