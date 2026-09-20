@@ -370,10 +370,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [issueReportsLoading, setIssueReportsLoading] = useState(false);
 
   const toggleAdminTab = (tab: AdminTab) => {
-    if (activeAdminTab === tab && adminPageOpen) {
-      setAdminPageOpen(false);
-      return;
-    }
     setActiveAdminTab(tab);
     setAdminPageOpen(true);
   };
@@ -944,8 +940,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       // Keep the in-memory status when browser storage is unavailable.
     }
     setOffersViewedDate(today);
-    setExpandedReferralLinks(false);
-    setExpandedOfferList(true);
   };
 
   return (
@@ -964,7 +958,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
-      {adminPageOpen && activeAdminTab === 'analytics' && visitorAnalytics && (
+      {adminPageOpen && activeAdminTab === 'records' && visitorAnalytics && (
         <section className="order-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
           <button
             type="button"
@@ -1148,9 +1142,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ['pending', `Review${pendingOffers.length ? ` (${pendingOffers.length})` : ''}`],
           ['create', 'Create'],
           ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
-          ['analytics', 'Analytics'],
           ['settings', 'Settings'],
-          ...(isOwnerAdmin ? [['records', 'Records']] : []),
+          ['records', 'Records & analytics'],
         ].map(([tab, label]) => (
           <button key={tab} type="button" onClick={() => toggleAdminTab(tab as AdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab && adminPageOpen ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
             {label}
@@ -1161,11 +1154,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
           </button>
         )}
-        {activeAdminTab === 'analytics' && visitorAnalytics && (
+        {activeAdminTab === 'records' && visitorAnalytics && (
           <>
-            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
-            <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white">Refresh</button>
-            {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('analytics'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
+            <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
+            <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white">Refresh</button>
+            {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
           </>
         )}
         {isOwnerAdmin && (
