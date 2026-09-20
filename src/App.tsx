@@ -130,6 +130,7 @@ export default function App() {
   const recordedImpressions = useRef(new Set<string>());
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
+  const [adminSection, setAdminSection] = useState<'live' | 'blasts' | 'records'>('live');
   const [isOwnerAdmin, setIsOwnerAdmin] = useState(false);
   const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
@@ -260,7 +261,13 @@ export default function App() {
 
     fetch('/api/admin/can-access')
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Could not check admin access'))))
-      .then((data: { canAccess?: boolean }) => setCanAccessAdmin(Boolean(data.canAccess)))
+      .then(async (data: { canAccess?: boolean; role?: 'owner' | 'delegated' }) => {
+        const canAccess = Boolean(data.canAccess);
+        setCanAccessAdmin(canAccess);
+        if (canAccess && data.role === 'owner') {
+          await handleDelegatedAdminAccess();
+        }
+      })
       .catch(() => setCanAccessAdmin(false));
   }, [authUser]);
 
@@ -842,6 +849,7 @@ export default function App() {
     >
       <Navbar
         siteSettings={siteSettings}
+        adminSection={adminSection}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenMyOffers={() => setMyOffersOpen(true)}
@@ -869,15 +877,17 @@ export default function App() {
           setAccountOpen(false);
           handleLockAdmin();
         }}
-        onAdminAccess={() => {
-          if (isAdminUnlocked) {
-            handleLockAdmin();
+        onAdminSection={(section) => {
+          if (!isAdminUnlocked) {
+            void handleDelegatedAdminAccess();
+            setAdminSection(section);
             return;
           }
-          void handleDelegatedAdminAccess();
+          setAdminSection(section);
+          setAdminPanelVisible(true);
+          setActiveTab('admin');
         }}
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
-        isAdminUnlocked={isAdminUnlocked}
       />
 
       {installPrompt && (
@@ -1013,6 +1023,7 @@ export default function App() {
                 isOwnerAdmin={isOwnerAdmin}
                 adminUsernames={adminUsernames}
                 onUpdateAdminUsernames={handleUpdateAdminUsernames}
+                initialTab={adminSection}
               />
             </Suspense>
           </div>

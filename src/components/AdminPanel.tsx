@@ -28,6 +28,7 @@ import { Offer, NewsletterSubscriber, EmailBlastLog, SpeedrunStep, SiteSettings,
 import { CompanyLogo } from './CompanyLogo';
 
 interface AdminPanelProps {
+  initialTab?: 'live' | 'blasts' | 'records';
   pendingOffers: Offer[];
   liveOffers: Offer[];
   subscribers: NewsletterSubscriber[];
@@ -287,6 +288,7 @@ export const USER_REFERRAL_PRESETS: UserReferralPreset[] = [
 ];
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
+  initialTab = 'live',
   pendingOffers,
   liveOffers,
   subscribers,
@@ -304,7 +306,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   type AdminTab = 'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'records' | 'analytics';
   type IssueReport = { id: string; offerId: string; issue: string; description: string; status: 'open' | 'reviewing' | 'resolved'; reportedAt: string; title?: string; company?: string };
-  const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('live');
+  const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>(initialTab);
   const [outreachTask, setOutreachTask] = useState('');
   const [outreachContext, setOutreachContext] = useState('');
   const [outreachResult, setOutreachResult] = useState<OutreachResult | null>(null);
@@ -359,6 +361,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newsletterMetrics, setNewsletterMetrics] = useState<{ pending: number; verified: number; unsubscribed: number; recent: number } | null>(null);
   const [issueReports, setIssueReports] = useState<IssueReport[]>([]);
   const [issueReportsLoading, setIssueReportsLoading] = useState(false);
+
+  useEffect(() => {
+    setActiveAdminTab(initialTab);
+    setAdminPageOpen(true);
+  }, [initialTab]);
 
   const toggleAdminTab = (tab: AdminTab) => {
     setActiveAdminTab(tab);
@@ -1079,24 +1086,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </section>
       )}
       
-      <div className="order-1 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
-        {[
-          ['live', 'Offers'],
-          ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
-          ['records', 'Records & analytics'],
-        ].map(([tab, label]) => (
-          <button key={tab} type="button" onClick={() => toggleAdminTab(tab as AdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab && adminPageOpen ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
-            {label}
-          </button>
-        ))}
-        {activeAdminTab === 'records' && visitorAnalytics && (
-          <>
-            <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
-            <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); setAnalyticsRefreshKey((current) => current + 1); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white">Refresh</button>
-            {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
-          </>
-        )}
-      </div>
       {adminPageOpen && <div className="order-3 space-y-6">
       {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 

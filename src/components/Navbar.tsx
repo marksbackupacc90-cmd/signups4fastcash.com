@@ -4,6 +4,7 @@ import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 import { Bell, ChevronDown, ListChecks, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
+  adminSection: 'live' | 'blasts' | 'records';
   siteSettings?: SiteSettings;
   activeTab: 'offers' | 'admin';
   setActiveTab: (tab: 'offers' | 'admin') => void;
@@ -16,9 +17,8 @@ interface NavbarProps {
   hideSignIn?: boolean;
   onAccount: () => void;
   onSignOut: () => void;
-  onAdminAccess: () => void;
+  onAdminSection: (section: 'live' | 'blasts' | 'records') => void;
   canAccessAdmin?: boolean;
-  isAdminUnlocked?: boolean;
   userId?: string;
   onShare: () => void;
   shareCopied: boolean;
@@ -28,6 +28,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   siteSettings,
+  adminSection,
   activeTab,
   setActiveTab,
   onOpenMyOffers,
@@ -39,9 +40,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   hideSignIn = false,
   onAccount,
   onSignOut,
-  onAdminAccess,
+  onAdminSection,
   canAccessAdmin = false,
-  isAdminUnlocked = false,
   userId,
   onShare,
   shareCopied,
@@ -130,9 +130,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
                   <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="focus-ring block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
                   {canAccessAdmin && (
-                    <button onClick={() => { onAdminAccess(); setAccountMenuOpen(false); }} className="focus-ring block w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-amber-200 hover:bg-amber-300/10">
-                      {isAdminUnlocked ? 'Lock Admin Panel' : 'Open Admin Panel'}
-                    </button>
+                    <>
+                      <div className="my-1 border-t border-white/10" />
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">Admin</div>
+                      {([
+                        ['live', 'Offers'],
+                        ['blasts', 'Email'],
+                        ['records', 'Records & analytics'],
+                      ] as const).map(([section, label]) => (
+                        <button
+                          key={section}
+                          onClick={() => { onAdminSection(section); setAccountMenuOpen(false); }}
+                          className={`focus-ring block w-full rounded-md px-3 py-2 text-left text-xs hover:bg-amber-300/10 ${adminSection === section ? 'font-semibold text-amber-100' : 'text-zinc-200'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </>
                   )}
                   <button onClick={() => { onOpenNewsletter(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Bell className="h-3.5 w-3.5" /> Subscribe to alerts</button>
                   <button onClick={() => { onOpenFinder(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Search className="h-3.5 w-3.5" /> Find my best offers</button>
