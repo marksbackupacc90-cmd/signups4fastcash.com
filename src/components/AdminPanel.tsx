@@ -302,7 +302,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   adminUsernames = [],
   onUpdateAdminUsernames,
 }) => {
-  type AdminTab = 'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'accounts' | 'audit' | 'analytics' | 'issues';
+  type AdminTab = 'pending' | 'live' | 'create' | 'blasts' | 'assistant' | 'copilot' | 'settings' | 'records' | 'analytics';
   type IssueReport = { id: string; offerId: string; issue: string; description: string; status: 'open' | 'reviewing' | 'resolved'; reportedAt: string; title?: string; company?: string };
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('live');
   const [outreachTask, setOutreachTask] = useState('');
@@ -352,8 +352,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
   const [expandedBlastId, setExpandedBlastId] = useState<string | null>(null);
   const [expandedLocations, setExpandedLocations] = useState(false);
-  const [expandedReferralLinks, setExpandedReferralLinks] = useState(false);
-  const [expandedOfferList, setExpandedOfferList] = useState(false);
   const [expandedExposureReport, setExpandedExposureReport] = useState(false);
   const [expandedAnalytics, setExpandedAnalytics] = useState(false);
   const [adminPageOpen, setAdminPageOpen] = useState(false);
@@ -427,7 +425,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [activeAdminTab]);
 
   useEffect(() => {
-    if (activeAdminTab !== 'issues' || !isOwnerAdmin) return;
+    if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     const token = localStorage.getItem('signups4fastcash_admin_token');
     setIssueReportsLoading(true);
     fetch('/api/admin/offer-issue-reports', { headers: token ? { 'x-admin-token': token } : {} })
@@ -546,7 +544,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   useEffect(() => {
-    if (activeAdminTab !== 'accounts' || !isOwnerAdmin) return;
+    if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     setAccountsLoading(true);
     setAccountsError(null);
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -561,7 +559,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [activeAdminTab, isOwnerAdmin]);
 
   useEffect(() => {
-    if (activeAdminTab !== 'audit' || !isOwnerAdmin) return;
+    if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     setAuditLoading(true);
     const token = localStorage.getItem('signups4fastcash_admin_token');
     fetch('/api/admin/audit-log', { headers: token ? { 'x-admin-token': token } : {} })
@@ -1152,20 +1150,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
           ['analytics', 'Analytics'],
           ['settings', 'Settings'],
-          ...(isOwnerAdmin ? [['accounts', 'Accounts'], ['audit', 'Audit']] : []),
-          ...(isOwnerAdmin ? [['issues', 'Issue reports']] : []),
+          ...(isOwnerAdmin ? [['records', 'Records']] : []),
         ].map(([tab, label]) => (
           <button key={tab} type="button" onClick={() => toggleAdminTab(tab as AdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab && adminPageOpen ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
             {label}
           </button>
         ))}
         {activeAdminTab === 'live' && (
-          <>
-            <button type="button" onClick={() => { setExpandedReferralLinks((current) => !current); setExpandedOfferList(false); setAdminPageOpen(true); }} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-emerald-300/50 hover:text-white">Referral links</button>
-            <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">
-              {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
-            </button>
-          </>
+          <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">
+            {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
+          </button>
         )}
         {activeAdminTab === 'analytics' && visitorAnalytics && (
           <>
@@ -1186,7 +1180,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {adminPageOpen && <div className="order-3 space-y-6">
       {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 
-      {activeAdminTab === 'accounts' && isOwnerAdmin && (
+      {activeAdminTab === 'records' && isOwnerAdmin && (
         <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
           <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
             <div>
@@ -1208,7 +1202,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {!accountsLoading && !accountsError && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
           )}
-          {activeAdminTab === 'issues' && isOwnerAdmin && (
+          {activeAdminTab === 'records' && isOwnerAdmin && (
             <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
               <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <div>
@@ -1298,7 +1292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {activeAdminTab === 'audit' && isOwnerAdmin && (
+      {activeAdminTab === 'records' && isOwnerAdmin && (
         <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
           <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
             <div>
@@ -1716,24 +1710,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => { setExpandedReferralLinks((current) => !current); setExpandedOfferList(false); }}
-              aria-expanded={expandedReferralLinks}
-              className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between rounded-lg border border-white/[0.1] bg-[#141824] px-3 py-2.5 text-left text-xs font-semibold text-zinc-200 hover:border-emerald-300/40 hover:text-white"
-            >
-              <span className="flex items-center gap-2">
-                <LinkIcon className="h-3.5 w-3.5 text-emerald-300" />
-                Referral links and provider dashboards
-              </span>
-              <span className="flex items-center gap-2 text-[10px] font-normal text-zinc-400">
-                {expandedReferralLinks ? 'Collapse' : 'Expand'}
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedReferralLinks ? 'rotate-180' : ''}`} />
-              </span>
-            </button>
-
-            {expandedReferralLinks && (
-            <>
             <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.05] p-3 space-y-3">
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-amber-100">
@@ -1840,29 +1816,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               )}
             </div>
-            </>
-            )}
           </div>
 
-          {/* Offers List with Dedicated In-Card Referral Editor */}
-          {!expandedReferralLinks && (
+          {/* Offers List with Dedicated Referral Editor */}
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setExpandedOfferList((current) => !current)}
-              aria-expanded={expandedOfferList}
-              className="flex w-full items-center justify-between rounded-xl border border-white/[0.1] bg-[#0e121a] px-4 py-3 text-left hover:border-emerald-300/40"
-            >
-              <span>
-                <span className="block text-xs font-bold uppercase tracking-wider text-zinc-200">Live offer list</span>
+            <div className="flex items-center justify-between rounded-xl border border-white/[0.1] bg-[#0e121a] px-4 py-3">
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-zinc-200">All live offers</span>
                 <span className="mt-1 block text-[11px] text-zinc-500">{filteredLiveOffers.length} offers sorted by clicks</span>
-              </span>
-              <span className="flex items-center gap-2 text-[11px] text-zinc-400">
-                {expandedOfferList ? 'Collapse' : 'Expand'}
-                <ChevronDown className={`h-4 w-4 transition-transform ${expandedOfferList ? 'rotate-180' : ''}`} />
-              </span>
-            </button>
-            {expandedOfferList && filteredLiveOffers.map((offer) => {
+              </div>
+              <LinkIcon className="h-4 w-4 text-emerald-300" />
+            </div>
+            {filteredLiveOffers.map((offer) => {
               const draftCode = draftCodes[offer.id] !== undefined ? draftCodes[offer.id] : (offer.referralCode || '');
               const draftUrl = draftUrls[offer.id] !== undefined ? draftUrls[offer.id] : (offer.referralUrl || '');
               const draftLogoUrl = draftLogoUrls[offer.id] !== undefined ? draftLogoUrls[offer.id] : (offer.logoUrl || '');
@@ -1875,8 +1840,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               );
 
               return (
+                <div key={`${offer.id}-entry`} className="space-y-2">
                 <div
-                  key={offer.id}
                   className="p-5 rounded-xl bg-[#0e121a] border border-white/[0.08] hover:border-white/[0.15] transition-all space-y-4"
                 >
                   {/* Top Bar: Company info & tags */}
@@ -2095,10 +2060,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   )}
                 </div>
+                {(offer.officialMerchantUrl || draftUrl) && (
+                  <a
+                    href={offer.officialMerchantUrl || draftUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between rounded-lg border border-emerald-300/25 bg-emerald-300/[0.06] px-4 py-2.5 text-xs font-semibold text-emerald-200 transition-colors hover:border-emerald-300/60 hover:bg-emerald-300/[0.12] hover:text-white"
+                    title={`Open the ${offer.company} target website in a new tab`}
+                  >
+                    <span>Open target website</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                </div>
               );
             })}
 
-            {expandedOfferList && filteredLiveOffers.length === 0 && (
+            {filteredLiveOffers.length === 0 && (
               <div className="p-10 text-center rounded-xl bg-[#0e121a] border border-white/[0.08]">
                 <p className="text-xs font-mono text-zinc-400">
                   No offers matched your filter "{liveSearchFilter}".
@@ -2113,7 +2091,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
           </div>
-          )}
         </div>
       )}
 
