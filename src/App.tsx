@@ -5,6 +5,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
 import { AdminPanel } from './components/AdminPanel';
+import { AdminOffersPage } from './components/AdminOffersPage';
 import { NewsletterModal } from './components/NewsletterModal';
 import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
@@ -1005,24 +1006,32 @@ export default function App() {
         )}
         {activeTab === 'admin' && isAdminUnlocked && adminPanelVisible && (
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <AdminPanel
-              key={adminSection}
-              pendingOffers={pendingOffers}
-              liveOffers={liveOffers}
-              subscribers={subscribers}
-              onApproveOffer={handleApproveOffer}
-              onRejectOffer={handleRejectOffer}
-              onUpdateLiveOffer={handleUpdateLiveOffer}
-              onDeleteLiveOffer={handleDeleteLiveOffer}
-              onCreateCustomOffer={handleCreateCustomOffer}
-              blastLogs={blastLogs}
-              siteSettings={siteSettings}
-              onUpdateSiteSettings={handleUpdateSiteSettings}
-              isOwnerAdmin={isOwnerAdmin}
-              adminUsernames={adminUsernames}
-              onUpdateAdminUsernames={handleUpdateAdminUsernames}
-              initialTab={adminSection}
-            />
+            {adminSection === 'live' ? (
+              <AdminOffersPage
+                liveOffers={liveOffers}
+                onUpdateLiveOffer={handleUpdateLiveOffer}
+                onDeleteLiveOffer={handleDeleteLiveOffer}
+              />
+            ) : (
+              <AdminPanel
+                key={adminSection}
+                pendingOffers={pendingOffers}
+                liveOffers={liveOffers}
+                subscribers={subscribers}
+                onApproveOffer={handleApproveOffer}
+                onRejectOffer={handleRejectOffer}
+                onUpdateLiveOffer={handleUpdateLiveOffer}
+                onDeleteLiveOffer={handleDeleteLiveOffer}
+                onCreateCustomOffer={handleCreateCustomOffer}
+                blastLogs={blastLogs}
+                siteSettings={siteSettings}
+                onUpdateSiteSettings={handleUpdateSiteSettings}
+                isOwnerAdmin={isOwnerAdmin}
+                adminUsernames={adminUsernames}
+                onUpdateAdminUsernames={handleUpdateAdminUsernames}
+                initialTab={adminSection}
+              />
+            )}
           </div>
         )}
 
