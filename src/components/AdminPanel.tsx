@@ -361,6 +361,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newsletterMetrics, setNewsletterMetrics] = useState<{ pending: number; verified: number; unsubscribed: number; recent: number } | null>(null);
   const [issueReports, setIssueReports] = useState<IssueReport[]>([]);
   const [issueReportsLoading, setIssueReportsLoading] = useState(false);
+  const normalizeOffer = (offer: Offer): Offer => ({
+    ...offer,
+    id: String(offer?.id || ''),
+    company: String(offer?.company || 'Unknown provider'),
+    title: String(offer?.title || 'Untitled offer'),
+    category: offer?.category || 'apps',
+    referralCode: String(offer?.referralCode || ''),
+    referralUrl: String(offer?.referralUrl || ''),
+  });
+  const liveOfferList = Array.isArray(liveOffers) ? liveOffers.filter(Boolean).map(normalizeOffer) : [];
+  const pendingOfferList = Array.isArray(pendingOffers) ? pendingOffers.filter(Boolean).map(normalizeOffer) : [];
 
   useEffect(() => {
     setActiveAdminTab(initialTab);
@@ -405,7 +416,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // For pending approval review state
   const [selectedPendingId, setSelectedPendingId] = useState<string>(
-    pendingOffers[0]?.id || ''
+    pendingOfferList[0]?.id || ''
   );
   const [referralCodeInput, setReferralCodeInput] = useState<string>('');
   const [referralUrlInput, setReferralUrlInput] = useState<string>('');
@@ -434,7 +445,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [offerBotMessage, setOfferBotMessage] = useState<string | null>(null);
   const [offerBotVerifying, setOfferBotVerifying] = useState(false);
 
-  const selectedPendingOffer = pendingOffers.find((o) => o.id === selectedPendingId);
+  const selectedPendingOffer = pendingOfferList.find((o) => o.id === selectedPendingId);
 
   useEffect(() => {
     setSettingsDraft(siteSettings || DEFAULT_SITE_SETTINGS);
@@ -829,19 +840,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setCopiedCodeId(null), 2000);
   };
 
-  const filteredLiveOffers = liveOffers.filter((o) => {
+  const filteredLiveOffers = liveOfferList.filter((o) => {
     if (!liveSearchFilter) return true;
     const q = liveSearchFilter.toLowerCase();
     return (
-      o.company.toLowerCase().includes(q) ||
-      o.title.toLowerCase().includes(q) ||
+      String(o.company || '').toLowerCase().includes(q) ||
+      String(o.title || '').toLowerCase().includes(q) ||
       (o.referralCode && o.referralCode.toLowerCase().includes(q)) ||
       (o.referralUrl && o.referralUrl.toLowerCase().includes(q)) ||
-      o.category.toLowerCase().includes(q)
+      String(o.category || '').toLowerCase().includes(q)
     );
   }).sort((a, b) => {
     const clickDifference = (b.clicksCount || 0) - (a.clicksCount || 0);
-    return clickDifference !== 0 ? clickDifference : b.incentiveValue - a.incentiveValue;
+    return clickDifference !== 0 ? clickDifference : (Number(b.incentiveValue) || 0) - (Number(a.incentiveValue) || 0);
   });
 
   const offerHealth = (offer: Offer) => {
@@ -1587,7 +1598,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="p-5 pb-0">
                 <h3 className="text-base font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <LinkIcon className="w-4 h-4 text-emerald-400" />
-                  Your Referral Links & Live Offers ({liveOffers.length})
+                  Your Referral Links & Live Offers ({liveOfferList.length})
                 </h3>
               </div>
 
@@ -1606,10 +1617,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-5">
               {[
-                ['Live offers', liveOffers.length],
-                ['Pending', pendingOffers.length],
-                ['Clicks', liveOffers.reduce((sum, offer) => sum + (offer.clicksCount || 0), 0)],
-                ['Conversions', liveOffers.reduce((sum, offer) => sum + (offer.conversionsCount || 0), 0)],
+                ['Live offers', liveOfferList.length],
+                ['Pending', pendingOfferList.length],
+                ['Clicks', liveOfferList.reduce((sum, offer) => sum + (offer.clicksCount || 0), 0)],
+                ['Conversions', liveOfferList.reduce((sum, offer) => sum + (offer.conversionsCount || 0), 0)],
                 ['Subscribers', subscribers.length],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-white/[0.06] bg-[#141824] px-3 py-2">
@@ -1680,8 +1691,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {USER_REFERRAL_PRESETS.map((preset) => {
-                  const isActiveInOffers = liveOffers.some((o) =>
-                    preset.matchKeys.some((k) => o.company.toLowerCase().includes(k))
+                  const isActiveInOffers = liveOfferList.some((o) =>
+                    preset.matchKeys.some((k) => String(o.company || '').toLowerCase().includes(k))
                   );
                   return (
                     <button
@@ -1745,7 +1756,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               // Check if there is a preset for this offer
               const matchedPreset = USER_REFERRAL_PRESETS.find((p) =>
-                p.matchKeys.some((k) => offer.company.toLowerCase().includes(k))
+                p.matchKeys.some((k) => String(offer.company || '').toLowerCase().includes(k))
               );
 
               return (
@@ -1995,7 +2006,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => setLiveSearchFilter('')}
                   className="mt-2 text-xs font-mono text-emerald-400 hover:underline cursor-pointer"
                 >
-                  Show all {liveOffers.length} offers
+                  Show all {liveOfferList.length} offers
                 </button>
               </div>
             )}
