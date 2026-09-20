@@ -355,16 +355,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [expandedExposureReport, setExpandedExposureReport] = useState(false);
   const [expandedAnalytics, setExpandedAnalytics] = useState(false);
   const [adminPageOpen, setAdminPageOpen] = useState(false);
-  const [offersViewedDate, setOffersViewedDate] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('s4fc_admin_offers_viewed_date');
-    } catch {
-      return null;
-    }
-  });
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
-  const [linkHealthMessage, setLinkHealthMessage] = useState<string | null>(null);
-  const [linkHealthLoading, setLinkHealthLoading] = useState(false);
   const [newsletterMetrics, setNewsletterMetrics] = useState<{ pending: number; verified: number; unsubscribed: number; recent: number } | null>(null);
   const [issueReports, setIssueReports] = useState<IssueReport[]>([]);
   const [issueReportsLoading, setIssueReportsLoading] = useState(false);
@@ -372,43 +363,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const toggleAdminTab = (tab: AdminTab) => {
     setActiveAdminTab(tab);
     setAdminPageOpen(true);
-  };
-
-  const checkReferralLinks = async () => {
-    setLinkHealthMessage('Checking referral links...');
-    setLinkHealthLoading(true);
-    const token = localStorage.getItem('signups4fastcash_admin_token');
-    try {
-      const response = await fetch('/api/admin/link-health', { headers: token ? { 'x-admin-token': token } : {} });
-      const data = await response.json().catch(() => null) as { results?: { healthy: boolean }[]; error?: string } | null;
-      if (!response.ok) {
-        throw new Error(data?.error || 'Could not check referral links.');
-      }
-      const results = data?.results || [];
-      const failed = results.filter((result) => !result.healthy).length;
-      setLinkHealthMessage(failed ? `${failed} of ${results.length} referral links need attention.` : `All ${results.length} referral links responded successfully.`);
-    } catch (error) {
-      setLinkHealthMessage(error instanceof Error ? error.message : 'Could not check referral links.');
-    } finally {
-      setLinkHealthLoading(false);
-    }
-  };
-
-  const exportAdminBackup = async () => {
-    const token = localStorage.getItem('signups4fastcash_admin_token');
-    const response = await fetch('/api/admin/export', { headers: token ? { 'x-admin-token': token } : {} }).catch(() => null);
-    if (!response?.ok) {
-      setLinkHealthMessage('Could not export the admin backup.');
-      return;
-    }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `s4fc-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setLinkHealthMessage('Backup downloaded.');
   };
 
   useEffect(() => {
@@ -931,17 +885,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const markAllOffersViewedToday = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-      localStorage.setItem('s4fc_admin_offers_viewed_date', today);
-      localStorage.setItem('s4fc_admin_offers_viewed_ids', JSON.stringify(liveOffers.map((offer) => offer.id)));
-    } catch {
-      // Keep the in-memory status when browser storage is unavailable.
-    }
-    setOffersViewedDate(today);
-  };
-
   return (
     <div className="flex flex-col gap-6">
       {adminPageOpen && serviceHealth && (serviceHealth.status !== 'ok' || serviceHealth.email !== 'configured' || serviceHealth.database === 'unavailable') && (
@@ -1139,21 +1082,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="order-1 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e121a] p-3">
         {[
           ['live', 'Offers'],
-          ['pending', `Review${pendingOffers.length ? ` (${pendingOffers.length})` : ''}`],
-          ['create', 'Create'],
           ['blasts', `Email${blastLogs.length ? ` (${blastLogs.length})` : ''}`],
-          ['settings', 'Settings'],
           ['records', 'Records & analytics'],
         ].map(([tab, label]) => (
           <button key={tab} type="button" onClick={() => toggleAdminTab(tab as AdminTab)} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${activeAdminTab === tab && adminPageOpen ? 'border-amber-300/60 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-[#141824] text-zinc-300 hover:border-amber-300/40 hover:text-white'}`}>
             {label}
           </button>
         ))}
-        {activeAdminTab === 'live' && (
-          <button type="button" onClick={markAllOffersViewedToday} className="rounded-lg border border-cyan-200/60 bg-cyan-300 px-3 py-2 text-[11px] font-bold text-[#06131a] hover:bg-cyan-200">
-            {offersViewedDate === new Date().toISOString().slice(0, 10) ? 'Viewed today' : 'Mark all viewed today'}
-          </button>
-        )}
         {activeAdminTab === 'records' && visitorAnalytics && (
           <>
             <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); void generateAnalyticsReport(); }} disabled={analyticsReportLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{analyticsReportLoading ? 'Generating...' : 'Generate'}</button>
@@ -1161,15 +1096,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {isOwnerAdmin && <button type="button" onClick={() => { setActiveAdminTab('records'); setAdminPageOpen(true); void resetAnalytics(); }} disabled={resettingAnalytics} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:opacity-50">{resettingAnalytics ? 'Resetting...' : 'Reset'}</button>}
           </>
         )}
-        {isOwnerAdmin && (
-          <>
-            <span className="mx-1 hidden h-5 w-px bg-white/10 sm:block" aria-hidden="true" />
-            <button type="button" onClick={() => void exportAdminBackup()} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white">Backup</button>
-            <button type="button" onClick={() => void checkReferralLinks()} disabled={linkHealthLoading} className="rounded-lg border border-white/10 bg-[#141824] px-3 py-2 text-[11px] font-semibold text-zinc-300 hover:border-amber-300/40 hover:text-white disabled:cursor-wait disabled:opacity-60">{linkHealthLoading ? 'Checking...' : 'Check links'}</button>
-          </>
-        )}
       </div>
-      {linkHealthMessage && adminPageOpen && <div className="order-3 text-xs text-violet-200">{linkHealthMessage}</div>}
       {adminPageOpen && <div className="order-3 space-y-6">
       {analyticsResetMessage && <div className="text-xs text-[#8ad7f5]">{analyticsResetMessage}</div>}
 
