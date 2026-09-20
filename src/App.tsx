@@ -1006,6 +1006,7 @@ export default function App() {
         {activeTab === 'admin' && isAdminUnlocked && adminPanelVisible && (
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <AdminPanel
+              key={adminSection}
               pendingOffers={pendingOffers}
               liveOffers={liveOffers}
               subscribers={subscribers}
