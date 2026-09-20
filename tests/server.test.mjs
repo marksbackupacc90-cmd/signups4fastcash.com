@@ -21,6 +21,15 @@ async function request(path, options = {}) {
   };
 }
 
+async function requestText(path, options = {}) {
+  const response = await fetch(`http://127.0.0.1:${port}${path}`, options);
+  return {
+    status: response.status,
+    body: await response.text(),
+    headers: response.headers,
+  };
+}
+
 test.after(async () => {
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });
@@ -39,6 +48,15 @@ test('responses preserve a caller request ID for support diagnostics', async () 
   });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('x-request-id'), 'test-request-123');
+});
+
+test('sitemap contains only canonical indexable routes', async () => {
+  const response = await requestText('/sitemap.xml');
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /application\/xml/i);
+  assert.match(response.body, /\/cashback-offers</);
+  assert.doesNotMatch(response.body, /\.html/);
+  assert.doesNotMatch(response.body, /\?offer=/);
 });
 
 test('offer verification expiry accepts only current or legacy dates', () => {
