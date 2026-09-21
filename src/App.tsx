@@ -1011,6 +1011,7 @@ export default function App() {
                 liveOffers={liveOffers}
                 onUpdateLiveOffer={handleUpdateLiveOffer}
                 onDeleteLiveOffer={handleDeleteLiveOffer}
+                onCreateCustomOffer={handleCreateCustomOffer}
               />
             ) : (
               <AdminPanel
