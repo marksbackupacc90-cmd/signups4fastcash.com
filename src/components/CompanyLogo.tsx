@@ -97,6 +97,10 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const [imageSourceIndex, setImageSourceIndex] = React.useState(0);
   const imageSource = imageSources[imageSourceIndex] || null;
   const [imageLoaded, setImageLoaded] = React.useState(false);
+  React.useEffect(() => {
+    setImageSourceIndex(0);
+    setImageLoaded(false);
+  }, [logoUrl, localLogo]);
   const tone = {
     bg: 'from-[#0d1724] via-[#111b2a] to-[#0a1220]',
     glow: 'rgba(45, 212, 238, 0.2)',
@@ -106,11 +110,11 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
 
   if (imageSource) {
     return (
-      <div className={imageFrameClass}>
+      <div className={`${imageFrameClass} rounded-xl bg-white/[0.06] p-1.5`}>
         <img
           src={imageSource}
           alt={`${companyName} logo`}
-          className={`h-full w-full object-contain transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`max-h-full max-w-full object-contain transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           decoding="async"
           draggable={false}
