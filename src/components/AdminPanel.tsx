@@ -1174,37 +1174,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {!accountsLoading && !accountsError && !accountsWarning && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
           )}
-          {activeAdminTab === 'records' && isOwnerAdmin && (
-            <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-                <div>
-                  <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Visitor feedback</div>
-                  <h3 className="mt-1 text-lg font-bold text-white">Offer issue reports ({issueReports.length})</h3>
-                </div>
-                {issueReportsLoading && <span className="text-xs text-zinc-400">Loading...</span>}
-              </div>
-              {!issueReportsLoading && issueReports.length === 0 && <p className="py-8 text-center text-sm text-zinc-400">No issue reports yet.</p>}
-              <div className="mt-4 space-y-3">
-                {issueReports.map((report) => (
-                  <div key={report.id} className="rounded-lg border border-white/[0.08] bg-[#090d18] p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-white">{report.company ? `${report.company} — ` : ''}{report.title || report.offerId}</div>
-                        <div className="mt-1 text-xs text-amber-200">{report.issue} · {new Date(report.reportedAt).toLocaleString()}</div>
-                      </div>
-                      <select value={report.status} onChange={(event) => void updateIssueStatus(report.id, event.target.value as IssueReport['status'])} className="rounded border border-white/10 bg-[#141824] px-2 py-1 text-xs text-zinc-200">
-                        <option value="open">Open</option>
-                        <option value="reviewing">Reviewing</option>
-                        <option value="resolved">Resolved</option>
-                      </select>
-                    </div>
-                    <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-300">{report.description || 'No additional description provided.'}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {accounts.length > 0 && (
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-xs">
@@ -1283,6 +1252,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {activeAdminTab === 'records' && isOwnerAdmin && (
+        <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-200">Visitor feedback</div>
+              <h3 className="mt-1 text-lg font-bold text-white">Offer issue reports ({issueReports.length})</h3>
+            </div>
+            {issueReportsLoading && <span className="text-xs text-zinc-400">Loading...</span>}
+          </div>
+          {!issueReportsLoading && issueReports.length === 0 && <p className="py-8 text-center text-sm text-zinc-400">No issue reports yet.</p>}
+          <div className="mt-4 space-y-3">
+            {issueReports.map((report) => (
+              <div key={report.id} className="rounded-lg border border-white/[0.08] bg-[#090d18] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-white">{report.company ? `${report.company} — ` : ''}{report.title || report.offerId}</div>
+                    <div className="mt-1 text-xs text-amber-200">{report.issue} · {new Date(report.reportedAt).toLocaleString()}</div>
+                  </div>
+                  <select value={report.status} onChange={(event) => void updateIssueStatus(report.id, event.target.value as IssueReport['status'])} className="rounded border border-white/10 bg-[#141824] px-2 py-1 text-xs text-zinc-200">
+                    <option value="open">Open</option>
+                    <option value="reviewing">Reviewing</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-300">{report.description || 'No additional description provided.'}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
