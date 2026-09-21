@@ -913,7 +913,11 @@ export default function App() {
         }}
         onAdminSection={(section) => {
           setAdminSection(section);
-          // Obtain a fresh server token before mounting Email or Records.
+          if (isAdminUnlocked) {
+            setAdminPanelVisible(true);
+            setActiveTab('admin');
+            return;
+          }
           void handleDelegatedAdminAccess(false).then((unlocked) => {
             if (unlocked) {
               setAdminPanelVisible(true);

@@ -132,7 +132,7 @@ async function fetchAdminWithRetry(input: RequestInfo | URL, init?: RequestInit,
   let response: Response | null = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     response = await fetch(input, init).catch(() => null);
-    if (response && ![502, 503, 504].includes(response.status)) return response;
+    if (response && ![429, 502, 503, 504].includes(response.status)) return response;
     if (attempt < attempts - 1) await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
   }
   return response;
@@ -549,9 +549,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string; warning?: string } | null;
       if (!response.ok) {
-        if (response.status === 502 || response.status === 503 || response.status === 504) {
+        if (response.status === 429 || response.status === 502 || response.status === 503 || response.status === 504) {
           setAccounts([]);
-          setAccountsWarning('The account service is temporarily unavailable. Records and analytics remain available; try refreshing accounts shortly.');
+          setAccountsWarning(response.status === 429
+            ? 'The account service is rate-limiting requests. Please wait a moment, then refresh this section.'
+            : 'The account service is temporarily unavailable. Records and analytics remain available; try refreshing accounts shortly.');
           return;
         }
         throw new Error(data?.error || `Could not load accounts (HTTP ${response.status}).`);
