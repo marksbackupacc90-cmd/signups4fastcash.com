@@ -276,7 +276,7 @@ export default function App() {
     }
     let cancelled = false;
     const loadOpenIssueCount = async () => {
-      const response = await fetch('/api/admin/issue-alert').catch(() => null);
+      const response = await fetch('/api/admin/issue-alert', { cache: 'no-store' }).catch(() => null);
       if (!response?.ok) return;
       const data = await response.json().catch(() => null) as { openCount?: number } | null;
       const openCount = Number(data?.openCount || 0);
@@ -299,7 +299,13 @@ export default function App() {
       if (!cancelled) setOpenIssueCount(shouldShow ? openCount : 0);
     };
     void loadOpenIssueCount();
-    return () => { cancelled = true; };
+    const pollTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadOpenIssueCount();
+    }, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(pollTimer);
+    };
   }, [authUser, canAccessAdmin]);
 
   useEffect(() => {
