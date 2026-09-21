@@ -129,9 +129,10 @@ const DEFAULT_PROVIDER_ACCOUNT_LINKS: ProviderAccountLink[] = [
 ];
 
 async function fetchAdminWithRetry(input: RequestInfo | URL, init?: RequestInit, attempts = 3) {
+  const requestInit: RequestInit = { ...init, cache: 'no-store' };
   let response: Response | null = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    response = await fetch(input, init).catch(() => null);
+    response = await fetch(input, requestInit).catch(() => null);
     if (response && ![429, 502, 503, 504].includes(response.status)) return response;
     if (attempt < attempts - 1) await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
   }
