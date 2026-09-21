@@ -110,11 +110,11 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
 
   if (imageSource) {
     return (
-      <div className={`${imageFrameClass} rounded-xl bg-white/[0.06] p-1.5`}>
+      <div className={imageFrameClass}>
         <img
           src={imageSource}
           alt={`${companyName} logo`}
-          className={`max-h-full max-w-full object-contain transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`h-full w-full object-contain transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           decoding="async"
           draggable={false}
