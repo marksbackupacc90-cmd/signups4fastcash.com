@@ -128,15 +128,15 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                       <span className="mt-1 block text-[10px] uppercase tracking-wider text-emerald-300">{offer.incentiveAmount}</span>
                     </span>
                   </button>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {providerLink && (
-                      <a href={providerLink.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-amber-300/30 bg-amber-300/10 px-2.5 py-2 text-xs text-amber-100 hover:bg-amber-300/20" title={`Open ${providerLink.label} to check referral earnings`}>
+                      <a href={providerLink.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border border-amber-200/60 bg-amber-300 px-3 py-2 text-xs font-bold text-[#171008] shadow-sm shadow-amber-950/30 hover:bg-amber-200" title={`Open ${providerLink.label} to check referral earnings`}>
                         <WalletCards className="h-3.5 w-3.5" /> Check earnings
                       </a>
                     )}
                     {(draft.url || offer.officialMerchantUrl) && (
-                      <a href={draft.url || offer.officialMerchantUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-emerald-300/25 px-2.5 py-2 text-xs text-emerald-200 hover:bg-emerald-300/10">
-                        <ExternalLink className="h-3.5 w-3.5" /> Open target website
+                      <a href={draft.url || offer.officialMerchantUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-300/70 bg-emerald-400 px-3 py-2 text-xs font-bold text-[#061016] shadow-sm shadow-emerald-950/30 hover:bg-emerald-300">
+                        <ExternalLink className="h-3.5 w-3.5" /> Open offer website
                       </a>
                     )}
                     <button type="button" onClick={() => setExpandedId(expanded ? null : offer.id)} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/10">

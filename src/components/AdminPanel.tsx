@@ -517,13 +517,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     setAccountsLoading(true);
     setAccountsError(null);
-    const token = localStorage.getItem('signups4fastcash_admin_token');
-    fetch('/api/admin/accounts', { headers: token ? { 'x-admin-token': token } : {} })
-      .then(async (response) => {
-        const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string } | null;
-        if (!response.ok) throw new Error(data?.error || 'Could not load accounts.');
-        setAccounts(data?.accounts || []);
-      })
+    const loadAccounts = async () => {
+      let token = localStorage.getItem('signups4fastcash_admin_token');
+      let response = await fetch('/api/admin/accounts', { headers: token ? { 'x-admin-token': token } : {} });
+      if (response.status === 403) {
+        const unlockResponse = await fetch('/api/admin/unlock-user', { method: 'POST' });
+        if (unlockResponse.ok) {
+          const unlockData = await unlockResponse.json() as { token?: string; role?: string };
+          if (unlockData.role === 'owner' && unlockData.token) {
+            token = unlockData.token;
+            localStorage.setItem('signups4fastcash_admin_token', token);
+            response = await fetch('/api/admin/accounts', { headers: { 'x-admin-token': token } });
+          }
+        }
+      }
+      const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || `Could not load accounts (HTTP ${response.status}).`);
+      setAccounts(data?.accounts || []);
+    };
+    loadAccounts()
       .catch((error) => setAccountsError(error instanceof Error ? error.message : 'Could not load accounts.'))
       .finally(() => setAccountsLoading(false));
   }, [activeAdminTab, isOwnerAdmin]);
