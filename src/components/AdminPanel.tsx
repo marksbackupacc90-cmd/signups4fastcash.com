@@ -128,6 +128,16 @@ const DEFAULT_PROVIDER_ACCOUNT_LINKS: ProviderAccountLink[] = [
   { id: 'provider-coinsbackcasino', label: 'CoinsBackCasino Referrals', url: 'https://www.coinsbackcasino.com/refer' },
 ];
 
+async function fetchAdminWithRetry(input: RequestInfo | URL, init?: RequestInit, attempts = 3) {
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    response = await fetch(input, init).catch(() => null);
+    if (response && ![502, 503, 504].includes(response.status)) return response;
+    if (attempt < attempts - 1) await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
+  }
+  return response;
+}
+
 interface AdminAuditEntry {
   id: string;
   action: string;
@@ -393,7 +403,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     if (activeAdminTab !== 'blasts') return;
     const token = localStorage.getItem('signups4fastcash_admin_token');
-    fetch('/api/admin/newsletter/metrics', { headers: token ? { 'x-admin-token': token } : {} })
+    fetchAdminWithRetry('/api/admin/newsletter/metrics', { headers: token ? { 'x-admin-token': token } : {} })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Could not load newsletter metrics')))
       .then((data: { pending: number; verified: number; unsubscribed: number; recent: number }) => setNewsletterMetrics(data))
       .catch(() => setNewsletterMetrics(null));
@@ -403,7 +413,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     const token = localStorage.getItem('signups4fastcash_admin_token');
     setIssueReportsLoading(true);
-    fetch('/api/admin/offer-issue-reports', { headers: token ? { 'x-admin-token': token } : {} })
+    fetchAdminWithRetry('/api/admin/offer-issue-reports', { headers: token ? { 'x-admin-token': token } : {} })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Could not load issue reports')))
       .then((data: { reports?: IssueReport[] }) => setIssueReports(data.reports || []))
       .catch(() => setIssueReports([]))
@@ -525,7 +535,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setAccountsWarning(null);
     const loadAccounts = async () => {
       let token = localStorage.getItem('signups4fastcash_admin_token');
-      let response = await fetch('/api/admin/accounts', { headers: token ? { 'x-admin-token': token } : {} });
+      let response = await fetchAdminWithRetry('/api/admin/accounts', { headers: token ? { 'x-admin-token': token } : {} });
       if (response.status === 403) {
         const unlockResponse = await fetch('/api/admin/unlock-user', { method: 'POST' });
         if (unlockResponse.ok) {
@@ -533,7 +543,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           if (unlockData.role === 'owner' && unlockData.token) {
             token = unlockData.token;
             localStorage.setItem('signups4fastcash_admin_token', token);
-            response = await fetch('/api/admin/accounts', { headers: { 'x-admin-token': token } });
+            response = await fetchAdminWithRetry('/api/admin/accounts', { headers: { 'x-admin-token': token } });
           }
         }
       }
