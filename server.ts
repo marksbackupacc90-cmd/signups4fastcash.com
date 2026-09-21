@@ -1535,25 +1535,46 @@ app.get('/api/admin/audit-log', requireOwnerAdmin, async (req, res) => {
 
 app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
   if (database) {
-    const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked'; active_sessions: string }>(
-      `SELECT users.id, users.email, users.username, users.created_at, users.last_login_at, users.account_status,
-         COUNT(auth_sessions.token) FILTER (WHERE auth_sessions.expires_at > NOW())::text AS active_sessions
-       FROM users
-       LEFT JOIN auth_sessions ON auth_sessions.user_id = users.id
-       GROUP BY users.id
-       ORDER BY users.created_at DESC`,
-    );
-    return res.json({
-      accounts: result.rows.map((account) => ({
-        id: account.id,
-        email: account.email,
-        username: account.username,
-        createdAt: account.created_at.toISOString(),
-        lastLoginAt: account.last_login_at?.toISOString() || null,
-        status: account.account_status,
-        activeSessions: Number(account.active_sessions || 0),
-      })),
-    });
+    try {
+      const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked'; active_sessions: string }>(
+        `SELECT users.id, users.email, users.username, users.created_at, users.last_login_at, users.account_status,
+           COUNT(auth_sessions.token) FILTER (WHERE auth_sessions.expires_at > NOW())::text AS active_sessions
+         FROM users
+         LEFT JOIN auth_sessions ON auth_sessions.user_id = users.id
+         GROUP BY users.id
+         ORDER BY users.created_at DESC`,
+      );
+      return res.json({
+        accounts: result.rows.map((account) => ({
+          id: account.id,
+          email: account.email,
+          username: account.username,
+          createdAt: account.created_at.toISOString(),
+          lastLoginAt: account.last_login_at?.toISOString() || null,
+          status: account.account_status,
+          activeSessions: Number(account.active_sessions || 0),
+        })),
+      });
+    } catch (error) {
+      console.error('Admin accounts query failed; retrying without session counts.', error);
+      const fallback = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked' }>(
+        `SELECT id, email, username, created_at, last_login_at, account_status
+         FROM users
+         ORDER BY created_at DESC`,
+      );
+      return res.json({
+        accounts: fallback.rows.map((account) => ({
+          id: account.id,
+          email: account.email,
+          username: account.username,
+          createdAt: account.created_at.toISOString(),
+          lastLoginAt: account.last_login_at?.toISOString() || null,
+          status: account.account_status,
+          activeSessions: 0,
+        })),
+        warning: 'Active session counts are temporarily unavailable.',
+      });
+    }
   }
 
   return res.json({
