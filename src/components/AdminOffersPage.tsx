@@ -34,9 +34,11 @@ const safeOffers = (offers: Offer[]) => (Array.isArray(offers) ? offers.filter(B
   title: String(offer.title || 'Untitled offer'),
   companySlug: String(offer.companySlug || ''),
   category: offer.category || 'apps',
+  incentiveAmount: String(offer.incentiveAmount || 'Reward details unavailable'),
   referralCode: String(offer.referralCode || ''),
   referralUrl: String(offer.referralUrl || ''),
   officialMerchantUrl: String(offer.officialMerchantUrl || ''),
+  logoUrl: typeof offer.logoUrl === 'string' ? offer.logoUrl : undefined,
 }));
 
 export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
