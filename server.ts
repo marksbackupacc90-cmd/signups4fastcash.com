@@ -1552,14 +1552,25 @@ app.get('/api/admin/audit-log', requireOwnerAdmin, async (req, res) => {
 app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
   if (database) {
     try {
-      const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked'; active_sessions: string }>(
-        `SELECT users.id, users.email, users.username, users.created_at, users.last_login_at, users.account_status,
-           COUNT(auth_sessions.token) FILTER (WHERE auth_sessions.expires_at > NOW())::text AS active_sessions
+      const result = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked' }>(
+        `SELECT id, email, username, created_at, last_login_at, account_status
          FROM users
-         LEFT JOIN auth_sessions ON auth_sessions.user_id = users.id
-         GROUP BY users.id
-         ORDER BY users.created_at DESC`,
+         ORDER BY created_at DESC`,
       );
+      let activeSessionsByUser = new Map<string, number>();
+      let warning: string | undefined;
+      try {
+        const sessions = await database.query<{ user_id: string; active_sessions: string }>(
+          `SELECT user_id, COUNT(*)::text AS active_sessions
+           FROM auth_sessions
+           WHERE expires_at > NOW()
+           GROUP BY user_id`,
+        );
+        activeSessionsByUser = new Map(sessions.rows.map((session) => [session.user_id, Number(session.active_sessions || 0)]));
+      } catch (error) {
+        console.error('Admin active session count query failed; returning accounts without counts.', error);
+        warning = 'Active session counts are temporarily unavailable.';
+      }
       return res.json({
         accounts: result.rows.map((account) => ({
           id: account.id,
@@ -1568,44 +1579,24 @@ app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
           createdAt: account.created_at.toISOString(),
           lastLoginAt: account.last_login_at?.toISOString() || null,
           status: account.account_status,
-          activeSessions: Number(account.active_sessions || 0),
+          activeSessions: activeSessionsByUser.get(account.id) || 0,
         })),
+        ...(warning ? { warning } : {}),
       });
     } catch (error) {
-      console.error('Admin accounts query failed; retrying without session counts.', error);
-      try {
-        const fallback = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked' }>(
-          `SELECT id, email, username, created_at, last_login_at, account_status
-           FROM users
-           ORDER BY created_at DESC`,
-        );
-        return res.json({
-          accounts: fallback.rows.map((account) => ({
-            id: account.id,
-            email: account.email,
-            username: account.username,
-            createdAt: account.created_at.toISOString(),
-            lastLoginAt: account.last_login_at?.toISOString() || null,
-            status: account.account_status,
-            activeSessions: 0,
-          })),
-          warning: 'Active session counts are temporarily unavailable.',
-        });
-      } catch (fallbackError) {
-        console.error('Admin accounts fallback query failed; returning memory accounts.', fallbackError);
-        return res.json({
-          accounts: [...authUsers.values()].map((account) => ({
-            id: account.id,
-            email: account.email,
-            username: account.username,
-            createdAt: null,
-            lastLoginAt: account.lastLoginAt,
-            status: account.accountStatus,
-            activeSessions: [...authSessions.values()].filter((session) => session.userId === account.id && session.expiresAt > Date.now()).length,
-          })),
-          warning: 'The database is temporarily unavailable. Showing accounts created during this server session.',
-        });
-      }
+      console.error('Admin accounts query failed; returning memory accounts.', error);
+      return res.json({
+        accounts: [...authUsers.values()].map((account) => ({
+          id: account.id,
+          email: account.email,
+          username: account.username,
+          createdAt: null,
+          lastLoginAt: account.lastLoginAt,
+          status: account.accountStatus,
+          activeSessions: [...authSessions.values()].filter((session) => session.userId === account.id && session.expiresAt > Date.now()).length,
+        })),
+        warning: 'The database is temporarily unavailable. Showing accounts created during this server session.',
+      });
     }
   }
 
