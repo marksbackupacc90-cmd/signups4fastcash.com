@@ -279,7 +279,24 @@ export default function App() {
       const response = await fetch('/api/admin/issue-alert').catch(() => null);
       if (!response?.ok) return;
       const data = await response.json().catch(() => null) as { openCount?: number } | null;
-      if (!cancelled) setOpenIssueCount(Number(data?.openCount || 0));
+      const openCount = Number(data?.openCount || 0);
+      let seenCount = 0;
+      let shouldShow = openCount > 0;
+      try {
+        seenCount = Number(localStorage.getItem('s4fc_seen_open_issue_count') || 0);
+        if (openCount === 0 || openCount < seenCount) {
+          localStorage.setItem('s4fc_seen_open_issue_count', String(openCount));
+          seenCount = openCount;
+        } else if (openCount > seenCount) {
+          shouldShow = true;
+          localStorage.setItem('s4fc_seen_open_issue_count', String(openCount));
+        } else {
+          shouldShow = false;
+        }
+      } catch {
+        // Notifications still work for this page view if storage is unavailable.
+      }
+      if (!cancelled) setOpenIssueCount(shouldShow ? openCount : 0);
     };
     void loadOpenIssueCount();
     return () => { cancelled = true; };
@@ -1086,6 +1103,11 @@ export default function App() {
             onClick={() => {
               setAdminSection('records');
               setOpenIssueCount(0);
+              try {
+                localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
+              } catch {
+                // Keep navigation available if storage is unavailable.
+              }
               void handleDelegatedAdminAccess(true);
             }}
             className="mt-3 rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
