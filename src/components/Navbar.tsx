@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
-import { Bell, ChevronDown, Gift, ListChecks, Search, Share2 } from 'lucide-react';
+import { Bell, ChevronDown, ListChecks, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
@@ -9,7 +9,6 @@ interface NavbarProps {
   activeTab: 'offers' | 'daily' | 'admin';
   setActiveTab: (tab: 'offers' | 'daily' | 'admin') => void;
   onOpenMyOffers: () => void;
-  onOpenDailyBonuses: () => void;
   activeOfferCount: number;
   username?: string | null;
   avatarUrl?: string | null;
@@ -33,7 +32,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onOpenMyOffers,
-  onOpenDailyBonuses,
   activeOfferCount,
   username,
   avatarUrl,
@@ -112,15 +110,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ListChecks className="h-3.5 w-3.5 text-cyan-300" />
             In Progress
             {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeOfferCount}</span>}
-          </button>
-          <button
-            id="nav-daily-bonuses"
-            type="button"
-            onClick={() => { onOpenDailyBonuses(); setActiveTab('daily'); }}
-            className="retro-button focus-ring hidden shrink-0 items-center gap-1.5 rounded-md border border-amber-300/30 px-4 py-2 text-xs font-medium text-amber-100 transition-all hover:bg-amber-300/10 md:inline-flex"
-          >
-            <Gift className="h-3.5 w-3.5 text-amber-300" />
-            Daily bonuses
           </button>
         </nav>
 

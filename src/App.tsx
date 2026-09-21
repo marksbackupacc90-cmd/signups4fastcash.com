@@ -18,7 +18,6 @@ import { OfferFinder } from './components/OfferFinder';
 import { CommunityChat } from './components/CommunityChat';
 import { HowItWorks } from './components/HowItWorks';
 import { CashBlueprint } from './components/CashBlueprint';
-import { DailyCasinoBonuses } from './components/DailyCasinoBonuses';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 
 interface AuthUser {
@@ -141,10 +140,10 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [myOffersOpen, setMyOffersOpen] = useState(false);
-  const [dailyBonusesOpen, setDailyBonusesOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [openIssueCount, setOpenIssueCount] = useState(0);
+  const [messageNotification, setMessageNotification] = useState<{ count: number; preview: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -161,6 +160,60 @@ export default function App() {
     }
   });
   const liveOfferIds = liveOffers.map((offer) => offer.id).join('|');
+
+  useEffect(() => {
+    if (!authUser) {
+      setMessageNotification(null);
+      return;
+    }
+    const storageKey = `s4fc_last_message_check_${authUser.id}`;
+    const initialSince = localStorage.getItem(storageKey) || new Date().toISOString();
+    let since = initialSince;
+    let cancelled = false;
+    const notify = (messages: Array<{ content?: string }>) => {
+      if (!messages.length || cancelled) return;
+      const preview = messages[0]?.content || 'You received a new message.';
+      setMessageNotification({ count: messages.length, preview });
+      try {
+        const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextClass) {
+          const context = new AudioContextClass();
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.frequency.value = 880;
+          gain.gain.setValueAtTime(0.08, context.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.25);
+          oscillator.connect(gain);
+          gain.connect(context.destination);
+          oscillator.start();
+          oscillator.stop(context.currentTime + 0.25);
+        }
+      } catch {
+        // Browser audio permissions may block notification sounds.
+      }
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('New message', { body: preview });
+      }
+    };
+    const checkMessages = async () => {
+      const response = await fetch(`/api/direct-messages/notifications?since=${encodeURIComponent(since)}`, { cache: 'no-store' }).catch(() => null);
+      if (!response?.ok) return;
+      const data = await response.json().catch(() => null) as { messages?: Array<{ content?: string; created_at?: string }> } | null;
+      const messages = Array.isArray(data?.messages) ? data.messages : [];
+      if (messages.length) {
+        notify(messages);
+        since = messages[messages.length - 1].created_at || new Date().toISOString();
+        localStorage.setItem(storageKey, since);
+      } else {
+        localStorage.setItem(storageKey, since);
+      }
+    };
+    const timer = window.setInterval(() => void checkMessages(), 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [authUser?.id]);
 
   useEffect(() => {
     setRandomOfferOrder((current) => {
@@ -895,7 +948,6 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenMyOffers={() => setMyOffersOpen(true)}
-        onOpenDailyBonuses={() => setDailyBonusesOpen(true)}
         activeOfferCount={readMyOfferEntries().filter((entry) => entry.status === 'active').length}
         username={authUser?.username}
         avatarUrl={authUser?.avatarUrl}
@@ -996,7 +1048,6 @@ export default function App() {
                   window.open(sofiOffer.referralUrl || sofiOffer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
                 }}
               />
-              <DailyCasinoBonuses offers={liveOffers} open={dailyBonusesOpen} onToggle={() => setDailyBonusesOpen((current) => !current)} />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
@@ -1046,15 +1097,6 @@ export default function App() {
                       />
                     ))}
                   </div>
-                </div>
-              )}
-              {activeTab === 'daily' && (
-                <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                  <div className="mb-4">
-                    <h1 className="text-2xl font-black tracking-tight text-white">Daily social-casino bonuses</h1>
-                    <p className="mt-1 text-sm text-zinc-400">Daily bonus reminders, schedules, and referral links in one place.</p>
-                  </div>
-                  <DailyCasinoBonuses offers={liveOffers} open={true} onToggle={() => setActiveTab('offers')} />
                 </div>
               )}
             </div>
@@ -1114,6 +1156,21 @@ export default function App() {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <span className="max-w-xs">{toastMessage}</span>
+        </div>
+      )}
+      {messageNotification && (
+        <div className="fixed bottom-5 right-5 z-50 max-w-sm rounded-xl border border-cyan-300/40 bg-[#0d1724] p-4 text-sm text-cyan-100 shadow-2xl">
+          <div className="font-bold">New message</div>
+          <p className="mt-1 text-xs text-cyan-100/80">
+            {messageNotification.count > 1 ? `${messageNotification.count} new messages` : messageNotification.preview}
+          </p>
+          <button
+            type="button"
+            onClick={() => setMessageNotification(null)}
+            className="mt-3 rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-300/10"
+          >
+            Dismiss
+          </button>
         </div>
       )}
       {openIssueCount > 0 && authUser && (

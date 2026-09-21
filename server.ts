@@ -1953,6 +1953,22 @@ app.get('/api/direct-messages', async (req, res) => {
   return res.json({ messages: result.rows });
 });
 
+app.get('/api/direct-messages/notifications', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to check messages.' });
+  const since = typeof req.query.since === 'string' ? new Date(req.query.since) : new Date(0);
+  if (Number.isNaN(since.getTime())) return res.status(400).json({ error: 'Invalid message timestamp.' });
+  if (!database) return res.json({ messages: [] });
+  const result = await database.query(
+    `SELECT id, sender_id, content, created_at
+     FROM direct_messages
+     WHERE recipient_id = $1 AND created_at > $2
+     ORDER BY created_at ASC LIMIT 20`,
+    [user.id, since.toISOString()],
+  );
+  return res.json({ messages: result.rows });
+});
+
 app.post('/api/direct-messages', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   const recipientId = typeof req.body?.recipientId === 'string' ? req.body.recipientId : '';
