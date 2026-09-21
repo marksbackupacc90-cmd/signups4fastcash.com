@@ -1126,16 +1126,23 @@ export default function App() {
             <button
               type="button"
               onClick={() => {
+                setAdminSection('live');
                 setOpenIssueCount(0);
                 try {
                   localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
                 } catch {
                   // Keep navigation available if storage is unavailable.
                 }
+                if (isAdminUnlocked) {
+                  setAdminPanelVisible(true);
+                  setActiveTab('admin');
+                } else {
+                  void handleDelegatedAdminAccess(true);
+                }
               }}
               className="rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
             >
-              Dismiss notification
+              Review issue in Offers
             </button>
             <button
               type="button"
