@@ -77,6 +77,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     myprize: '/company-logos/myprize-logo.jpg',
     topsurveys: '/company-logos/topsurveys-logo.jpg',
     spinquest: '/company-logos/spinquest-logo.png',
+    brandedsurveys: '/company-logos/branded-surveys.png',
   };
 
   const localLogo = localLogoMap[logoSlug] || (logoSlug === 'rakuten' ? '/company-logos/rakuten.jpg' : undefined);
