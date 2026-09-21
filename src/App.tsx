@@ -142,6 +142,7 @@ export default function App() {
   const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
+  const [openIssueCount, setOpenIssueCount] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -267,6 +268,27 @@ export default function App() {
       })
       .catch(() => setCanAccessAdmin(false));
   }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser || !canAccessAdmin) {
+      setOpenIssueCount(0);
+      return;
+    }
+    let cancelled = false;
+    const loadOpenIssueCount = async () => {
+      const unlockResponse = await fetch('/api/admin/unlock-user', { method: 'POST' }).catch(() => null);
+      if (!unlockResponse?.ok) return;
+      const unlockData = await unlockResponse.json().catch(() => null) as { token?: string; role?: string } | null;
+      if (unlockData?.role !== 'owner' || !unlockData.token) return;
+      localStorage.setItem('signups4fastcash_admin_token', unlockData.token);
+      const response = await fetch('/api/admin/offer-issue-reports', { headers: { 'x-admin-token': unlockData.token } }).catch(() => null);
+      if (!response?.ok) return;
+      const data = await response.json().catch(() => null) as { reports?: { status?: string }[] } | null;
+      if (!cancelled) setOpenIssueCount((data?.reports || []).filter((report) => report.status === 'open').length);
+    };
+    void loadOpenIssueCount();
+    return () => { cancelled = true; };
+  }, [authUser, canAccessAdmin]);
 
   useEffect(() => {
     if (!authUser) return;
@@ -1056,6 +1078,25 @@ export default function App() {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <span className="max-w-xs">{toastMessage}</span>
+        </div>
+      )}
+      {openIssueCount > 0 && authUser && (
+        <div className="fixed bottom-5 left-5 z-50 max-w-sm rounded-xl border border-amber-300/40 bg-[#171208] p-4 text-sm text-amber-100 shadow-2xl">
+          <div className="font-bold">Offer issue reported</div>
+          <p className="mt-1 text-xs text-amber-100/80">
+            {openIssueCount} open issue{openIssueCount === 1 ? '' : 's'} need{openIssueCount === 1 ? 's' : ''} review.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setAdminSection('records');
+              setOpenIssueCount(0);
+              void handleDelegatedAdminAccess(true);
+            }}
+            className="mt-3 rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
+          >
+            Open issue reports
+          </button>
         </div>
       )}
 

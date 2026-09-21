@@ -326,6 +326,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [accountsWarning, setAccountsWarning] = useState<string | null>(null);
   const [accountSearch, setAccountSearch] = useState('');
   const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
+  const [messageAccountId, setMessageAccountId] = useState<string | null>(null);
+  const [accountMessage, setAccountMessage] = useState('');
+  const [accountMessageStatus, setAccountMessageStatus] = useState<string | null>(null);
+  const [accountMessageSending, setAccountMessageSending] = useState(false);
   const [resettingAnalytics, setResettingAnalytics] = useState(false);
   const [analyticsResetMessage, setAnalyticsResetMessage] = useState<string | null>(null);
   const [analyticsReport, setAnalyticsReport] = useState<AnalyticsReport | null>(null);
@@ -584,6 +588,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setAccountsError(error instanceof Error ? error.message : 'Account action failed.');
     } finally {
       setAccountActionLoading(null);
+    }
+  };
+
+  const sendAccountMessage = async (recipientId: string) => {
+    const content = accountMessage.trim();
+    if (!content) return;
+    setAccountMessageSending(true);
+    setAccountMessageStatus(null);
+    try {
+      const response = await fetch('/api/direct-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId, content }),
+      });
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Could not send message.');
+      setAccountMessage('');
+      setMessageAccountId(null);
+      setAccountMessageStatus('Message sent.');
+    } catch (error) {
+      setAccountMessageStatus(error instanceof Error ? error.message : 'Could not send message.');
+    } finally {
+      setAccountMessageSending(false);
     }
   };
 
@@ -1208,6 +1235,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <button type="button" onClick={() => setExpandedAccountId((current) => current === account.id ? null : account.id)} className="rounded border border-cyan-400/30 px-2 py-1 text-[11px] text-cyan-200 hover:bg-cyan-400/10">
                             {expandedAccountId === account.id ? 'Hide' : 'View'}
                           </button>
+                          <button type="button" onClick={() => { setMessageAccountId((current) => current === account.id ? null : account.id); setAccountMessageStatus(null); }} className="inline-flex items-center gap-1 rounded border border-emerald-400/30 px-2 py-1 text-[11px] text-emerald-200 hover:bg-emerald-400/10">
+                            <Send className="h-3 w-3" /> Message
+                          </button>
                           <button type="button" disabled={accountActionLoading === account.id} onClick={() => runAccountAction(account, 'toggle')} className="rounded border border-white/10 px-2 py-1 text-[11px] text-zinc-200 hover:border-cyan-400 disabled:opacity-50">
                             {account.status === 'blocked' ? 'Unblock' : 'Block'}
                           </button>
@@ -1225,6 +1255,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <div><span className="block text-zinc-500">Session activity</span><span className="text-zinc-200">{account.activeSessions} active session{account.activeSessions === 1 ? '' : 's'}</span></div>
                             <div><span className="block text-zinc-500">Access state</span><span className={account.status === 'blocked' ? 'text-red-300' : 'text-emerald-300'}>{account.status === 'blocked' ? 'Sign-in blocked' : 'Can sign in'}</span></div>
                           </div>
+                        </td>
+                      </tr>
+                    )}
+                    {messageAccountId === account.id && (
+                      <tr className="border-b border-emerald-300/10 bg-[#08130f]">
+                        <td colSpan={6} className="px-4 py-3">
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <input
+                              value={accountMessage}
+                              onChange={(event) => setAccountMessage(event.target.value)}
+                              maxLength={500}
+                              placeholder={`Message ${account.username ? `@${account.username}` : account.email}`}
+                              className="min-w-0 flex-1 rounded-lg border border-emerald-300/20 bg-[#090d12] px-3 py-2 text-xs text-white outline-none focus:border-emerald-300"
+                            />
+                            <button type="button" disabled={accountMessageSending || !accountMessage.trim()} onClick={() => void sendAccountMessage(account.id)} className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-[#061016] disabled:opacity-50">
+                              {accountMessageSending ? 'Sending...' : 'Send message'}
+                            </button>
+                          </div>
+                          {accountMessageStatus && <p className="mt-2 text-[11px] text-emerald-200">{accountMessageStatus}</p>}
                         </td>
                       </tr>
                     )}
