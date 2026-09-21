@@ -250,7 +250,10 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
                 <button type="button" onClick={() => void updateFriend(friendName, 'block')} disabled={!friendName.trim()} className="rounded-md border border-red-300/30 px-2 text-red-200 disabled:opacity-50" title="Block user"><ShieldBan className="h-3.5 w-3.5" /></button>
               </div>
               <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-                <div className="text-[9px] uppercase tracking-wider text-zinc-500">Friends</div>
+                <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-zinc-500">
+                  <span>Friends</span>
+                  <span className="rounded-full bg-cyan-300/15 px-1.5 py-0.5 font-bold text-cyan-200">{sortedFriends.length}</span>
+                </div>
                 {sortedFriends.map((entry) => {
                   const online = activeUsers.includes(`@${entry.username}`);
                   return <div key={entry.id} className="flex items-center gap-1 rounded bg-[#141824] px-2 py-1.5 text-[10px] text-zinc-300">

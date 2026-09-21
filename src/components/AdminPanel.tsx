@@ -323,6 +323,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [accountsWarning, setAccountsWarning] = useState<string | null>(null);
   const [accountSearch, setAccountSearch] = useState('');
   const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
   const [resettingAnalytics, setResettingAnalytics] = useState(false);
@@ -517,6 +518,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     setAccountsLoading(true);
     setAccountsError(null);
+    setAccountsWarning(null);
     const loadAccounts = async () => {
       let token = localStorage.getItem('signups4fastcash_admin_token');
       let response = await fetch('/api/admin/accounts', { headers: token ? { 'x-admin-token': token } : {} });
@@ -531,9 +533,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }
         }
       }
-      const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string } | null;
+      const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string; warning?: string } | null;
       if (!response.ok) throw new Error(data?.error || `Could not load accounts (HTTP ${response.status}).`);
       setAccounts(data?.accounts || []);
+      setAccountsWarning(data?.warning || null);
     };
     loadAccounts()
       .catch((error) => setAccountsError(error instanceof Error ? error.message : 'Could not load accounts.'))
@@ -1133,6 +1136,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <span className="text-xs text-zinc-500">Blocked accounts cannot sign in or use active sessions.</span>
           </div>
           {accountsError && <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{accountsError}</p>}
+          {accountsWarning && <p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 text-xs text-amber-100">{accountsWarning}</p>}
           {!accountsLoading && !accountsError && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
           )}

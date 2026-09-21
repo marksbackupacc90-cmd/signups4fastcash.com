@@ -1557,23 +1557,39 @@ app.get('/api/admin/accounts', requireOwnerAdmin, async (_req, res) => {
       });
     } catch (error) {
       console.error('Admin accounts query failed; retrying without session counts.', error);
-      const fallback = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked' }>(
-        `SELECT id, email, username, created_at, last_login_at, account_status
-         FROM users
-         ORDER BY created_at DESC`,
-      );
-      return res.json({
-        accounts: fallback.rows.map((account) => ({
-          id: account.id,
-          email: account.email,
-          username: account.username,
-          createdAt: account.created_at.toISOString(),
-          lastLoginAt: account.last_login_at?.toISOString() || null,
-          status: account.account_status,
-          activeSessions: 0,
-        })),
-        warning: 'Active session counts are temporarily unavailable.',
-      });
+      try {
+        const fallback = await database.query<{ id: string; email: string; username: string | null; created_at: Date; last_login_at: Date | null; account_status: 'active' | 'blocked' }>(
+          `SELECT id, email, username, created_at, last_login_at, account_status
+           FROM users
+           ORDER BY created_at DESC`,
+        );
+        return res.json({
+          accounts: fallback.rows.map((account) => ({
+            id: account.id,
+            email: account.email,
+            username: account.username,
+            createdAt: account.created_at.toISOString(),
+            lastLoginAt: account.last_login_at?.toISOString() || null,
+            status: account.account_status,
+            activeSessions: 0,
+          })),
+          warning: 'Active session counts are temporarily unavailable.',
+        });
+      } catch (fallbackError) {
+        console.error('Admin accounts fallback query failed; returning memory accounts.', fallbackError);
+        return res.json({
+          accounts: [...authUsers.values()].map((account) => ({
+            id: account.id,
+            email: account.email,
+            username: account.username,
+            createdAt: null,
+            lastLoginAt: account.lastLoginAt,
+            status: account.accountStatus,
+            activeSessions: [...authSessions.values()].filter((session) => session.userId === account.id && session.expiresAt > Date.now()).length,
+          })),
+          warning: 'The database is temporarily unavailable. Showing accounts created during this server session.',
+        });
+      }
     }
   }
 
