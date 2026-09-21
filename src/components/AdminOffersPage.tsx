@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ExternalLink, Link as LinkIcon, Save, Search, WalletCards } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ExternalLink, Link as LinkIcon, Save, Search, WalletCards } from 'lucide-react';
 import { Offer, SpeedrunStep } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -14,6 +14,15 @@ interface ProviderAccountLink {
   id: string;
   label: string;
   url: string;
+}
+
+interface OfferIssueReport {
+  id: string;
+  offerId: string;
+  issue: string;
+  description: string;
+  status: 'open' | 'reviewing' | 'resolved';
+  reportedAt: string;
 }
 
 const DEFAULT_PROVIDER_ACCOUNT_LINKS: ProviderAccountLink[] = [
@@ -52,6 +61,8 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   const [offerEarningsLinks, setOfferEarningsLinks] = useState<Record<string, ProviderAccountLink>>({});
   const [earningsDrafts, setEarningsDrafts] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
+  const [issueReports, setIssueReports] = useState<OfferIssueReport[]>([]);
+  const [issueActionLoading, setIssueActionLoading] = useState<string | null>(null);
   const [newOffer, setNewOffer] = useState({
     company: '', title: '', category: 'fintech' as Offer['category'], incentiveAmount: '',
     incentiveValue: 0, payoutSpeed: '', difficulty: 'Easy (2 min)' as Offer['difficulty'],
@@ -59,6 +70,25 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     summary: '', catchText: '', minimumHoldTime: 'None',
   });
   const offers = useMemo(() => safeOffers(liveOffers), [liveOffers]);
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadIssueReports = async () => {
+      const token = localStorage.getItem('signups4fastcash_admin_token');
+      const response = await fetch('/api/admin/offer-issue-reports', {
+        headers: token ? { 'x-admin-token': token } : {},
+        cache: 'no-store',
+      }).catch(() => null);
+      if (!response?.ok) return;
+      const data = await response.json().catch(() => null) as { reports?: OfferIssueReport[] } | null;
+      if (!cancelled) setIssueReports(Array.isArray(data?.reports) ? data.reports.filter((report) => report.status !== 'resolved') : []);
+    };
+    void loadIssueReports();
+    const timer = window.setInterval(loadIssueReports, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
   React.useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('s4fc_provider_account_links') || '[]') as ProviderAccountLink[];
@@ -107,6 +137,18 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     const next = { ...offerEarningsLinks, [offer.id]: { id: `offer-${offer.id}`, label: `${offer.company} earnings`, url } };
     setOfferEarningsLinks(next);
     localStorage.setItem('s4fc_offer_earnings_links', JSON.stringify(next));
+  };
+  const reportsForOffer = (offerId: string) => issueReports.filter((report) => report.offerId === offerId);
+  const markIssueFixed = async (reportId: string) => {
+    setIssueActionLoading(reportId);
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const response = await fetch(`/api/admin/offer-issue-reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+      body: JSON.stringify({ status: 'resolved' }),
+    }).catch(() => null);
+    if (response?.ok) setIssueReports((reports) => reports.filter((report) => report.id !== reportId));
+    setIssueActionLoading(null);
   };
   const updateNewOffer = (field: keyof typeof newOffer, value: string | number) => {
     setNewOffer((current) => ({ ...current, [field]: value }));
@@ -226,8 +268,31 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             const draft = getDraft(offer);
             const providerLink = getProviderLink(offer);
             const expanded = expandedId === offer.id;
+            const offerReports = reportsForOffer(offer.id);
             return (
               <section key={offer.id} className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
+                {offerReports.length > 0 && (
+                  <div className="mb-3 rounded-lg border border-rose-300/30 bg-rose-300/10 p-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-rose-100">
+                      <AlertCircle className="h-4 w-4" /> {offerReports.length} issue{offerReports.length === 1 ? '' : 's'} reported
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      {offerReports.map((report) => (
+                        <div key={report.id} className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-rose-100/80">
+                          <span>{report.description || report.issue}</span>
+                          <button
+                            type="button"
+                            onClick={() => void markIssueFixed(report.id)}
+                            disabled={issueActionLoading === report.id}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-300 px-2 py-1 font-bold text-[#061016] disabled:opacity-60"
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> {issueActionLoading === report.id ? 'Saving...' : 'Mark fixed'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <button type="button" onClick={() => setExpandedId(expanded ? null : offer.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                     <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" />

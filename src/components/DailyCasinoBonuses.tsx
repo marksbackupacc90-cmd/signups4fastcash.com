@@ -83,6 +83,7 @@ interface DailyCasinoBonusesProps {
 }
 
 export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers }) => {
+  const [open, setOpen] = React.useState(false);
   const dailyBonuses = BASE_DAILY_BONUSES.map((bonus) => {
     const matchingOffer = offers.find((offer) => offer.company.toLowerCase().replace(/[^a-z]/g, '').includes(bonus.name.toLowerCase().replace(/[^a-z]/g, '')));
     if (!matchingOffer) return bonus;
@@ -97,7 +98,18 @@ export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers }
   });
 
   return (
-  <section
+  <div>
+    <button
+      type="button"
+      onClick={() => setOpen((current) => !current)}
+      aria-expanded={open}
+      className="inline-flex items-center gap-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-100 transition-colors hover:bg-amber-300/20"
+    >
+      <Gift className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+      Daily bonus checklist
+      <span className="text-[10px] text-amber-200/70">{open ? 'Hide' : 'View'}</span>
+    </button>
+    {open && <section
     aria-labelledby="daily-casino-bonuses-title"
     className="overflow-hidden rounded-xl border border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.12),transparent_36%),#17130d] p-3 shadow-[0_12px_30px_rgba(20,12,2,0.2)] sm:p-4"
   >
@@ -156,6 +168,7 @@ export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers }
       Referral compensation, if any, is at no extra cost to you. Daily bonus values and schedules are based on
       the current checklist and should be verified on each operator&apos;s website.
     </p>
-  </section>
+  </section>}
+  </div>
   );
 };
