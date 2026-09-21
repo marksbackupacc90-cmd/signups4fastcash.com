@@ -911,14 +911,15 @@ export default function App() {
           handleLockAdmin();
         }}
         onAdminSection={(section) => {
-          if (!isAdminUnlocked) {
-            void handleDelegatedAdminAccess();
-            setAdminSection(section);
-            return;
-          }
           setAdminSection(section);
           setAdminPanelVisible(true);
           setActiveTab('admin');
+          // Refresh the short-lived server token before loading a destination.
+          // This also recovers after a server restart invalidates the browser's token.
+          void handleDelegatedAdminAccess(false);
+          if (!isAdminUnlocked) {
+            return;
+          }
         }}
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
@@ -1098,22 +1099,39 @@ export default function App() {
           <p className="mt-1 text-xs text-amber-100/80">
             {openIssueCount} open issue{openIssueCount === 1 ? '' : 's'} need{openIssueCount === 1 ? 's' : ''} review.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              setAdminSection('records');
-              setOpenIssueCount(0);
-              try {
-                localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
-              } catch {
-                // Keep navigation available if storage is unavailable.
-              }
-              void handleDelegatedAdminAccess(true);
-            }}
-            className="mt-3 rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
-          >
-            Open issue reports
-          </button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setAdminSection('records');
+                setOpenIssueCount(0);
+                try {
+                  localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
+                } catch {
+                  // Keep navigation available if storage is unavailable.
+                }
+                void handleDelegatedAdminAccess(true);
+              }}
+              className="rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
+            >
+              Review and fix reports
+            </button>
+            <button
+              type="button"
+              aria-label="Dismiss issue report notification"
+              onClick={() => {
+                setOpenIssueCount(0);
+                try {
+                  localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
+                } catch {
+                  // Keep the alert dismissible if storage is unavailable.
+                }
+              }}
+              className="rounded-lg border border-amber-300/30 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-300/10"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
