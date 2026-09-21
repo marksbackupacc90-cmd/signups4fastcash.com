@@ -534,7 +534,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       }
       const data = await response.json().catch(() => null) as { accounts?: AdminAccount[]; error?: string; warning?: string } | null;
-      if (!response.ok) throw new Error(data?.error || `Could not load accounts (HTTP ${response.status}).`);
+      if (!response.ok) {
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+          setAccounts([]);
+          setAccountsWarning('The account service is temporarily unavailable. Records and analytics remain available; try refreshing accounts shortly.');
+          return;
+        }
+        throw new Error(data?.error || `Could not load accounts (HTTP ${response.status}).`);
+      }
       setAccounts(data?.accounts || []);
       setAccountsWarning(data?.warning || null);
     };
@@ -1137,7 +1144,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           {accountsError && <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-200">{accountsError}</p>}
           {accountsWarning && <p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 text-xs text-amber-100">{accountsWarning}</p>}
-          {!accountsLoading && !accountsError && accounts.length === 0 && (
+          {!accountsLoading && !accountsError && !accountsWarning && accounts.length === 0 && (
             <p className="py-8 text-center text-sm text-zinc-400">No accounts have signed up yet.</p>
           )}
           {activeAdminTab === 'records' && isOwnerAdmin && (
