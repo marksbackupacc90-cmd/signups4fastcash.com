@@ -349,18 +349,18 @@ export default function App() {
     setAdminUsernames(data.usernames || []);
   };
 
-  const handleDelegatedAdminAccess = async (openPanel = true) => {
+  const handleDelegatedAdminAccess = async (openPanel = true): Promise<boolean> => {
     if (!authUser) {
       showToast('Sign in first to use delegated admin access.');
       setAuthMode('signin');
       setAuthOpenRequest((request) => request + 1);
-      return;
+      return false;
     }
     const response = await fetch('/api/admin/unlock-user', { method: 'POST' }).catch(() => null);
     if (!response?.ok) {
       const data = await response?.json().catch(() => null) as { error?: string } | null;
       showToast(data?.error || 'This account does not have admin access.');
-      return;
+      return false;
     }
     const data = await response.json() as { token: string; role?: 'owner' | 'delegated' };
     localStorage.setItem('signups4fastcash_admin_token', data.token);
@@ -372,6 +372,7 @@ export default function App() {
     setIsOwnerAdmin(data.role === 'owner');
     if (data.role === 'owner') void loadAdminUsernames(data.token);
     showToast(data.role === 'owner' ? 'Owner admin access enabled.' : 'Delegated admin access enabled.');
+    return true;
   };
 
   const handleUpdateAdminUsernames = async (usernames: string[]) => {
@@ -912,14 +913,13 @@ export default function App() {
         }}
         onAdminSection={(section) => {
           setAdminSection(section);
-          setAdminPanelVisible(true);
-          setActiveTab('admin');
-          // Refresh the short-lived server token before loading a destination.
-          // This also recovers after a server restart invalidates the browser's token.
-          void handleDelegatedAdminAccess(false);
-          if (!isAdminUnlocked) {
-            return;
-          }
+          // Obtain a fresh server token before mounting Email or Records.
+          void handleDelegatedAdminAccess(false).then((unlocked) => {
+            if (unlocked) {
+              setAdminPanelVisible(true);
+              setActiveTab('admin');
+            }
+          });
         }}
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
