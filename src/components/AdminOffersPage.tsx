@@ -33,7 +33,7 @@ const safeOffers = (offers: Offer[]) => (Array.isArray(offers) ? offers.filter(B
   company: String(offer.company || 'Unknown provider'),
   title: String(offer.title || 'Untitled offer'),
   companySlug: String(offer.companySlug || ''),
-  category: offer.category || 'apps',
+  category: typeof offer.category === 'string' ? offer.category : 'apps',
   referralCode: String(offer.referralCode || ''),
   referralUrl: String(offer.referralUrl || ''),
   officialMerchantUrl: String(offer.officialMerchantUrl || ''),
