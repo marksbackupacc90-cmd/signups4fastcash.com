@@ -141,6 +141,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [myOffersOpen, setMyOffersOpen] = useState(false);
+  const [dailyBonusesOpen, setDailyBonusesOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [openIssueCount, setOpenIssueCount] = useState(0);
@@ -894,6 +895,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenMyOffers={() => setMyOffersOpen(true)}
+        onOpenDailyBonuses={() => setDailyBonusesOpen(true)}
         activeOfferCount={readMyOfferEntries().filter((entry) => entry.status === 'active').length}
         username={authUser?.username}
         avatarUrl={authUser?.avatarUrl}
@@ -994,7 +996,7 @@ export default function App() {
                   window.open(sofiOffer.referralUrl || sofiOffer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
                 }}
               />
-              <DailyCasinoBonuses offers={liveOffers} />
+              <DailyCasinoBonuses offers={liveOffers} open={dailyBonusesOpen} onToggle={() => setDailyBonusesOpen((current) => !current)} />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate

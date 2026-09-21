@@ -80,10 +80,11 @@ const BASE_DAILY_BONUSES: DailyBonus[] = [
 
 interface DailyCasinoBonusesProps {
   offers: Offer[];
+  open: boolean;
+  onToggle: () => void;
 }
 
-export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers }) => {
-  const [open, setOpen] = React.useState(false);
+export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers, open, onToggle }) => {
   const dailyBonuses = BASE_DAILY_BONUSES.map((bonus) => {
     const matchingOffer = offers.find((offer) => offer.company.toLowerCase().replace(/[^a-z]/g, '').includes(bonus.name.toLowerCase().replace(/[^a-z]/g, '')));
     if (!matchingOffer) return bonus;
@@ -101,7 +102,7 @@ export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers }
   <div>
     <button
       type="button"
-      onClick={() => setOpen((current) => !current)}
+      onClick={onToggle}
       aria-expanded={open}
       className="inline-flex items-center gap-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-100 transition-colors hover:bg-amber-300/20"
     >
@@ -167,6 +168,17 @@ export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers }
       Cards marked &quot;Official&quot; go to the operator&apos;s public website and do not attribute a referral.
       Referral compensation, if any, is at no extra cost to you. Daily bonus values and schedules are based on
       the current checklist and should be verified on each operator&apos;s website.
+    </p>
+    <p className="mt-2 text-[10px] text-zinc-400">
+      Know another daily bonus?
+      {' '}
+      <a
+        href="mailto:support@signups4fastcash.com?subject=Daily%20bonus%20suggestion"
+        className="text-amber-200 underline underline-offset-2 hover:text-amber-100"
+      >
+        Send a suggestion directly to us
+      </a>
+      .
     </p>
   </section>}
   </div>
