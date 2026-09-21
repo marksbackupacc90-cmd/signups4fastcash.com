@@ -4,7 +4,7 @@ import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 import { Bell, ChevronDown, ListChecks, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
-  adminSection: 'live' | 'blasts' | 'records';
+  adminSection: 'live' | 'blasts';
   siteSettings?: SiteSettings;
   activeTab: 'offers' | 'admin';
   setActiveTab: (tab: 'offers' | 'admin') => void;
@@ -17,7 +17,7 @@ interface NavbarProps {
   hideSignIn?: boolean;
   onAccount: () => void;
   onSignOut: () => void;
-  onAdminSection: (section: 'live' | 'blasts' | 'records') => void;
+  onAdminSection: (section: 'live' | 'blasts') => void;
   canAccessAdmin?: boolean;
   userId?: string;
   onShare: () => void;
@@ -136,7 +136,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {([
                         ['live', 'Offers'],
                         ['blasts', 'Email'],
-                        ['records', 'Records & analytics'],
                       ] as const).map(([section, label]) => (
                         <button
                           key={section}

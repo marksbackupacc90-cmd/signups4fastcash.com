@@ -235,6 +235,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                       <span className="block truncate text-sm font-bold text-white">{offer.company}</span>
                       <span className="block truncate text-xs text-zinc-400">{offer.title}</span>
                       <span className="mt-1 block text-[10px] uppercase tracking-wider text-emerald-300">{offer.incentiveAmount}</span>
+                      <span className="mt-1 block text-[10px] font-mono text-cyan-200">{Number(offer.clicksCount || 0).toLocaleString()} clicks</span>
                     </span>
                   </button>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
