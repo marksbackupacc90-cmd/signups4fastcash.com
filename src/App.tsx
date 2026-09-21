@@ -62,7 +62,7 @@ function shuffleOfferIds(offers: Offer[]) {
 
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
-  const [activeTab, setActiveTab] = useState<'offers' | 'admin'>('offers');
+  const [activeTab, setActiveTab] = useState<'offers' | 'daily' | 'admin'>('offers');
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
     if (saved) {
@@ -1046,6 +1046,15 @@ export default function App() {
                       />
                     ))}
                   </div>
+                </div>
+              )}
+              {activeTab === 'daily' && (
+                <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                  <div className="mb-4">
+                    <h1 className="text-2xl font-black tracking-tight text-white">Daily social-casino bonuses</h1>
+                    <p className="mt-1 text-sm text-zinc-400">Daily bonus reminders, schedules, and referral links in one place.</p>
+                  </div>
+                  <DailyCasinoBonuses offers={liveOffers} open={true} onToggle={() => setActiveTab('offers')} />
                 </div>
               )}
             </div>

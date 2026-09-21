@@ -6,8 +6,8 @@ import { Bell, ChevronDown, Gift, ListChecks, Search, Share2 } from 'lucide-reac
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
   siteSettings?: SiteSettings;
-  activeTab: 'offers' | 'admin';
-  setActiveTab: (tab: 'offers' | 'admin') => void;
+  activeTab: 'offers' | 'daily' | 'admin';
+  setActiveTab: (tab: 'offers' | 'daily' | 'admin') => void;
   onOpenMyOffers: () => void;
   onOpenDailyBonuses: () => void;
   activeOfferCount: number;
@@ -116,7 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="nav-daily-bonuses"
             type="button"
-            onClick={onOpenDailyBonuses}
+            onClick={() => { onOpenDailyBonuses(); setActiveTab('daily'); }}
             className="retro-button focus-ring hidden shrink-0 items-center gap-1.5 rounded-md border border-amber-300/30 px-4 py-2 text-xs font-medium text-amber-100 transition-all hover:bg-amber-300/10 md:inline-flex"
           >
             <Gift className="h-3.5 w-3.5 text-amber-300" />
