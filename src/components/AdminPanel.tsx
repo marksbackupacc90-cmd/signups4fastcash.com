@@ -628,10 +628,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   useEffect(() => {
-    if (activeAdminTab !== 'records') return;
     const token = localStorage.getItem('signups4fastcash_admin_token');
     const query = analyticsRange === 'all' ? '' : `?from=${new Date(Date.now() - (analyticsRange === '7d' ? 7 : 30) * 86400000).toISOString().slice(0, 10)}`;
-    fetchAdminWithRetry(`/api/admin/analytics/visitors${query}`, {
+    fetch(`/api/admin/analytics/visitors${query}`, {
       headers: token ? { 'x-admin-token': token } : {},
     })
       .then(async (response) => {
@@ -644,9 +643,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [analyticsRange, analyticsRefreshKey]);
 
   useEffect(() => {
-    if (activeAdminTab !== 'records' || !isOwnerAdmin) return;
     const token = localStorage.getItem('signups4fastcash_admin_token');
-    fetchAdminWithRetry('/api/admin/analytics/exposure', { headers: token ? { 'x-admin-token': token } : {} })
+    fetch('/api/admin/analytics/exposure', { headers: token ? { 'x-admin-token': token } : {} })
       .then((response) => response.ok ? response.json() as Promise<ExposureReport> : Promise.reject(new Error('Could not load offer exposure.')))
       .then(setExposureReport)
       .catch((error) => console.error(error));

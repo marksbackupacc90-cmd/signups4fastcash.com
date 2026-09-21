@@ -688,18 +688,11 @@ export default function App() {
   };
 
   const handleDeleteLiveOffer = async (offerId: string) => {
-    const previousOffers = liveOffers;
     setLiveOffers((prev) => prev.filter((o) => o.id !== offerId));
-    const response = await fetch(`/api/offers/${offerId}`, {
+    await fetch(`/api/offers/${offerId}`, {
       method: 'DELETE',
       headers: getAdminHeaders(),
-    }).catch(() => null);
-    if (!response?.ok) {
-      setLiveOffers(previousOffers);
-      const message = response ? await response.json().catch(() => null) : null;
-      showToast(message?.error || 'Could not remove the offer. Please try again.');
-      return;
-    }
+    }).catch(() => {});
     showToast('Offer removed from live site.');
   };
 
