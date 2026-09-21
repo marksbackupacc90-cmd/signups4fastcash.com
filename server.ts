@@ -1428,6 +1428,22 @@ app.get('/api/admin/can-access', async (req, res) => {
   res.json({ canAccess, role: isOwner ? 'owner' : 'delegated' });
 });
 
+app.get('/api/admin/issue-alert', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  const isOwner = Boolean(user && ownerEmails.has(user.email.trim().toLowerCase()));
+  if (!isOwner) return res.status(403).json({ error: 'Owner admin access is required.' });
+  if (!database) return res.json({ openCount: issueReportsStore.filter((report) => report.status === 'open').length });
+  try {
+    const result = await database.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM offer_issue_reports WHERE status = 'open'`,
+    );
+    return res.json({ openCount: Number(result.rows[0]?.count || 0) });
+  } catch (error) {
+    console.error('Could not load issue alert count:', error);
+    return res.json({ openCount: 0, warning: 'Issue alerts are temporarily unavailable.' });
+  }
+});
+
 async function requireAuthenticatedUser(req: express.Request, res: express.Response, next: express.NextFunction) {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to save offers to your account.' });

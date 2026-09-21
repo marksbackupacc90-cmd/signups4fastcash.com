@@ -276,15 +276,10 @@ export default function App() {
     }
     let cancelled = false;
     const loadOpenIssueCount = async () => {
-      const unlockResponse = await fetch('/api/admin/unlock-user', { method: 'POST' }).catch(() => null);
-      if (!unlockResponse?.ok) return;
-      const unlockData = await unlockResponse.json().catch(() => null) as { token?: string; role?: string } | null;
-      if (unlockData?.role !== 'owner' || !unlockData.token) return;
-      localStorage.setItem('signups4fastcash_admin_token', unlockData.token);
-      const response = await fetch('/api/admin/offer-issue-reports', { headers: { 'x-admin-token': unlockData.token } }).catch(() => null);
+      const response = await fetch('/api/admin/issue-alert').catch(() => null);
       if (!response?.ok) return;
-      const data = await response.json().catch(() => null) as { reports?: { status?: string }[] } | null;
-      if (!cancelled) setOpenIssueCount((data?.reports || []).filter((report) => report.status === 'open').length);
+      const data = await response.json().catch(() => null) as { openCount?: number } | null;
+      if (!cancelled) setOpenIssueCount(Number(data?.openCount || 0));
     };
     void loadOpenIssueCount();
     return () => { cancelled = true; };
