@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, BarChart3, Mail, Settings, ShieldCheck, Store, Wrench } from 'lucide-react';
+import { BarChart3, Mail, Send, ShieldCheck, Store } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
-import { AdminPanel } from './AdminPanel';
 
 type DashboardView = 'overview' | 'offers' | 'email';
 
@@ -29,28 +28,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   ...props
 }) => {
   const [view, setView] = useState<DashboardView>(initialView);
-  const [issueCount, setIssueCount] = useState<number | null>(null);
+  const [selectedOfferId, setSelectedOfferId] = useState(props.liveOffers[0]?.id || '');
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
   const totalClicks = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.clicksCount || 0), 0), [props.liveOffers]);
   const totalConversions = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.conversionsCount || 0), 0), [props.liveOffers]);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    fetch('/api/admin/issue-alert', {
-      headers: { 'x-admin-token': localStorage.getItem('signups4fastcash_admin_token') || '' },
-      cache: 'no-store',
-    }).then(async (response) => {
-      if (!response.ok) return;
-      const data = await response.json() as { openCount?: number };
-      if (!cancelled) setIssueCount(Number(data.openCount || 0));
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [view]);
-
   const nav = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
-    { id: 'offers' as const, label: 'Offers', icon: Store, badge: issueCount || undefined },
+    { id: 'offers' as const, label: 'Offers', icon: Store },
     { id: 'email' as const, label: 'Email', icon: Mail },
   ];
+  const sendOfferEmail = async () => {
+    if (!selectedOfferId) return;
+    setEmailSending(true);
+    setEmailStatus(null);
+    const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+    const response = await fetch('/api/admin/newsletter/broadcast', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+      body: JSON.stringify({ offerId: selectedOfferId }),
+    }).catch(() => null);
+    const data = await response?.json().catch(() => null) as { delivered?: number; error?: string } | null;
+    setEmailStatus(response?.ok ? `Email sent to ${data?.delivered || 0} verified subscribers.` : (data?.error || 'Email could not be sent.'));
+    setEmailSending(false);
+  };
 
   return (
     <div className="space-y-5">
@@ -62,7 +65,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
             <h1 className="mt-2 text-2xl font-black text-white">Admin dashboard</h1>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
-              One place to monitor the site, fix reported offers, manage the offer catalog, and send important email.
+              One place to monitor the site, manage the offer catalog, and send important email.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-xs text-emerald-200">
@@ -101,20 +104,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             ))}
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <button type="button" onClick={() => setView('offers')} className="rounded-xl border border-amber-300/25 bg-amber-300/5 p-5 text-left transition-colors hover:bg-amber-300/10">
-              <AlertTriangle className="h-5 w-5 text-amber-300" />
-              <h2 className="mt-3 text-sm font-bold text-white">Review offer issues</h2>
-              <p className="mt-1 text-xs text-zinc-400">{issueCount === null ? 'Checking reports...' : `${issueCount} open issue${issueCount === 1 ? '' : 's'} currently need review.`}</p>
-            </button>
             <button type="button" onClick={() => setView('email')} className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-5 text-left transition-colors hover:bg-cyan-300/10">
               <Mail className="h-5 w-5 text-cyan-300" />
               <h2 className="mt-3 text-sm font-bold text-white">Send an email</h2>
               <p className="mt-1 text-xs text-zinc-400">Open the broadcast tools and subscriber controls.</p>
             </button>
-          </div>
-          <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4 text-xs text-zinc-400">
-            <div className="flex items-center gap-2 font-bold text-zinc-200"><Wrench className="h-4 w-4 text-zinc-400" /> Admin rules</div>
-            <p className="mt-2 leading-relaxed">Resolve an issue only after checking the provider link and terms. Use the Offers tab to see the exact report attached to the affected offer.</p>
           </div>
         </section>
       )}
@@ -129,23 +123,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {view === 'email' && (
-        <AdminPanel
-          initialTab="blasts"
-          pendingOffers={props.pendingOffers}
-          liveOffers={props.liveOffers}
-          subscribers={props.subscribers}
-          onApproveOffer={props.onApproveOffer}
-          onRejectOffer={props.onRejectOffer}
-          onUpdateLiveOffer={props.onUpdateLiveOffer}
-          onDeleteLiveOffer={props.onDeleteLiveOffer}
-          onCreateCustomOffer={props.onCreateCustomOffer}
-          blastLogs={props.blastLogs}
-          siteSettings={props.siteSettings}
-          onUpdateSiteSettings={props.onUpdateSiteSettings}
-          isOwnerAdmin={props.isOwnerAdmin}
-          adminUsernames={props.adminUsernames}
-          onUpdateAdminUsernames={props.onUpdateAdminUsernames}
-        />
+        <section className="rounded-2xl border border-white/[0.08] bg-[#0e121a] p-5">
+          <div className="flex items-center gap-2 text-cyan-300"><Mail className="h-5 w-5" /><h2 className="text-lg font-bold text-white">Email subscribers</h2></div>
+          <p className="mt-2 text-xs leading-relaxed text-zinc-400">Send a tested offer announcement to verified subscribers. Unverified and unsubscribed addresses are excluded automatically.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <select value={selectedOfferId} onChange={(event) => setSelectedOfferId(event.target.value)} className="rounded-lg border border-white/10 bg-[#090d12] px-3 py-3 text-sm text-white">
+              <option value="">Choose an offer</option>
+              {props.liveOffers.map((offer) => <option key={offer.id} value={offer.id}>{offer.company} — {offer.title}</option>)}
+            </select>
+            <button type="button" onClick={() => void sendOfferEmail()} disabled={!selectedOfferId || emailSending} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#061016] disabled:cursor-not-allowed disabled:opacity-50">
+              <Send className="h-4 w-4" /> {emailSending ? 'Sending...' : 'Send email'}
+            </button>
+          </div>
+          {emailStatus && <div className={`mt-4 rounded-lg border p-3 text-xs ${emailStatus.startsWith('Email sent') ? 'border-emerald-300/20 bg-emerald-300/5 text-emerald-200' : 'border-rose-300/20 bg-rose-300/5 text-rose-200'}`}>{emailStatus}</div>}
+          <div className="mt-5 rounded-lg border border-white/[0.08] bg-[#141824] p-4 text-xs text-zinc-400">
+            <strong className="text-white">{props.subscribers.length}</strong> subscriber records are loaded in this session.
+          </div>
+        </section>
       )}
     </div>
   );

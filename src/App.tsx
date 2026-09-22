@@ -142,8 +142,6 @@ export default function App() {
   const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
-  const [openIssueCount, setOpenIssueCount] = useState(0);
-  const previousIssueAlertUserId = useRef<string | null>(null);
   const [messageNotification, setMessageNotification] = useState<{ count: number; preview: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
@@ -324,48 +322,6 @@ export default function App() {
       })
       .catch(() => setCanAccessAdmin(false));
   }, [authUser]);
-
-  useEffect(() => {
-    if (!authUser || !canAccessAdmin) {
-      setOpenIssueCount(0);
-      if (!authUser) previousIssueAlertUserId.current = null;
-      return;
-    }
-    let cancelled = false;
-    const loadOpenIssueCount = async () => {
-      const response = await fetch('/api/admin/issue-alert', { cache: 'no-store' }).catch(() => null);
-      if (!response?.ok) return;
-      const data = await response.json().catch(() => null) as { openCount?: number } | null;
-      const openCount = Number(data?.openCount || 0);
-      const loggedInNow = previousIssueAlertUserId.current !== authUser.id;
-      previousIssueAlertUserId.current = authUser.id;
-      let seenCount = 0;
-      let shouldShow = loggedInNow && openCount > 0;
-      try {
-        seenCount = Number(localStorage.getItem('s4fc_seen_open_issue_count') || 0);
-        if (openCount === 0 || openCount < seenCount) {
-          localStorage.setItem('s4fc_seen_open_issue_count', String(openCount));
-          seenCount = openCount;
-        } else if (openCount > seenCount) {
-          shouldShow = true;
-          localStorage.setItem('s4fc_seen_open_issue_count', String(openCount));
-        } else if (!loggedInNow) {
-          shouldShow = false;
-        }
-      } catch {
-        // Notifications still work for this page view if storage is unavailable.
-      }
-      if (!cancelled) setOpenIssueCount(shouldShow ? openCount : 0);
-    };
-    void loadOpenIssueCount();
-    const pollTimer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void loadOpenIssueCount();
-    }, 15000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(pollTimer);
-    };
-  }, [authUser?.id, canAccessAdmin]);
 
   useEffect(() => {
     if (!authUser) return;
@@ -909,15 +865,6 @@ export default function App() {
     showToast(response?.ok ? 'Thanks — your completion was saved.' : 'Saved locally, but we could not send the confirmation.');
   };
 
-  const handleMyOfferIssue = async (offerId: string) => {
-    await fetch(`/api/offers/${offerId}/issue-report`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ issue: 'broken-link' }),
-    }).catch(() => {});
-    showToast('Issue noted. We will review this offer.');
-  };
-
   const handleUpdateSiteSettings = async (updates: Partial<SiteSettings>) => {
     const next = { ...siteSettings, ...updates };
     setSiteSettings(next);
@@ -1014,7 +961,6 @@ export default function App() {
           onClose={() => setMyOffersOpen(false)}
           onResume={handleResumeOffer}
           onStatusChange={handleMyOfferStatusChange}
-          onReportIssue={handleMyOfferIssue}
         />}
         {authUser && activeTab === 'offers' && (
           <>
@@ -1168,49 +1114,6 @@ export default function App() {
           </button>
         </div>
       )}
-      {openIssueCount > 0 && authUser && (
-        <div className="fixed bottom-5 left-5 z-50 max-w-sm rounded-xl border border-amber-300/40 bg-[#171208] p-4 text-sm text-amber-100 shadow-2xl">
-          <div className="font-bold">Offer issue reported</div>
-          <p className="mt-1 text-xs text-amber-100/80">
-            {openIssueCount} open issue{openIssueCount === 1 ? '' : 's'} need{openIssueCount === 1 ? 's' : ''} review.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setAdminSection('live');
-                setAdminPanelTab('records');
-                setOpenIssueCount(0);
-                try {
-                  localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
-                } catch {
-                  // Keep navigation available if storage is unavailable.
-                }
-                void handleDelegatedAdminAccess(true);
-              }}
-              className="rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
-            >
-              Review issue in Offers
-            </button>
-            <button
-              type="button"
-              aria-label="Dismiss issue report notification"
-              onClick={() => {
-                setOpenIssueCount(0);
-                try {
-                  localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));
-                } catch {
-                  // Keep the alert dismissible if storage is unavailable.
-                }
-              }}
-              className="rounded-lg border border-amber-300/30 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-300/10"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
       <Footer
         siteSettings={siteSettings}
         onOpenNewsletter={() => setIsNewsletterOpen(true)}

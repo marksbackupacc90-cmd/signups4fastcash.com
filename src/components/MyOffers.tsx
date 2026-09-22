@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, Flag, RotateCcw, X } from 'lucide-react';
+import { CheckCircle2, ExternalLink, RotateCcw, X } from 'lucide-react';
 import { Offer } from '../types';
 
-export type MyOfferStatus = 'active' | 'completed' | 'issue';
+export type MyOfferStatus = 'active' | 'completed';
 
 interface MyOfferEntry {
   offerId: string;
@@ -17,7 +17,6 @@ interface MyOffersProps {
   onClose: () => void;
   onResume: (offer: Offer) => void;
   onStatusChange: (offerId: string, status: MyOfferStatus) => void;
-  onReportIssue: (offerId: string) => void;
 }
 
 const STORAGE_KEY = 'signups4fastcash_my_offers';
@@ -38,7 +37,6 @@ export const MyOffers: React.FC<MyOffersProps> = ({
   onClose,
   onResume,
   onStatusChange,
-  onReportIssue,
 }) => {
   const [entries, setEntries] = useState<MyOfferEntry[]>(readMyOfferEntries);
   const trackedOffers = useMemo(
@@ -95,9 +93,9 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                         <div className="min-w-0">
                           <p className="text-[10px] font-mono uppercase tracking-wider text-cyan-300">{offer.company}</p>
                           <h3 className="mt-1 text-sm font-bold text-white">{offer.title}</h3>
-                          <p className="mt-1 text-xs text-zinc-300">{offer.incentiveAmount} · {status === 'completed' ? 'Marked completed' : status === 'issue' ? 'Issue reported' : 'In progress'}</p>
+                          <p className="mt-1 text-xs text-zinc-300">{offer.incentiveAmount} · {status === 'completed' ? 'Marked completed' : 'In progress'}</p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${status === 'completed' ? 'bg-emerald-400/15 text-emerald-300' : status === 'issue' ? 'bg-amber-400/15 text-amber-200' : 'bg-cyan-400/15 text-cyan-200'}`}>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${status === 'completed' ? 'bg-emerald-400/15 text-emerald-300' : 'bg-cyan-400/15 text-cyan-200'}`}>
                           {status}
                         </span>
                       </div>
@@ -108,11 +106,6 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                         {status !== 'completed' && (
                           <button type="button" onClick={() => updateStatus(offer.id, 'completed')} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/30 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-300/10">
                             <CheckCircle2 className="h-3.5 w-3.5" /> I completed it
-                          </button>
-                        )}
-                        {status !== 'issue' && (
-                          <button type="button" onClick={() => { updateStatus(offer.id, 'issue'); onReportIssue(offer.id); }} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/30 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-300/10">
-                            <Flag className="h-3.5 w-3.5" /> Report an issue
                           </button>
                         )}
                         {status !== 'active' && (

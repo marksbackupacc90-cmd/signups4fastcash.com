@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, ExternalLink, Eye, EyeOff, Link as LinkIcon, Save, Search, WalletCards, X } from 'lucide-react';
+import { ExternalLink, Link as LinkIcon, Save, Search, WalletCards } from 'lucide-react';
 import { Offer, SpeedrunStep } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -14,15 +14,6 @@ interface ProviderAccountLink {
   id: string;
   label: string;
   url: string;
-}
-
-interface OfferIssueReport {
-  id: string;
-  offerId: string;
-  issue: string;
-  description: string;
-  status: 'open' | 'reviewing' | 'resolved';
-  reportedAt: string;
 }
 
 const DEFAULT_PROVIDER_ACCOUNT_LINKS: ProviderAccountLink[] = [
@@ -61,12 +52,6 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   const [offerEarningsLinks, setOfferEarningsLinks] = useState<Record<string, ProviderAccountLink>>({});
   const [earningsDrafts, setEarningsDrafts] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
-  const [issueReports, setIssueReports] = useState<OfferIssueReport[]>([]);
-  const [issueLoadError, setIssueLoadError] = useState(false);
-  const [issueActionLoading, setIssueActionLoading] = useState<string | null>(null);
-  const [issueSummaryDismissed, setIssueSummaryDismissed] = useState(false);
-  const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
-  const [showDismissedIssues, setShowDismissedIssues] = useState(false);
   const [newOffer, setNewOffer] = useState({
     company: '', title: '', category: 'fintech' as Offer['category'], incentiveAmount: '',
     incentiveValue: 0, payoutSpeed: '', difficulty: 'Easy (2 min)' as Offer['difficulty'],
@@ -75,54 +60,6 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     screenshotUrls: ['', '', ''],
   });
   const offers = useMemo(() => safeOffers(liveOffers), [liveOffers]);
-  React.useEffect(() => {
-    let cancelled = false;
-    const getIssueReports = async () => {
-      const request = (token: string) => fetch('/api/admin/offer-issue-reports', {
-        headers: token ? { 'x-admin-token': token } : {},
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      let token = localStorage.getItem('signups4fastcash_admin_token') || '';
-      let response = await request(token).catch(() => null);
-      if (response && (response.status === 401 || response.status === 403)) {
-        const unlock = await fetch('/api/admin/unlock-user', {
-          method: 'POST',
-          credentials: 'include',
-        }).catch(() => null);
-        if (unlock?.ok) {
-          const data = await unlock.json().catch(() => null) as { token?: string } | null;
-          if (data?.token) {
-            token = data.token;
-            localStorage.setItem('signups4fastcash_admin_token', token);
-            response = await request(token).catch(() => null);
-          }
-        }
-      }
-      return response;
-    };
-    const loadIssueReports = async () => {
-      const response = await getIssueReports();
-      if (!response?.ok) {
-        if (!cancelled) setIssueLoadError(true);
-        return;
-      }
-      const data = await response.json().catch(() => null) as { reports?: OfferIssueReport[] } | null;
-      if (!cancelled) {
-        const openReports = Array.isArray(data?.reports) ? data.reports.filter((report) => report.status !== 'resolved') : [];
-        setIssueReports(openReports);
-        setIssueLoadError(false);
-        setIssueSummaryDismissed((dismissed) => dismissed && openReports.length > 0);
-        if (openReports.length > 0) setExpandedId((current) => current || openReports[0].offerId);
-      }
-    };
-    void loadIssueReports();
-    const timer = window.setInterval(loadIssueReports, 15000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, []);
   React.useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('s4fc_provider_account_links') || '[]') as ProviderAccountLink[];
@@ -171,30 +108,6 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     const next = { ...offerEarningsLinks, [offer.id]: { id: `offer-${offer.id}`, label: `${offer.company} earnings`, url } };
     setOfferEarningsLinks(next);
     localStorage.setItem('s4fc_offer_earnings_links', JSON.stringify(next));
-  };
-  const reportsForOffer = (offerId: string) => issueReports.filter((report) => String(report.offerId) === String(offerId));
-  const visibleIssueReports = issueReports.filter((report) => showDismissedIssues || !dismissedIssueIds.has(report.id));
-  const markIssueFixed = async (reportId: string) => {
-    setIssueActionLoading(reportId);
-    const token = localStorage.getItem('signups4fastcash_admin_token');
-    const response = await fetch(`/api/admin/offer-issue-reports/${reportId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
-      body: JSON.stringify({ status: 'resolved' }),
-    }).catch(() => null);
-    if (response?.ok) setIssueReports((reports) => reports.filter((report) => report.id !== reportId));
-    setIssueActionLoading(null);
-  };
-  const dismissIssue = async (reportId: string) => {
-    setIssueActionLoading(reportId);
-    const token = localStorage.getItem('signups4fastcash_admin_token');
-    const response = await fetch(`/api/admin/offer-issue-reports/${reportId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
-      body: JSON.stringify({ status: 'reviewing' }),
-    }).catch(() => null);
-    if (response?.ok) setDismissedIssueIds((current) => new Set(current).add(reportId));
-    setIssueActionLoading(null);
   };
   const updateNewOffer = (field: keyof typeof newOffer, value: string | number) => {
     setNewOffer((current) => ({ ...current, [field]: value }));
@@ -263,39 +176,6 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             </div>
         </div>
 
-        {issueLoadError && (
-          <div className="mt-4 rounded-lg border border-rose-300/30 bg-rose-300/10 p-3 text-xs text-rose-100">
-            Open issue reports could not be loaded. Refresh the Offers page after admin access is enabled.
-          </div>
-        )}
-
-        {visibleIssueReports.length > 0 && !issueSummaryDismissed && (
-          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-2 text-xs text-amber-100">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                <strong>{visibleIssueReports.length} offer issue{visibleIssueReports.length === 1 ? '' : 's'}</strong> require review.
-                Use <strong>Mark fixed</strong> to resolve a report or <strong>Dismiss</strong> to mark it as reviewing.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIssueSummaryDismissed(true)}
-              className="shrink-0 self-end rounded-md border border-amber-200/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-300/10 sm:self-auto"
-            >
-              Dismiss summary
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowDismissedIssues((current) => !current)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-300/10"
-            >
-              {showDismissedIssues ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-              {showDismissedIssues ? 'Hide dismissed' : 'Show dismissed'}
-            </button>
-          </div>
-        )}
-
         {creating && (
           <form onSubmit={handleCreate} className="rounded-xl border border-emerald-300/25 bg-[#0e121a] p-5">
             <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-200">Create new offer</h2>
@@ -362,39 +242,8 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             const draft = getDraft(offer);
             const providerLink = getProviderLink(offer);
             const expanded = expandedId === offer.id;
-            const offerReports = reportsForOffer(offer.id).filter((report) => showDismissedIssues || !dismissedIssueIds.has(report.id));
             return (
               <section key={offer.id} className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
-                {offerReports.length > 0 && (
-                  <div className="mb-3 rounded-lg border border-rose-300/30 bg-rose-300/10 p-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-rose-100">
-                      <AlertCircle className="h-4 w-4" /> {offerReports.length} issue{offerReports.length === 1 ? '' : 's'} reported
-                    </div>
-                    <div className="mt-2 space-y-2">
-                      {offerReports.map((report) => (
-                        <div key={report.id} className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-rose-100/80">
-                          <span>{report.description || report.issue}</span>
-                          <button
-                            type="button"
-                            onClick={() => void markIssueFixed(report.id)}
-                            disabled={issueActionLoading === report.id}
-                            className="inline-flex items-center gap-1 rounded-md bg-emerald-300 px-2 py-1 font-bold text-[#061016] disabled:opacity-60"
-                          >
-                            <CheckCircle2 className="h-3 w-3" /> {issueActionLoading === report.id ? 'Saving...' : 'Mark fixed'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void dismissIssue(report.id)}
-                            disabled={issueActionLoading === report.id}
-                            className="inline-flex items-center gap-1 rounded-md border border-rose-200/30 px-2 py-1 font-semibold text-rose-100 disabled:opacity-60"
-                          >
-                            <X className="h-3 w-3" /> Dismiss
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <button type="button" onClick={() => setExpandedId(expanded ? null : offer.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                     <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="sm" />
