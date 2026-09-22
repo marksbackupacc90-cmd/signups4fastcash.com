@@ -1307,7 +1307,7 @@ app.post('/api/offers/:id/issue-report', async (req, res) => {
   return res.status(201).json({ success: true });
 });
 
-app.get('/api/admin/offer-issue-reports', requireOwnerAdmin, async (_req, res) => {
+app.get('/api/admin/offer-issue-reports', requireAuthenticatedOwnerAdmin, async (_req, res) => {
   if (database) {
     const result = await database.query(
       `SELECT r.id, r.offer_id AS "offerId", r.issue, r.description, r.status,
@@ -1328,7 +1328,7 @@ app.get('/api/admin/offer-issue-reports', requireOwnerAdmin, async (_req, res) =
   });
 });
 
-app.patch('/api/admin/offer-issue-reports/:id', requireOwnerAdmin, async (req, res) => {
+app.patch('/api/admin/offer-issue-reports/:id', requireAuthenticatedOwnerAdmin, async (req, res) => {
   const status = req.body?.status;
   if (!['open', 'reviewing', 'resolved'].includes(status)) {
     return res.status(400).json({ error: 'Choose a valid report status.' });
@@ -1501,6 +1501,20 @@ function requireOwnerAdmin(req: express.Request, res: express.Response, next: ex
     return res.status(403).json({ error: 'Owner admin access is required.' });
   }
   next();
+}
+
+async function requireAuthenticatedOwnerAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const token = req.header('x-admin-token');
+  const session = token ? adminTokens.get(token) : undefined;
+  if (session && session.expiresAt >= Date.now() && session.role === 'owner') {
+    return next();
+  }
+  if (session && session.expiresAt < Date.now()) adminTokens.delete(token as string);
+
+  const user = await getAuthenticatedUser(req);
+  const isOwner = Boolean(user && ownerEmails.has(user.email.trim().toLowerCase()));
+  if (!isOwner) return res.status(403).json({ error: 'Owner admin access is required.' });
+  return next();
 }
 
 function createFallbackOutreachResult(task: string, reason: string) {
