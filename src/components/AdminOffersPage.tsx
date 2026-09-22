@@ -77,12 +77,32 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   const offers = useMemo(() => safeOffers(liveOffers), [liveOffers]);
   React.useEffect(() => {
     let cancelled = false;
-    const loadIssueReports = async () => {
-      const token = localStorage.getItem('signups4fastcash_admin_token');
-      const response = await fetch('/api/admin/offer-issue-reports', {
+    const getIssueReports = async () => {
+      const request = (token: string) => fetch('/api/admin/offer-issue-reports', {
         headers: token ? { 'x-admin-token': token } : {},
+        credentials: 'include',
         cache: 'no-store',
-      }).catch(() => null);
+      });
+      let token = localStorage.getItem('signups4fastcash_admin_token') || '';
+      let response = await request(token).catch(() => null);
+      if (response && (response.status === 401 || response.status === 403)) {
+        const unlock = await fetch('/api/admin/unlock-user', {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => null);
+        if (unlock?.ok) {
+          const data = await unlock.json().catch(() => null) as { token?: string } | null;
+          if (data?.token) {
+            token = data.token;
+            localStorage.setItem('signups4fastcash_admin_token', token);
+            response = await request(token).catch(() => null);
+          }
+        }
+      }
+      return response;
+    };
+    const loadIssueReports = async () => {
+      const response = await getIssueReports();
       if (!response?.ok) {
         if (!cancelled) setIssueLoadError(true);
         return;
