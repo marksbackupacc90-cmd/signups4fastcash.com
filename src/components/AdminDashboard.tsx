@@ -73,7 +73,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
         <nav className="mt-5 flex flex-wrap gap-2 border-t border-white/[0.07] pt-4" aria-label="Admin sections">
-          {nav.map(({ id, label, icon: Icon, badge }) => (
+          {nav.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -81,7 +81,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${view === id ? 'bg-cyan-300 text-[#061016]' : 'border border-white/10 text-zinc-300 hover:bg-white/[0.06]'}`}
             >
               <Icon className="h-4 w-4" /> {label}
-              {badge ? <span className="rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] text-[#160609]">{badge}</span> : null}
             </button>
           ))}
         </nav>
