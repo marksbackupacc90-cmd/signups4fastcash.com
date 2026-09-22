@@ -144,6 +144,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [openIssueCount, setOpenIssueCount] = useState(0);
+  const previousIssueAlertUserId = useRef<string | null>(null);
   const [messageNotification, setMessageNotification] = useState<{ count: number; preview: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
@@ -328,6 +329,7 @@ export default function App() {
   useEffect(() => {
     if (!authUser || !canAccessAdmin) {
       setOpenIssueCount(0);
+      if (!authUser) previousIssueAlertUserId.current = null;
       return;
     }
     let cancelled = false;
@@ -336,8 +338,10 @@ export default function App() {
       if (!response?.ok) return;
       const data = await response.json().catch(() => null) as { openCount?: number } | null;
       const openCount = Number(data?.openCount || 0);
+      const loggedInNow = previousIssueAlertUserId.current !== authUser.id;
+      previousIssueAlertUserId.current = authUser.id;
       let seenCount = 0;
-      let shouldShow = openCount > 0;
+      let shouldShow = loggedInNow && openCount > 0;
       try {
         seenCount = Number(localStorage.getItem('s4fc_seen_open_issue_count') || 0);
         if (openCount === 0 || openCount < seenCount) {
@@ -346,7 +350,7 @@ export default function App() {
         } else if (openCount > seenCount) {
           shouldShow = true;
           localStorage.setItem('s4fc_seen_open_issue_count', String(openCount));
-        } else {
+        } else if (!loggedInNow) {
           shouldShow = false;
         }
       } catch {
@@ -362,7 +366,7 @@ export default function App() {
       cancelled = true;
       window.clearInterval(pollTimer);
     };
-  }, [authUser, canAccessAdmin]);
+  }, [authUser?.id, canAccessAdmin]);
 
   useEffect(() => {
     if (!authUser) return;

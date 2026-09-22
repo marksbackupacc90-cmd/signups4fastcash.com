@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, ExternalLink, Link as LinkIcon, Save, Search, WalletCards } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ExternalLink, Eye, EyeOff, Link as LinkIcon, Save, Search, WalletCards, X } from 'lucide-react';
 import { Offer, SpeedrunStep } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -64,6 +64,8 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   const [issueReports, setIssueReports] = useState<OfferIssueReport[]>([]);
   const [issueActionLoading, setIssueActionLoading] = useState<string | null>(null);
   const [issueSummaryDismissed, setIssueSummaryDismissed] = useState(false);
+  const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
+  const [showDismissedIssues, setShowDismissedIssues] = useState(false);
   const [newOffer, setNewOffer] = useState({
     company: '', title: '', category: 'fintech' as Offer['category'], incentiveAmount: '',
     incentiveValue: 0, payoutSpeed: '', difficulty: 'Easy (2 min)' as Offer['difficulty'],
@@ -144,6 +146,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     localStorage.setItem('s4fc_offer_earnings_links', JSON.stringify(next));
   };
   const reportsForOffer = (offerId: string) => issueReports.filter((report) => report.offerId === offerId);
+  const visibleIssueReports = issueReports.filter((report) => showDismissedIssues || !dismissedIssueIds.has(report.id));
   const markIssueFixed = async (reportId: string) => {
     setIssueActionLoading(reportId);
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -153,6 +156,17 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
       body: JSON.stringify({ status: 'resolved' }),
     }).catch(() => null);
     if (response?.ok) setIssueReports((reports) => reports.filter((report) => report.id !== reportId));
+    setIssueActionLoading(null);
+  };
+  const dismissIssue = async (reportId: string) => {
+    setIssueActionLoading(reportId);
+    const token = localStorage.getItem('signups4fastcash_admin_token');
+    const response = await fetch(`/api/admin/offer-issue-reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+      body: JSON.stringify({ status: 'reviewing' }),
+    }).catch(() => null);
+    if (response?.ok) setDismissedIssueIds((current) => new Set(current).add(reportId));
     setIssueActionLoading(null);
   };
   const updateNewOffer = (field: keyof typeof newOffer, value: string | number) => {
@@ -222,13 +236,13 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             </div>
         </div>
 
-        {issueReports.length > 0 && !issueSummaryDismissed && (
+        {visibleIssueReports.length > 0 && !issueSummaryDismissed && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-2 text-xs text-amber-100">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                <strong>{issueReports.length} open offer issue{issueReports.length === 1 ? '' : 's'}</strong> require review.
-                Dismissing this notice only hides the summary; use <strong>Mark fixed</strong> on the affected offer to resolve a report.
+                <strong>{visibleIssueReports.length} offer issue{visibleIssueReports.length === 1 ? '' : 's'}</strong> require review.
+                Use <strong>Mark fixed</strong> to resolve a report or <strong>Dismiss</strong> to mark it as reviewing.
               </p>
             </div>
             <button
@@ -237,6 +251,14 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
               className="shrink-0 self-end rounded-md border border-amber-200/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-300/10 sm:self-auto"
             >
               Dismiss summary
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDismissedIssues((current) => !current)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-300/10"
+            >
+              {showDismissedIssues ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              {showDismissedIssues ? 'Hide dismissed' : 'Show dismissed'}
             </button>
           </div>
         )}
@@ -292,7 +314,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             const draft = getDraft(offer);
             const providerLink = getProviderLink(offer);
             const expanded = expandedId === offer.id;
-            const offerReports = reportsForOffer(offer.id);
+            const offerReports = reportsForOffer(offer.id).filter((report) => showDismissedIssues || !dismissedIssueIds.has(report.id));
             return (
               <section key={offer.id} className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
                 {offerReports.length > 0 && (
@@ -311,6 +333,14 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                             className="inline-flex items-center gap-1 rounded-md bg-emerald-300 px-2 py-1 font-bold text-[#061016] disabled:opacity-60"
                           >
                             <CheckCircle2 className="h-3 w-3" /> {issueActionLoading === report.id ? 'Saving...' : 'Mark fixed'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void dismissIssue(report.id)}
+                            disabled={issueActionLoading === report.id}
+                            className="inline-flex items-center gap-1 rounded-md border border-rose-200/30 px-2 py-1 font-semibold text-rose-100 disabled:opacity-60"
+                          >
+                            <X className="h-3 w-3" /> Dismiss
                           </button>
                         </div>
                       ))}
