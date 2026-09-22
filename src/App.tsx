@@ -132,6 +132,7 @@ export default function App() {
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
+  const [adminPanelTab, setAdminPanelTab] = useState<'blasts' | 'records'>('blasts');
   const [isOwnerAdmin, setIsOwnerAdmin] = useState(false);
   const [adminUsernames, setAdminUsernames] = useState<string[]>([]);
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
@@ -974,6 +975,7 @@ export default function App() {
         }}
         onAdminSection={(section) => {
           setAdminSection(section);
+          setAdminPanelTab(section);
           if (isAdminUnlocked) {
             setAdminPanelVisible(true);
             setActiveTab('admin');
@@ -1115,7 +1117,7 @@ export default function App() {
               />
             ) : (
               <AdminPanel
-                key={adminSection}
+                key={`${adminSection}-${adminPanelTab}`}
                 pendingOffers={pendingOffers}
                 liveOffers={liveOffers}
                 subscribers={subscribers}
@@ -1130,7 +1132,7 @@ export default function App() {
                 isOwnerAdmin={isOwnerAdmin}
                 adminUsernames={adminUsernames}
                 onUpdateAdminUsernames={handleUpdateAdminUsernames}
-                initialTab={adminSection}
+                initialTab={adminPanelTab}
               />
             )}
           </div>
@@ -1184,6 +1186,7 @@ export default function App() {
               type="button"
               onClick={() => {
                 setAdminSection('live');
+                setAdminPanelTab('records');
                 setOpenIssueCount(0);
                 try {
                   localStorage.setItem('s4fc_seen_open_issue_count', String(openIssueCount));

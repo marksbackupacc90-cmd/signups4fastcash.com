@@ -63,6 +63,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   const [creating, setCreating] = useState(false);
   const [issueReports, setIssueReports] = useState<OfferIssueReport[]>([]);
   const [issueActionLoading, setIssueActionLoading] = useState<string | null>(null);
+  const [issueSummaryDismissed, setIssueSummaryDismissed] = useState(false);
   const [newOffer, setNewOffer] = useState({
     company: '', title: '', category: 'fintech' as Offer['category'], incentiveAmount: '',
     incentiveValue: 0, payoutSpeed: '', difficulty: 'Easy (2 min)' as Offer['difficulty'],
@@ -80,7 +81,11 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
       }).catch(() => null);
       if (!response?.ok) return;
       const data = await response.json().catch(() => null) as { reports?: OfferIssueReport[] } | null;
-      if (!cancelled) setIssueReports(Array.isArray(data?.reports) ? data.reports.filter((report) => report.status !== 'resolved') : []);
+      if (!cancelled) {
+        const openReports = Array.isArray(data?.reports) ? data.reports.filter((report) => report.status !== 'resolved') : [];
+        setIssueReports(openReports);
+        setIssueSummaryDismissed((dismissed) => dismissed && openReports.length > 0);
+      }
     };
     void loadIssueReports();
     const timer = window.setInterval(loadIssueReports, 15000);
@@ -216,6 +221,25 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
           </div>
             </div>
         </div>
+
+        {issueReports.length > 0 && !issueSummaryDismissed && (
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2 text-xs text-amber-100">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                <strong>{issueReports.length} open offer issue{issueReports.length === 1 ? '' : 's'}</strong> require review.
+                Dismissing this notice only hides the summary; use <strong>Mark fixed</strong> on the affected offer to resolve a report.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIssueSummaryDismissed(true)}
+              className="shrink-0 self-end rounded-md border border-amber-200/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-100 hover:bg-amber-300/10 sm:self-auto"
+            >
+              Dismiss summary
+            </button>
+          </div>
+        )}
 
         {creating && (
           <form onSubmit={handleCreate} className="rounded-xl border border-emerald-300/25 bg-[#0e121a] p-5">
