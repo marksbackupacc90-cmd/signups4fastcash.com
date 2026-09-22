@@ -1430,6 +1430,7 @@ app.get('/api/admin/can-access', async (req, res) => {
 
 app.get('/api/admin/issue-alert', async (req, res) => {
   const user = await getAuthenticatedUser(req);
+  const token = req.header('x-admin-token');
   const isOwner = Boolean(user && ownerEmails.has(user.email.trim().toLowerCase()));
   if (!isOwner) return res.status(403).json({ error: 'Owner admin access is required.' });
   if (!database) return res.json({ openCount: issueReportsStore.filter((report) => report.status === 'open').length });

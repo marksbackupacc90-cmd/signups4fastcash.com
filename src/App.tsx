@@ -1197,12 +1197,7 @@ export default function App() {
                 } catch {
                   // Keep navigation available if storage is unavailable.
                 }
-                if (isAdminUnlocked) {
-                  setAdminPanelVisible(true);
-                  setActiveTab('admin');
-                } else {
-                  void handleDelegatedAdminAccess(true);
-                }
+                void handleDelegatedAdminAccess(true);
               }}
               className="rounded-lg bg-amber-300 px-3 py-2 text-xs font-bold text-[#171208] hover:bg-amber-200"
             >
