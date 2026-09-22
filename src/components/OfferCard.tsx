@@ -255,13 +255,15 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           {/* Speedrun Hints Expanded Panel */}
           {showHints && (
             <div className="p-3 rounded-lg bg-[#07090e] border border-blue-500/20 text-xs space-y-2 animate-in fade-in duration-200">
-              <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider font-semibold border-b border-white/[0.06] pb-1.5 flex items-center justify-between">
-                <span>Simplified Walkthrough</span>
-                <span className="text-emerald-400">Fast & Efficient</span>
+              <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider font-semibold border-b border-white/[0.06] pb-1.5">
+                <span>Follow these steps in order</span>
+                <p className="mt-1 text-[10px] font-sans normal-case tracking-normal text-zinc-500">
+                  Do not skip a step. The provider controls eligibility, approval, and payout.
+                </p>
               </div>
               <ol className="space-y-2">
                 {offer.speedrunHints.map((hint) => (
-                  <li key={hint.step} className="flex items-start gap-2.5">
+                  <li key={hint.step} className="flex flex-col gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 sm:flex-row">
                     <span className="w-5 h-5 rounded bg-blue-500/10 border border-blue-500/30 text-[#38bdf8] font-mono font-bold flex items-center justify-center shrink-0 text-[11px]">
                       {hint.step}
                     </span>
@@ -271,6 +273,17 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
                         <p className="text-[11px] text-amber-300/90 font-mono mt-0.5">
                           💡 Pro-Tip: {hint.proTip}
                         </p>
+                      )}
+                      {hint.screenshotUrl && (
+                        <img
+                          src={hint.screenshotUrl}
+                          alt={hint.screenshotAlt || `Screenshot showing step ${hint.step}`}
+                          className="mt-2 max-h-52 w-full rounded-md border border-white/10 object-contain object-left"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.hidden = true;
+                          }}
+                        />
                       )}
                     </div>
                   </li>

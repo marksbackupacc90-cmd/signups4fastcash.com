@@ -4,6 +4,8 @@ export interface SpeedrunStep {
   step: number;
   instruction: string;
   proTip?: string;
+  screenshotUrl?: string;
+  screenshotAlt?: string;
 }
 
 export interface AICouncilReview {

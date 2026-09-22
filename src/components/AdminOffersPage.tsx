@@ -72,6 +72,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     incentiveValue: 0, payoutSpeed: '', difficulty: 'Easy (2 min)' as Offer['difficulty'],
     depositRequired: '$0', referralCode: '', referralUrl: '', officialMerchantUrl: '',
     summary: '', catchText: '', minimumHoldTime: 'None',
+    screenshotUrls: ['', '', ''],
   });
   const offers = useMemo(() => safeOffers(liveOffers), [liveOffers]);
   React.useEffect(() => {
@@ -182,9 +183,9 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     event.preventDefault();
     if (!newOffer.company.trim() || !newOffer.title.trim() || !newOffer.referralUrl.trim()) return;
     const steps: SpeedrunStep[] = [
-      { step: 1, instruction: 'Open the referral link and register with accurate information.' },
-      { step: 2, instruction: 'Complete the qualifying requirement shown by the provider.' },
-      { step: 3, instruction: 'Confirm the reward and payout terms in the provider account.' },
+      { step: 1, instruction: 'Open the referral link and register with accurate information.', screenshotUrl: newOffer.screenshotUrls[0].trim() || undefined },
+      { step: 2, instruction: 'Complete the qualifying requirement shown by the provider.', screenshotUrl: newOffer.screenshotUrls[1].trim() || undefined },
+      { step: 3, instruction: 'Confirm the reward and payout terms in the provider account.', screenshotUrl: newOffer.screenshotUrls[2].trim() || undefined },
     ];
     onCreateCustomOffer({
       company: newOffer.company.trim(),
@@ -295,6 +296,21 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                 <label key={field} className="text-xs text-zinc-400">
                   {label}
                   <input required={field === 'company' || field === 'title' || field === 'referralUrl'} type={field.toLowerCase().includes('url') ? 'url' : 'text'} value={String(newOffer[field])} onChange={(event) => updateNewOffer(field, event.target.value)} placeholder={placeholder} className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400" />
+                </label>
+              ))}
+              {newOffer.screenshotUrls.map((url, index) => (
+                <label key={`screenshot-${index}`} className="text-xs text-zinc-400 sm:col-span-2">
+                  Screenshot for step {index + 1} (optional)
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(event) => setNewOffer((current) => ({
+                      ...current,
+                      screenshotUrls: current.screenshotUrls.map((item, itemIndex) => itemIndex === index ? event.target.value : item),
+                    }))}
+                    placeholder="https://... or /offer-guides/example-step-1.png"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400"
+                  />
                 </label>
               ))}
               <label className="text-xs text-zinc-400">Reward value for sorting
