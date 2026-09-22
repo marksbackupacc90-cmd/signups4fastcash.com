@@ -62,6 +62,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   const [earningsDrafts, setEarningsDrafts] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
   const [issueReports, setIssueReports] = useState<OfferIssueReport[]>([]);
+  const [issueLoadError, setIssueLoadError] = useState(false);
   const [issueActionLoading, setIssueActionLoading] = useState<string | null>(null);
   const [issueSummaryDismissed, setIssueSummaryDismissed] = useState(false);
   const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
@@ -81,12 +82,17 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
         headers: token ? { 'x-admin-token': token } : {},
         cache: 'no-store',
       }).catch(() => null);
-      if (!response?.ok) return;
+      if (!response?.ok) {
+        if (!cancelled) setIssueLoadError(true);
+        return;
+      }
       const data = await response.json().catch(() => null) as { reports?: OfferIssueReport[] } | null;
       if (!cancelled) {
         const openReports = Array.isArray(data?.reports) ? data.reports.filter((report) => report.status !== 'resolved') : [];
         setIssueReports(openReports);
+        setIssueLoadError(false);
         setIssueSummaryDismissed((dismissed) => dismissed && openReports.length > 0);
+        if (openReports.length > 0) setExpandedId((current) => current || openReports[0].offerId);
       }
     };
     void loadIssueReports();
@@ -145,7 +151,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
     setOfferEarningsLinks(next);
     localStorage.setItem('s4fc_offer_earnings_links', JSON.stringify(next));
   };
-  const reportsForOffer = (offerId: string) => issueReports.filter((report) => report.offerId === offerId);
+  const reportsForOffer = (offerId: string) => issueReports.filter((report) => String(report.offerId) === String(offerId));
   const visibleIssueReports = issueReports.filter((report) => showDismissedIssues || !dismissedIssueIds.has(report.id));
   const markIssueFixed = async (reportId: string) => {
     setIssueActionLoading(reportId);
@@ -235,6 +241,12 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
           </div>
             </div>
         </div>
+
+        {issueLoadError && (
+          <div className="mt-4 rounded-lg border border-rose-300/30 bg-rose-300/10 p-3 text-xs text-rose-100">
+            Open issue reports could not be loaded. Refresh the Offers page after admin access is enabled.
+          </div>
+        )}
 
         {visibleIssueReports.length > 0 && !issueSummaryDismissed && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-300/30 bg-amber-300/10 p-3 sm:flex-row sm:items-center sm:justify-between">
