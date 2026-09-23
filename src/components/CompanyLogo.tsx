@@ -47,6 +47,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     paypal: 'paypal',
     rakuten: 'rakuten',
     topcashback: 'topcashback',
+    ibotta: 'ibotta',
   };
 
   const localLogoMap: Record<string, string> = {
