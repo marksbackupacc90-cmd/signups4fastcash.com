@@ -240,6 +240,9 @@ const seoPageRoutes: Record<string, string> = {
   '/best-free-stock-offers-for-beginners': 'best-free-stock-offers-for-beginners.html',
   '/best-fintech-bonuses-without-deposit': 'best-fintech-bonuses-without-deposit.html',
   '/cashback-apps-that-pay-paypal': 'cashback-apps-that-pay-paypal.html',
+  '/ibotta-referral-bonus': 'ibotta-referral-bonus.html',
+  '/ibotta-vs-upside': 'ibotta-vs-upside.html',
+  '/apps-that-pay-for-receipts': 'apps-that-pay-for-receipts.html',
 };
 
 const legacySeoRedirects: Record<string, string> = {
