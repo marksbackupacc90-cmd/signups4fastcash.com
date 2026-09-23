@@ -58,7 +58,20 @@ async function sendTransactionalEmail(to: string, subject: string, html: string)
 function newsletterEmailLayout(content: string, footer = '') {
   return `<!doctype html>
 <html lang="en">
-  <body style="margin:0;background:#06131a;color:#e5e7eb;font-family:Arial,Helvetica,sans-serif;">
+  <head>
+    <style>
+      @font-face {
+        font-family: "Glory";
+        src: url("https://signups4fastcash.com/fonts/Glory-Variable.ttf") format("truetype");
+        font-weight: 100 900;
+        font-style: normal;
+      }
+      body, table, td, div, p, h1, h2, h3, a, button {
+        font-family: "Glory", Arial, Helvetica, sans-serif !important;
+      }
+    </style>
+  </head>
+  <body style="margin:0;background:#06131a;color:#e5e7eb;font-family:'Glory',Arial,Helvetica,sans-serif;">
     <div style="padding:32px 16px;background:linear-gradient(135deg,#06131a 0%,#0d1724 55%,#102a35 100%);">
       <div style="max-width:600px;margin:0 auto;background:#0d1724;border:1px solid rgba(45,212,238,.24);border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.28);">
         <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08);">
