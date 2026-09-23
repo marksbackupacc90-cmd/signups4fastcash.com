@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
-import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
+import { CURATED_PUBLIC_OFFER_IDS, PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
@@ -147,6 +147,10 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
+  const publicOffers = useMemo(
+    () => liveOffers.filter((offer) => CURATED_PUBLIC_OFFER_IDS.has(offer.id)),
+    [liveOffers],
+  );
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
@@ -765,7 +769,7 @@ export default function App() {
     }
   };
 
-  const orderedLiveOffers = [...liveOffers].sort((a, b) => {
+  const orderedLiveOffers = [...publicOffers].sort((a, b) => {
     if (sortBy === 'random') {
       return randomOfferOrder.indexOf(a.id) - randomOfferOrder.indexOf(b.id);
     }
@@ -979,7 +983,7 @@ export default function App() {
               setSortBy={setSortBy}
               offerFilter={offerFilter}
               setOfferFilter={setOfferFilter}
-              totalOffersCount={liveOffers.length}
+              totalOffersCount={publicOffers.length}
               featuredOffers={orderedLiveOffers}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
             />
@@ -1131,7 +1135,7 @@ export default function App() {
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
-      {offerFinderOpen && <OfferFinder offers={liveOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
+      {offerFinderOpen && <OfferFinder offers={publicOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
       {analyticsConsent === 'unknown' && (
         <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-2xl rounded-xl border border-cyan-400/30 bg-[#0d1724] p-4 shadow-2xl shadow-black/40">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
