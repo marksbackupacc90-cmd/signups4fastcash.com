@@ -25,6 +25,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const [completionReportStatus, setCompletionReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [copied, setCopied] = useState(false);
   const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
+  const verificationDate = offer.verifiedAt ? Date.parse(offer.verifiedAt) : NaN;
+  const isRecentlyVerified = Number.isFinite(verificationDate) && verificationDate >= Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const verificationLabel = Number.isFinite(verificationDate)
+    ? `Terms checked ${new Date(verificationDate).toLocaleDateString()}`
+    : 'Terms need checking';
   const sofiPaths = [
     {
       label: 'Banking',
@@ -113,6 +118,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-zinc-400">
                 <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-zinc-300">
                   {offer.difficulty}
+                </span>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${isRecentlyVerified ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-200'}`}>
+                  <ShieldCheck className="h-3 w-3" /> {verificationLabel}
                 </span>
               </div>
 
