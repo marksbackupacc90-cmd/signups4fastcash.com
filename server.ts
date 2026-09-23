@@ -188,7 +188,7 @@ app.use((req, res, next) => {
 app.get('/sitemap.xml', (req, res) => {
   const baseUrl = getOAuthAppUrl(req);
   const urls: { loc: string; changefreq: string; priority: string }[] = [
-    { loc: baseUrl, changefreq: 'daily', priority: '1.0' },
+    { loc: `${baseUrl}/`, changefreq: 'daily', priority: '1.0' },
   ];
   const seen = new Set(urls.map((url) => url.loc));
   Object.keys(seoPageRoutes).forEach((route) => {
