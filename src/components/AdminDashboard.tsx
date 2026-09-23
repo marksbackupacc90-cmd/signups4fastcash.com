@@ -28,6 +28,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   ...props
 }) => {
   const [view, setView] = useState<DashboardView>(initialView);
+  const [growthChecklist, setGrowthChecklist] = useState<Record<string, string>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('s4fc_growth_checklist') || '{}');
+      return saved && typeof saved === 'object' ? saved : {};
+    } catch {
+      return {};
+    }
+  });
   const [selectedOfferId, setSelectedOfferId] = useState(props.liveOffers[0]?.id || '');
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
@@ -50,6 +58,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       verificationStatus: 'reviewed',
       verificationExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
+  };
+  const growthTasks = [
+    { id: 'offer', label: 'Add or improve one offer', detail: 'Verify the visitor reward, requirements, link, and payout terms.' },
+    { id: 'guide', label: 'Publish one useful SEO guide', detail: 'Target one specific search and link it to a relevant offer.' },
+    { id: 'promotion', label: 'Promote one page', detail: 'Turn a guide into a short video, post, or helpful community share.' },
+  ];
+  const plannerTasks = [
+    { day: 'Monday', task: 'Check 5 offers', detail: 'Open each provider link and confirm the visitor reward, requirements, and URL.' },
+    { day: 'Tuesday', task: 'Add or improve one offer', detail: 'Use a current referral link and write the offer from the visitor’s point of view.' },
+    { day: 'Wednesday', task: 'Publish one SEO guide', detail: 'Answer one specific search and link it to the matching live offer.' },
+    { day: 'Thursday', task: 'Create one promotion', detail: 'Turn the guide into a short video, social post, or helpful community answer.' },
+    { day: 'Friday', task: 'Review the numbers', detail: 'Check Search Console impressions, offer clicks, and email subscribers.' },
+  ];
+  const currentWeek = (() => {
+    const date = new Date();
+    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const day = start.getUTCDay() || 7;
+    start.setUTCDate(start.getUTCDate() - day + 1);
+    return start.toISOString().slice(0, 10);
+  })();
+  const markGrowthTaskComplete = (taskId: string) => {
+    const next = { ...growthChecklist, [taskId]: currentWeek };
+    setGrowthChecklist(next);
+    localStorage.setItem('s4fc_growth_checklist', JSON.stringify(next));
   };
 
   const nav = [
@@ -156,6 +188,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {offersNeedingReview.length > 8 && <p className="pt-3 text-xs text-zinc-500">Showing 8 of {offersNeedingReview.length} offers needing review.</p>}
               </div>
             )}
+          </section>
+          <section className="rounded-xl border border-cyan-300/15 bg-cyan-300/[0.03] p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-bold text-white">Weekly growth checklist</div>
+                <p className="mt-1 text-xs text-zinc-400">Small, repeatable actions that build traffic and trust over time.</p>
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300">Resets weekly</span>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {growthTasks.map((task) => {
+                const completedThisWeek = growthChecklist[task.id] === currentWeek;
+                return (
+                  <div key={task.id} className="rounded-lg border border-white/[0.08] bg-[#0e121a] p-4">
+                    <div className={`text-sm font-bold ${completedThisWeek ? 'text-emerald-200' : 'text-white'}`}>{completedThisWeek ? 'Completed: ' : ''}{task.label}</div>
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">{task.detail}</p>
+                    <button
+                      type="button"
+                      onClick={() => markGrowthTaskComplete(task.id)}
+                      className={`mt-4 rounded-lg px-3 py-2 text-xs font-bold ${completedThisWeek ? 'border border-emerald-300/20 text-emerald-200' : 'bg-cyan-300 text-[#061016] hover:bg-cyan-200'}`}
+                    >
+                      {completedThisWeek ? 'Done this week' : 'Mark complete'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-5 border-t border-white/[0.08] pt-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-zinc-300">Your weekly planner</div>
+              <div className="mt-3 grid gap-2">
+                {plannerTasks.map((item) => (
+                  <div key={item.day} className="flex flex-col gap-1 rounded-lg border border-white/[0.06] bg-[#0e121a] px-3 py-3 sm:flex-row sm:items-start sm:gap-4">
+                    <div className="w-20 shrink-0 text-xs font-bold text-cyan-300">{item.day}</div>
+                    <div>
+                      <div className="text-sm font-bold text-white">{item.task}</div>
+                      <div className="mt-1 text-xs leading-relaxed text-zinc-500">{item.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">This planner is intentionally small. Consistency matters more than adding dozens of offers or pages at once.</p>
+            </div>
           </section>
         </section>
       )}
