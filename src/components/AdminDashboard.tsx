@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, Mail, Send, ShieldCheck, Store } from 'lucide-react';
+import { AlertTriangle, BarChart3, CheckCircle2, Mail, Send, ShieldCheck, Store } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
 
@@ -33,6 +33,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [emailSending, setEmailSending] = useState(false);
   const totalClicks = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.clicksCount || 0), 0), [props.liveOffers]);
   const totalConversions = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.conversionsCount || 0), 0), [props.liveOffers]);
+  const offersNeedingReview = useMemo(() => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return props.liveOffers
+      .filter((offer) => !offer.verifiedAt || !Number.isFinite(Date.parse(offer.verifiedAt)) || Date.parse(offer.verifiedAt) < cutoff)
+      .sort((a, b) => {
+        const aDate = a.verifiedAt ? Date.parse(a.verifiedAt) : 0;
+        const bDate = b.verifiedAt ? Date.parse(b.verifiedAt) : 0;
+        return aDate - bDate;
+      });
+  }, [props.liveOffers]);
+  const markOfferChecked = (offer: Offer) => {
+    const verifiedAt = new Date().toISOString();
+    props.onUpdateLiveOffer(offer.id, {
+      verifiedAt,
+      verificationStatus: 'reviewed',
+      verificationExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+  };
 
   const nav = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
@@ -109,6 +127,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <p className="mt-1 text-xs text-zinc-400">Open the broadcast tools and subscriber controls.</p>
             </button>
           </div>
+          <section className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-bold text-white">
+                  {offersNeedingReview.length ? <AlertTriangle className="h-4 w-4 text-amber-300" /> : <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
+                  Offer verification queue
+                </div>
+                <p className="mt-1 text-xs text-zinc-400">Check referral links, reward terms, and requirements at least once every 30 days.</p>
+              </div>
+              <button type="button" onClick={() => setView('offers')} className="text-xs font-bold text-cyan-300 hover:text-cyan-200">Open offer manager</button>
+            </div>
+            {offersNeedingReview.length === 0 ? (
+              <p className="mt-4 rounded-lg border border-emerald-300/15 bg-emerald-300/5 p-3 text-xs text-emerald-200">All live offers have been checked within the last 30 days.</p>
+            ) : (
+              <div className="mt-4 divide-y divide-white/[0.07]">
+                {offersNeedingReview.slice(0, 8).map((offer) => (
+                  <div key={offer.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-white">{offer.company}</div>
+                      <div className="text-xs text-zinc-500">{offer.verifiedAt ? `Last checked ${new Date(offer.verifiedAt).toLocaleDateString()}` : 'Never checked'}</div>
+                    </div>
+                    <button type="button" onClick={() => markOfferChecked(offer)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/25 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-300/10">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark checked today
+                    </button>
+                  </div>
+                ))}
+                {offersNeedingReview.length > 8 && <p className="pt-3 text-xs text-zinc-500">Showing 8 of {offersNeedingReview.length} offers needing review.</p>}
+              </div>
+            )}
+          </section>
         </section>
       )}
 
