@@ -42,6 +42,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
     const openedWindow = window.open(targetUrl, '_blank', 'noopener,noreferrer');
     if (!openedWindow) window.location.assign(targetUrl);
   };
+  const claimUrl = offer.referralUrl || offer.officialMerchantUrl;
 
   const handleCompletionReport = async () => {
     setCompletionReportStatus('submitting');
@@ -67,9 +68,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       <div className="relative flex h-48 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)]">
         <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
         <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
-        <button
-          type="button"
-          onClick={handleClaim}
+        <a
+          href={claimUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => onClaimClick(offer.id)}
           onPointerDown={(event) => event.stopPropagation()}
           aria-label={`Open ${offer.title} offer from ${offer.company}`}
           className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-300 hover:scale-[1.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2dd4ee]/70"
@@ -81,14 +84,16 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             size="lg"
             className="rounded-[1.6rem] bg-white/[0.08] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-md"
           />
-        </button>
+        </a>
       </div>
 
       <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#1b1e27_0%,#171a22_100%)] p-4 sm:p-5">
         <div className="flex items-start gap-2">
-          <button
-            type="button"
-            onClick={handleClaim}
+          <a
+            href={claimUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onClaimClick(offer.id)}
             onPointerDown={(event) => event.stopPropagation()}
             aria-label={`Open ${offer.title} offer from ${offer.company}`}
             className="min-w-0 flex-1 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
@@ -100,7 +105,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
 
               <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
             </div>
-          </button>
+          </a>
 
           <div className="flex shrink-0 items-center gap-1">
             <button
