@@ -906,6 +906,12 @@ export default function App() {
     window.requestAnimationFrame(animate);
   };
 
+  useEffect(() => {
+    if (offersCarouselRef.current) {
+      offersCarouselRef.current.scrollLeft = 0;
+    }
+  }, [filteredOffers]);
+
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const carousel = offersCarouselRef.current;
     if (!carousel || (event.target instanceof Element && event.target.closest('button, a, input, select, textarea'))) return;
@@ -1090,7 +1096,7 @@ export default function App() {
                     <div
                       ref={offersCarouselRef}
                       id="offers-carousel"
-                      className="flex cursor-grab select-none touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth px-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                      className="flex cursor-grab select-none justify-start touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pl-0 pr-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
                       onPointerDown={handleCarouselPointerDown}
                       onPointerMove={handleCarouselPointerMove}
                       onPointerUp={handleCarouselPointerUp}
