@@ -27,6 +27,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
       tabIndex={0}
       aria-label={`View details for ${offer.title} from ${offer.company}`}
       onClick={() => onMoreInfo(offer)}
+      onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
