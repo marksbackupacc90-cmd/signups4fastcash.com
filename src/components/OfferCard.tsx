@@ -70,8 +70,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
         <a
           href={claimUrl}
-          target="_blank"
-          rel="noopener noreferrer"
           onClick={() => onClaimClick(offer.id)}
           onPointerDown={(event) => event.stopPropagation()}
           aria-label={`Open ${offer.title} offer from ${offer.company}`}
@@ -91,8 +89,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         <div className="flex items-start gap-2">
           <a
             href={claimUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             onClick={() => onClaimClick(offer.id)}
             onPointerDown={(event) => event.stopPropagation()}
             aria-label={`Open ${offer.title} offer from ${offer.company}`}
