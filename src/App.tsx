@@ -890,11 +890,21 @@ export default function App() {
   const scrollOffers = (direction: -1 | 1) => {
     const carousel = offersCarouselRef.current || document.getElementById('offers-carousel') as HTMLDivElement | null;
     if (!carousel) return;
-    const nextScrollLeft = carousel.scrollLeft + direction * Math.max(carousel.clientWidth * 0.86, 320);
-    carousel.scrollTo({
-      left: Math.max(0, Math.min(nextScrollLeft, carousel.scrollWidth - carousel.clientWidth)),
-      behavior: 'smooth',
-    });
+    const start = carousel.scrollLeft;
+    const target = Math.max(0, Math.min(
+      start + direction * Math.max(carousel.clientWidth * 0.86, 320),
+      carousel.scrollWidth - carousel.clientWidth,
+    ));
+    const distance = target - start;
+    const duration = 420;
+    const startedAt = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      carousel.scrollLeft = start + distance * eased;
+      if (progress < 1) window.requestAnimationFrame(animate);
+    };
+    window.requestAnimationFrame(animate);
   };
 
   return (
