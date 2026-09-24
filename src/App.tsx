@@ -1104,7 +1104,7 @@ export default function App() {
                       aria-label="Available offers carousel"
                     >
                       {filteredOffers.map((offer) => (
-                        <div key={offer.id} className="min-w-0 shrink-0 basis-[86vw] snap-start self-start sm:basis-[47%] lg:basis-[31.5%] xl:basis-[24%]">
+                        <div key={offer.id} className="min-w-0 shrink-0 basis-[80vw] snap-start self-start sm:basis-[43%] lg:basis-[29%] xl:basis-[22%]">
                           <OfferCard
                             offer={offer}
                             onClaimClick={handleClaimClick}
