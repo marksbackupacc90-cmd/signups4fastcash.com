@@ -890,8 +890,8 @@ export default function App() {
   const scrollOffers = (direction: -1 | 1) => {
     const carousel = offersCarouselRef.current;
     if (!carousel) return;
-    carousel.scrollBy({
-      left: direction * Math.max(carousel.clientWidth * 0.86, 320),
+    carousel.scrollTo({
+      left: carousel.scrollLeft + direction * Math.max(carousel.clientWidth * 0.86, 320),
       behavior: 'smooth',
     });
   };
