@@ -10,7 +10,7 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal, LegalSection } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
@@ -128,6 +128,7 @@ export default function App() {
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
   const recordedImpressions = useRef(new Set<string>());
+  const offersCarouselRef = useRef<HTMLDivElement | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
@@ -886,6 +887,15 @@ export default function App() {
     showToast('Changes saved successfully.');
   };
 
+  const scrollOffers = (direction: -1 | 1) => {
+    const carousel = offersCarouselRef.current;
+    if (!carousel) return;
+    carousel.scrollBy({
+      left: direction * Math.max(carousel.clientWidth * 0.86, 320),
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <div
       data-site-theme="custom"
@@ -1041,14 +1051,42 @@ export default function App() {
                 </div>
               ) : (
                 <div className="mx-auto max-w-7xl">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div
+                    ref={offersCarouselRef}
+                    className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-4 [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                    aria-label="Available offers carousel"
+                  >
                     {filteredOffers.map((offer) => (
-                      <OfferCard
-                        key={offer.id}
-                        offer={offer}
-                        onClaimClick={handleClaimClick}
-                      />
+                      <div key={offer.id} className="min-w-0 basis-[86vw] snap-start sm:basis-[47%] lg:basis-[31.5%] xl:basis-[24%]">
+                        <OfferCard
+                          offer={offer}
+                          onClaimClick={handleClaimClick}
+                        />
+                      </div>
                     ))}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <p className="text-[10px] font-mono text-zinc-500">
+                      Swipe, scroll, or use the arrows to browse offers
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => scrollOffers(-1)}
+                        className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-zinc-200 transition-all hover:bg-white/[0.13] hover:text-white"
+                        aria-label="Show previous offers"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollOffers(1)}
+                        className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-zinc-200 transition-all hover:bg-white/[0.13] hover:text-white"
+                        aria-label="Show next offers"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
