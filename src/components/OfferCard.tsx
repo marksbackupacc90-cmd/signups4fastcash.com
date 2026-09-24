@@ -87,59 +87,73 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="offer-card retro-window group relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[radial-gradient(circle_at_top_left,_rgba(45,212,238,0.08),transparent_28%),#0a1220] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-[#2dd4ee]/30 hover:shadow-[0_0_18px_rgba(45,212,238,0.12)]"
+      className="offer-card retro-window group relative flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#191c24] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#2dd4ee]/30 hover:shadow-[0_0_22px_rgba(45,212,238,0.14)]"
     >
-      <div className="flex flex-1 flex-col bg-[#0d1724] p-4 sm:p-5">
-        <div className="flex items-start gap-3">
+      <div className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_25%_15%,rgba(45,212,238,0.28),transparent_34%),linear-gradient(145deg,#263b4d,#101722_72%)]">
+        <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(135deg,rgba(255,255,255,.16)_1px,transparent_1px)] [background-size:18px_18px]" />
+        <button
+          type="button"
+          onClick={handleClaim}
+          aria-label={`Open ${offer.title} offer from ${offer.company}`}
+          className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-200 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2dd4ee]/70"
+        >
+          <CompanyLogo
+            companyName={offer.company}
+            slug={offer.companySlug}
+            logoUrl={offer.logoUrl}
+            size="lg"
+            className="rounded-2xl bg-black/25 p-3 shadow-2xl backdrop-blur-sm"
+          />
+        </button>
+        <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-[#101722]/80 px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-cyan-100 backdrop-blur">
+          {offer.category}
+        </span>
+        <span className="absolute bottom-3 right-3 rounded-full bg-[#55b8ed] px-3 py-1.5 text-sm font-black text-white shadow-lg shadow-cyan-950/30">
+          {offer.incentiveAmount}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col bg-[#1b1e27] p-3.5 sm:p-4">
+        <div className="flex items-start gap-2">
           <button
             type="button"
             onClick={handleClaim}
             aria-label={`Open ${offer.title} offer from ${offer.company}`}
-            className="flex min-w-0 flex-1 items-start gap-3 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
+            className="min-w-0 flex-1 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
           >
-            <CompanyLogo
-              companyName={offer.company}
-              slug={offer.companySlug}
-              logoUrl={offer.logoUrl}
-              size="md"
-              className="shrink-0 mt-0.5"
-            />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-emerald-300">
-                  {offer.incentiveAmount}
-                </span>
-              </div>
-
-              <h2 className="mt-2 text-base sm:text-[1.05rem] font-black text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
+              <h2 className="truncate text-base font-black text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
                 {offer.title}
               </h2>
-
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-zinc-400">
-                <span className="inline-flex rounded-full bg-white/[0.04] px-2 py-0.5 text-zinc-300">
-                  {offer.difficulty}
-                </span>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${isRecentlyVerified ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-200'}`}>
-                  <ShieldCheck className="h-3 w-3" /> {verificationLabel}
-                </span>
-              </div>
 
               <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
             </div>
           </button>
 
-          <div className="flex shrink-0 items-center gap-2 pt-1">
+          <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
               onClick={() => setShowDetails((current) => !current)}
               aria-expanded={showDetails}
               aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${offer.company}`}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-2 text-[10px] font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-white sm:text-xs"
+              className="focus-ring inline-flex items-center rounded-md border border-white/[0.1] bg-white/[0.04] p-2 text-[10px] font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-white sm:text-xs"
             >
-              <span>{showDetails ? 'Hide' : 'Details'}</span>
+              <span className="sr-only">{showDetails ? 'Hide' : 'Details'} offer details</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
             </button>
           </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-zinc-400">
+          <span className="text-amber-300">★ <span className="text-zinc-200">{offer.honestTruth.trustScore / 20}</span></span>
+          <span>{offer.difficulty}</span>
+          <span className={`inline-flex items-center gap-1 ${isRecentlyVerified ? 'text-emerald-300' : 'text-amber-200'}`}>
+            <ShieldCheck className="h-3 w-3" /> {isRecentlyVerified ? 'Terms checked' : 'Review terms'}
+          </span>
+        </div>
+        <div className="mt-3 flex items-center justify-between border-t border-white/[0.07] pt-2 text-[10px] text-zinc-500">
+          <span className="truncate">{offer.company}</span>
+          <span className="shrink-0">{offer.payoutSpeed}</span>
         </div>
 
         {isSofiOffer && (
