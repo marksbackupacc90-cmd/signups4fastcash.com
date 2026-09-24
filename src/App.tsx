@@ -129,6 +129,7 @@ export default function App() {
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
   const recordedImpressions = useRef(new Set<string>());
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
+  const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0 });
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
@@ -907,6 +908,31 @@ export default function App() {
     window.requestAnimationFrame(animate);
   };
 
+  const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const carousel = offersCarouselRef.current;
+    if (!carousel) return;
+    carouselDragRef.current = {
+      active: true,
+      startX: event.clientX,
+      startScrollLeft: carousel.scrollLeft,
+    };
+    carousel.setPointerCapture(event.pointerId);
+  };
+
+  const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = carouselDragRef.current;
+    const carousel = offersCarouselRef.current;
+    if (!drag.active || !carousel) return;
+    carousel.scrollLeft = drag.startScrollLeft - (event.clientX - drag.startX);
+  };
+
+  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    carouselDragRef.current.active = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
   return (
     <div
       data-site-theme="custom"
@@ -1066,7 +1092,11 @@ export default function App() {
                     <div
                       ref={offersCarouselRef}
                       id="offers-carousel"
-                      className="flex items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth px-1 pb-4 [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                      className="flex cursor-grab select-none touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth px-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                      onPointerDown={handleCarouselPointerDown}
+                      onPointerMove={handleCarouselPointerMove}
+                      onPointerUp={handleCarouselPointerUp}
+                      onPointerCancel={handleCarouselPointerUp}
                       aria-label="Available offers carousel"
                     >
                       {filteredOffers.map((offer) => (
