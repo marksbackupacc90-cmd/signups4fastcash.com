@@ -39,7 +39,8 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const handleClaim = () => {
     onClaimClick(offer.id);
     const targetUrl = offer.referralUrl || offer.officialMerchantUrl;
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    const openedWindow = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (!openedWindow) window.location.assign(targetUrl);
   };
 
   const handleCompletionReport = async () => {
