@@ -4,6 +4,7 @@ import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
+import { OfferDetailsModal } from './components/OfferDetailsModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NewsletterModal } from './components/NewsletterModal';
 import { Footer } from './components/Footer';
@@ -149,6 +150,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const publicOffers = useMemo(() => liveOffers.filter((offer) => offer.status === 'live'), [liveOffers]);
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
@@ -1108,6 +1110,7 @@ export default function App() {
                           <OfferCard
                             offer={offer}
                             onClaimClick={handleClaimClick}
+                            onMoreInfo={setSelectedOffer}
                           />
                         </div>
                       ))}
@@ -1218,6 +1221,13 @@ export default function App() {
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
       {offerFinderOpen && <OfferFinder offers={publicOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
+      {selectedOffer && (
+        <OfferDetailsModal
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+          onClaimClick={handleClaimClick}
+        />
+      )}
       {analyticsConsent === 'unknown' && (
         <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-2xl rounded-xl border border-cyan-400/30 bg-[#0d1724] p-4 shadow-2xl shadow-black/40">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
