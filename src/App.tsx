@@ -1049,43 +1049,41 @@ export default function App() {
                 </div>
               ) : (
                 <div className="mx-auto max-w-7xl">
-                  <div
-                    ref={offersCarouselRef}
-                    className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-4 [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
-                    aria-label="Available offers carousel"
-                  >
-                    {filteredOffers.map((offer) => (
-                      <div key={offer.id} className="min-w-0 shrink-0 basis-[86vw] snap-start sm:basis-[47%] lg:basis-[31.5%] xl:basis-[24%]">
-                        <OfferCard
-                          offer={offer}
-                          onClaimClick={handleClaimClick}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <p className="text-[10px] font-mono text-zinc-500">
-                      Swipe, scroll, or use the arrows to browse offers
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => scrollOffers(-1)}
-                        className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-zinc-200 transition-all hover:bg-white/[0.13] hover:text-white"
-                        aria-label="Show previous offers"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => scrollOffers(1)}
-                        className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-zinc-200 transition-all hover:bg-white/[0.13] hover:text-white"
-                        aria-label="Show next offers"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
+                  <div className="relative">
+                    <div
+                      ref={offersCarouselRef}
+                      className="flex items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-1 pb-4 [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                      aria-label="Available offers carousel"
+                    >
+                      {filteredOffers.map((offer) => (
+                        <div key={offer.id} className="min-w-0 shrink-0 basis-[86vw] snap-start self-start sm:basis-[47%] lg:basis-[31.5%] xl:basis-[24%]">
+                          <OfferCard
+                            offer={offer}
+                            onClaimClick={handleClaimClick}
+                          />
+                        </div>
+                      ))}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => scrollOffers(-1)}
+                      className="focus-ring absolute left-0 top-1/2 z-20 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:left-2 sm:h-16 sm:w-16"
+                      aria-label="Show previous offers"
+                    >
+                      <ChevronLeft className="h-7 w-7" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollOffers(1)}
+                      className="focus-ring absolute right-0 top-1/2 z-20 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:right-2 sm:h-16 sm:w-16"
+                      aria-label="Show next offers"
+                    >
+                      <ChevronRight className="h-7 w-7" />
+                    </button>
                   </div>
+                  <p className="mt-1 text-center text-[10px] font-mono text-zinc-500">
+                    Swipe, scroll, or use the floating arrows to browse offers
+                  </p>
                 </div>
               )}
             </div>

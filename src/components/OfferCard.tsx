@@ -24,34 +24,8 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   const [showCompletionReport, setShowCompletionReport] = useState(false);
   const [completionReportStatus, setCompletionReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [copied, setCopied] = useState(false);
-  const isSofiOffer = offer.companySlug === 'sofi' || offer.company.toLowerCase().includes('sofi');
   const verificationDate = offer.verifiedAt ? Date.parse(offer.verifiedAt) : NaN;
   const isRecentlyVerified = Number.isFinite(verificationDate) && verificationDate >= Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const verificationLabel = Number.isFinite(verificationDate)
-    ? `Terms checked ${new Date(verificationDate).toLocaleDateString()}`
-    : 'Terms need checking';
-  const sofiPaths = [
-    {
-      label: 'Banking',
-      detail: 'Up to $125',
-      url: offer.referralUrl || offer.officialMerchantUrl,
-    },
-    {
-      label: 'Credit',
-      detail: '$10 points',
-      url: 'https://www.sofi.com/invite/coach?gcp=65212857-4fac-4777-b80b-2d77cf7da92f&isAliasGcp=false&siid=db756f4b-a5e2-44d8-a8a3-439da7165e18',
-    },
-    {
-      label: 'Invest',
-      detail: '$75 referral',
-      url: 'https://www.sofi.com/invite/invest?gcp=a5844ce4-c8ad-4de4-af76-78b6d6034541&isAliasGcp=false&siid=8cabebd2-fb23-4458-9e3a-0fb8a4aeb102',
-    },
-    {
-      label: 'Crypto',
-      detail: '$50 SOFiD',
-      url: 'https://www.sofi.com/invite/crypto?gcp=00ede0ca-0fbe-458d-ab3b-b9067218b083&isAliasGcp=false&siid=cdfa7ad0-802f-4a66-8416-e61c277dd7dd',
-    },
-  ];
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -109,7 +83,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         <span className="absolute left-4 top-4 rounded-full border border-white/15 bg-[#101722]/70 px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-cyan-100 shadow-lg backdrop-blur-xl">
           {offer.category}
         </span>
-        <span className="absolute bottom-4 right-4 rounded-full border border-white/25 bg-[#55b8ed] px-3.5 py-1.5 text-sm font-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+        <span className="absolute right-4 top-4 rounded-full border border-white/25 bg-[#55b8ed] px-3.5 py-1.5 text-sm font-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
           {offer.incentiveAmount}
         </span>
       </div>
@@ -156,35 +130,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           <span className="truncate">{offer.company}</span>
           <span className="shrink-0">{offer.payoutSpeed}</span>
         </div>
-
-        {isSofiOffer && (
-          <div className="mt-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.04] px-3 py-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-mono">
-              <span className="font-bold uppercase tracking-[0.1em] text-cyan-200">SoFi paths</span>
-              <span className="text-zinc-600">•</span>
-              {sofiPaths.map((path, index) => (
-                <React.Fragment key={path.label}>
-                  {index > 0 && <span className="text-zinc-600">→</span>}
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      window.open(path.url, '_blank', 'noopener,noreferrer');
-                    }}
-                    className="focus-ring rounded px-1 text-left text-zinc-300 transition-colors hover:bg-cyan-300/10 hover:text-cyan-100"
-                    title={`Open SoFi ${path.label} referral`}
-                  >
-                    {path.label}
-                    <span className="ml-1 text-zinc-500">({path.detail})</span>
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-            <p className="mt-1 text-[9px] leading-relaxed text-zinc-500">
-              Open each path separately and review its official terms. You can choose options that do not require a deposit or bank link.
-            </p>
-          </div>
-        )}
 
         {showDetails && (
           <div className="animate-in fade-in duration-200">
