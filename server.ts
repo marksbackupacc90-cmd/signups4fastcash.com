@@ -949,7 +949,7 @@ async function initializeOfferStore() {
   `);
 
   const existing = await database.query<{ offer: any }>(
-    "SELECT offer FROM offers WHERE status = 'live' ORDER BY updated_at DESC",
+    'SELECT offer FROM offers ORDER BY updated_at DESC',
   );
 
   if (existing.rowCount === 0) {
@@ -972,6 +972,7 @@ async function initializeOfferStore() {
       const existingOffer = existingOffers.find((row) => row.id === offer.id);
       return {
         ...offer,
+        ...(existingOffer || {}),
         clicksCount: Number.isFinite(Number(existingOffer?.clicksCount)) ? Number(existingOffer.clicksCount) : 0,
         conversionsCount: Number.isFinite(Number(existingOffer?.conversionsCount)) ? Number(existingOffer.conversionsCount) : 0,
       };
@@ -988,11 +989,11 @@ async function saveLiveOffers() {
 
   await database.query('BEGIN');
   try {
-    await database.query("DELETE FROM offers WHERE status = 'live'");
+    await database.query('DELETE FROM offers');
     for (const offer of liveOffersStore) {
       await database.query(
-        `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, 'live', $2, $3)`,
-        [offer.id, offer, offer.updatedAt || new Date().toISOString()],
+        `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, $2, $3, $4)`,
+        [offer.id, offer.status, offer, offer.updatedAt || new Date().toISOString()],
       );
     }
     await database.query('COMMIT');
@@ -1239,7 +1240,11 @@ app.get('/api/cpx/postback', async (req, res) => {
 });
 
 app.get('/api/offers', (req, res) => {
-  res.json({ offers: liveOffersStore.filter(isVerificationCurrent) });
+  res.json({ offers: liveOffersStore.filter((offer) => offer.status === 'live' && isVerificationCurrent(offer)) });
+});
+
+app.get('/api/admin/offers', requireAdmin, (_req, res) => {
+  res.json({ offers: liveOffersStore });
 });
 
 app.get('/api/account/offer-entries', requireAuthenticatedUser, async (_req, res) => {
@@ -2164,13 +2169,13 @@ app.put('/api/offers/:id', requireAdmin, async (req, res) => {
     ...liveOffersStore[index],
     ...req.body,
     id: liveOffersStore[index].id,
-    status: 'live',
+    status: req.body.status === 'hidden' ? 'hidden' : 'live',
     verificationStatus: 'reviewed',
     verifiedAt: new Date().toISOString(),
     verificationExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  if (!isPublishableOffer(updatedOffer)) {
+  if (updatedOffer.status === 'live' && !isPublishableOffer(updatedOffer)) {
     return res.status(400).json({ error: 'A live offer needs valid HTTP(S) merchant and referral URLs and a referral code.' });
   }
   liveOffersStore[index] = updatedOffer;

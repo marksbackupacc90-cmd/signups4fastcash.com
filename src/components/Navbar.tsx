@@ -132,19 +132,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {canAccessAdmin && (
                     <>
                       <div className="my-1 border-t border-white/10" />
-                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">Admin</div>
-                      {([
-                        ['live', 'Offers'],
-                        ['blasts', 'Email'],
-                      ] as const).map(([section, label]) => (
-                        <button
-                          key={section}
-                          onClick={() => { onAdminSection(section); setAccountMenuOpen(false); }}
-                          className={`focus-ring block w-full rounded-md px-3 py-2 text-left text-xs hover:bg-amber-300/10 ${adminSection === section ? 'font-semibold text-amber-100' : 'text-zinc-200'}`}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      <button
+                        onClick={() => { onAdminSection('live'); setAccountMenuOpen(false); }}
+                        className={`focus-ring block w-full rounded-md px-3 py-2 text-left text-xs hover:bg-amber-300/10 ${adminSection ? 'font-semibold text-amber-100' : 'text-zinc-200'}`}
+                      >
+                        Admin
+                      </button>
                     </>
                   )}
                   <button onClick={() => { onOpenNewsletter(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Bell className="h-3.5 w-3.5" /> Subscribe to alerts</button>

@@ -61,7 +61,7 @@ export interface Offer {
   // Multi-AI Council Consensus Breakdown
   aiCouncil?: AICouncilReview;
 
-  status: 'live' | 'pending' | 'rejected';
+  status: 'live' | 'hidden' | 'pending' | 'rejected';
   featured?: boolean;
   clicksCount: number;
   conversionsCount: number;

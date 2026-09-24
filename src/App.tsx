@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
-import { CURATED_PUBLIC_OFFER_IDS, PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
+import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { OfferCard } from './components/OfferCard';
@@ -149,10 +149,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
-  const publicOffers = useMemo(
-    () => liveOffers.filter((offer) => CURATED_PUBLIC_OFFER_IDS.has(offer.id)),
-    [liveOffers],
-  );
+  const publicOffers = useMemo(() => liveOffers.filter((offer) => offer.status === 'live'), [liveOffers]);
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
@@ -489,7 +486,8 @@ export default function App() {
     if (activeTab !== 'admin') return;
 
     const refreshOffers = () => {
-      fetch('/api/offers')
+      const token = localStorage.getItem('signups4fastcash_admin_token');
+      fetch('/api/admin/offers', { headers: token ? { 'x-admin-token': token } : {} })
         .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to refresh offers'))))
         .then((data: { offers: Offer[] }) => setLiveOffers(data.offers.filter(isAvailableOffer)))
         .catch(() => {

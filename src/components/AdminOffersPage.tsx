@@ -46,6 +46,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   onCreateCustomOffer,
 }) => {
   const [filter, setFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'live' | 'hidden'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { code: string; url: string }>>({});
   const [providerLinks, setProviderLinks] = useState<ProviderAccountLink[]>([]);
@@ -80,14 +81,14 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   }, []);
   const filteredOffers = useMemo(() => {
     const query = filter.trim().toLowerCase();
-    return offers.filter((offer) => !query || [
+    return offers.filter((offer) => (statusFilter === 'all' || offer.status === statusFilter) && (!query || [
       offer.company,
       offer.title,
       offer.category,
       offer.referralCode,
       offer.referralUrl,
-    ].some((value) => value.toLowerCase().includes(query)));
-  }, [filter, offers]);
+    ].some((value) => value.toLowerCase().includes(query))));
+  }, [filter, offers, statusFilter]);
 
   const getDraft = (offer: Offer) => drafts[offer.id] || {
     code: offer.referralCode || '',
@@ -158,12 +159,17 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
               <LinkIcon className="h-4 w-4 text-emerald-400" />
               Offers
             </h1>
-            <p className="mt-1 text-xs text-zinc-400">{filteredOffers.length} live offers available to manage.</p>
+            <p className="mt-1 text-xs text-zinc-400">{filteredOffers.length} offers available to manage.</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button type="button" onClick={() => setCreating((current) => !current)} className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-[#061016] hover:bg-emerald-300">
               {creating ? 'Close creator' : '+ Create new offer'}
             </button>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | 'live' | 'hidden')} className="rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400">
+              <option value="all">All statuses</option>
+              <option value="live">Live only</option>
+              <option value="hidden">Hidden only</option>
+            </select>
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
@@ -255,6 +261,13 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                     </span>
                   </button>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateLiveOffer(offer.id, { status: offer.status === 'live' ? 'hidden' : 'live' })}
+                      className={`rounded-lg px-3 py-2 text-xs font-bold ${offer.status === 'live' ? 'border border-emerald-300/40 bg-emerald-300/15 text-emerald-200' : 'border border-zinc-400/30 bg-zinc-400/10 text-zinc-300'}`}
+                    >
+                      {offer.status === 'live' ? 'Live · Hide' : 'Hidden · Take live'}
+                    </button>
                     {providerLink && (
                       <a href={providerLink.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border border-amber-200/60 bg-amber-300 px-3 py-2 text-xs font-bold text-[#171008] shadow-sm shadow-amber-950/30 hover:bg-amber-200" title={`Open ${providerLink.label} to check referral earnings`}>
                         <WalletCards className="h-3.5 w-3.5" /> Check earnings
