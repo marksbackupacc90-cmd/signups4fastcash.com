@@ -76,14 +76,14 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             companyName={offer.company}
             slug={offer.companySlug}
             logoUrl={offer.logoUrl}
-            size="lg"
-            className="rounded-[1.6rem] bg-white/[0.08] p-3 shadow-[0_18px_35px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-md"
+            size="md"
+            className="rounded-[1.35rem] bg-white/[0.08] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-md"
           />
         </button>
-        <span className="absolute left-4 top-4 rounded-full border border-white/15 bg-[#101722]/70 px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-cyan-100 shadow-lg backdrop-blur-xl">
+        <span className="absolute left-4 top-4 z-20 rounded-full border border-white/15 bg-[#101722]/90 px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-cyan-100 shadow-lg backdrop-blur-xl">
           {offer.category}
         </span>
-        <span className="absolute right-4 top-4 rounded-full border border-white/25 bg-[#55b8ed] px-3.5 py-1.5 text-sm font-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+        <span className="absolute right-4 top-4 z-20 max-w-[calc(100%-8rem)] truncate rounded-full border border-white/25 bg-[#55b8ed] px-3.5 py-1.5 text-sm font-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
           {offer.incentiveAmount}
         </span>
       </div>

@@ -891,7 +891,10 @@ export default function App() {
     const carousel = offersCarouselRef.current || document.getElementById('offers-carousel') as HTMLDivElement | null;
     if (!carousel) return;
     const nextScrollLeft = carousel.scrollLeft + direction * Math.max(carousel.clientWidth * 0.86, 320);
-    carousel.scrollLeft = Math.max(0, Math.min(nextScrollLeft, carousel.scrollWidth - carousel.clientWidth));
+    carousel.scrollTo({
+      left: Math.max(0, Math.min(nextScrollLeft, carousel.scrollWidth - carousel.clientWidth)),
+      behavior: 'smooth',
+    });
   };
 
   return (
@@ -1053,7 +1056,7 @@ export default function App() {
                     <div
                       ref={offersCarouselRef}
                       id="offers-carousel"
-                      className="flex items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-1 pb-4 [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                      className="flex items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth px-1 pb-4 [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
                       aria-label="Available offers carousel"
                     >
                       {filteredOffers.map((offer) => (
