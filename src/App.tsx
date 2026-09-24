@@ -1104,7 +1104,7 @@ export default function App() {
                       aria-label="Available offers carousel"
                     >
                       {filteredOffers.map((offer) => (
-                        <div key={offer.id} className="min-w-0 shrink-0 basis-[80vw] snap-start self-start sm:basis-[43%] lg:basis-[29%] xl:basis-[22%]">
+                        <div key={offer.id} className="min-w-0 shrink-0 basis-[68vw] snap-start self-start sm:basis-[35%] lg:basis-[24%] xl:basis-[19%]">
                           <OfferCard
                             offer={offer}
                             onClaimClick={handleClaimClick}
@@ -1115,7 +1115,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => scrollOffers(-1)}
-                      className="focus-ring absolute left-0 top-1/2 z-20 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:left-2 sm:h-16 sm:w-16"
+                      className="focus-ring absolute left-0 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:left-2 sm:h-12 sm:w-12"
                       aria-label="Show previous offers"
                     >
                       <ChevronLeft className="h-7 w-7" />
@@ -1123,7 +1123,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => scrollOffers(1)}
-                      className="focus-ring absolute right-0 top-1/2 z-20 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:right-2 sm:h-16 sm:w-16"
+                      className="focus-ring absolute right-0 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:right-2 sm:h-12 sm:w-12"
                       aria-label="Show next offers"
                     >
                       <ChevronRight className="h-7 w-7" />

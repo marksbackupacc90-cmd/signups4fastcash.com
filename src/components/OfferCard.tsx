@@ -70,7 +70,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
       id={`offer-card-${offer.id}`}
       className="offer-card retro-window group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#171a22]/95 shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)]"
     >
-      <div className="relative flex h-48 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)]">
+      <div className="relative flex h-32 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)] sm:h-36">
         <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
         <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
         <a
@@ -90,7 +90,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
         </a>
       </div>
 
-      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#1b1e27_0%,#171a22_100%)] p-4 sm:p-5">
+      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#1b1e27_0%,#171a22_100%)] p-3 sm:p-4">
         <div className="flex items-start gap-2">
           <a
             href={claimUrl}
@@ -100,11 +100,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             className="min-w-0 flex-1 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
           >
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[1.05rem] font-black tracking-[-0.01em] text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
+              <h2 className="truncate text-[0.95rem] font-black tracking-[-0.01em] text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
                 {offer.title}
               </h2>
 
-              <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
+              <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
             </div>
           </a>
 
@@ -122,14 +122,14 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-zinc-400">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-mono text-zinc-400">
           <span className="text-amber-300">★ <span className="text-zinc-200">{offer.honestTruth.trustScore / 20}</span></span>
           <span>{offer.difficulty}</span>
           <span className={`inline-flex items-center gap-1 ${isRecentlyVerified ? 'text-emerald-300' : 'text-amber-200'}`}>
             <ShieldCheck className="h-3 w-3" /> {isRecentlyVerified ? 'Terms checked' : 'Review terms'}
           </span>
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-3 text-[10px] text-zinc-500">
+        <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-[9px] text-zinc-500">
           <span className="truncate">{offer.company}</span>
           <span className="shrink-0">{offer.payoutSpeed}</span>
         </div>
