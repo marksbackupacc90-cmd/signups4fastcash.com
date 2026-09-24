@@ -910,7 +910,7 @@ export default function App() {
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const carousel = offersCarouselRef.current;
-    if (!carousel) return;
+    if (!carousel || (event.target instanceof Element && event.target.closest('button, a, input, select, textarea'))) return;
     carouselDragRef.current = {
       active: true,
       startX: event.clientX,
