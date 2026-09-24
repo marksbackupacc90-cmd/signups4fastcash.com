@@ -51,8 +51,8 @@ export const Hero: React.FC<HeroProps> = ({
   return (
     <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="retro-window">
-          <div className="bg-[#0d1724] p-4 sm:p-6 lg:p-7">
+        <div className="retro-window overflow-hidden rounded-[1.75rem] border-white/[0.1] bg-[radial-gradient(circle_at_80%_0%,rgba(45,212,238,0.14),transparent_32%),#0d1724] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+          <div className="bg-white/[0.025] p-5 sm:p-7 lg:p-9">
         
         {/* Main Headline */}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -70,7 +70,7 @@ export const Hero: React.FC<HeroProps> = ({
             <button
               type="button"
               onClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="focus-ring inline-flex items-center gap-2 rounded-lg bg-[#2dd4ee] px-4 py-2.5 text-xs font-bold text-[#06131a] shadow-sm transition-colors hover:bg-[#67e8f9]"
+              className="focus-ring inline-flex items-center gap-2 rounded-full bg-[#2dd4ee] px-5 py-3 text-xs font-bold text-[#06131a] shadow-[0_10px_28px_rgba(45,212,238,0.2)] transition-all hover:-translate-y-0.5 hover:bg-[#67e8f9]"
             >
               Browse offers
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -79,7 +79,7 @@ export const Hero: React.FC<HeroProps> = ({
               <button
                 type="button"
                 onClick={onOpenFinder}
-                className="focus-ring inline-flex items-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-xs font-semibold text-zinc-200 transition-colors hover:bg-white/10 hover:text-white"
+                className="focus-ring inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-xs font-semibold text-zinc-200 transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
               >
                 <Sparkles className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
                 Find my best match
@@ -109,7 +109,7 @@ export const Hero: React.FC<HeroProps> = ({
             </div>
           </div>
         </div>
-        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs font-mono text-zinc-400">
+        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/[0.08] pt-5 text-xs font-mono text-zinc-400">
           <span><strong className="text-white">{totalOffersCount}</strong> listed offers</span>
           <span><strong className="text-emerald-400">Terms shown</strong> before you click</span>
           <span><strong className="text-white">$0</strong> payment handling</span>

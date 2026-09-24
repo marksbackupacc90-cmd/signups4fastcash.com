@@ -87,33 +87,34 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
   return (
     <div 
       id={`offer-card-${offer.id}`}
-      className="offer-card retro-window group relative flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#191c24] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#2dd4ee]/30 hover:shadow-[0_0_22px_rgba(45,212,238,0.14)]"
+      className="offer-card retro-window group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#171a22]/95 shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)]"
     >
-      <div className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_25%_15%,rgba(45,212,238,0.28),transparent_34%),linear-gradient(145deg,#263b4d,#101722_72%)]">
-        <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(135deg,rgba(255,255,255,.16)_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className="relative flex h-48 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)]">
+        <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
+        <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
         <button
           type="button"
           onClick={handleClaim}
           aria-label={`Open ${offer.title} offer from ${offer.company}`}
-          className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-200 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2dd4ee]/70"
+          className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-300 hover:scale-[1.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2dd4ee]/70"
         >
           <CompanyLogo
             companyName={offer.company}
             slug={offer.companySlug}
             logoUrl={offer.logoUrl}
             size="lg"
-            className="rounded-2xl bg-black/25 p-3 shadow-2xl backdrop-blur-sm"
+            className="rounded-[1.6rem] bg-white/[0.08] p-3 shadow-[0_18px_35px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-md"
           />
         </button>
-        <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-[#101722]/80 px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-cyan-100 backdrop-blur">
+        <span className="absolute left-4 top-4 rounded-full border border-white/15 bg-[#101722]/70 px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.08em] text-cyan-100 shadow-lg backdrop-blur-xl">
           {offer.category}
         </span>
-        <span className="absolute bottom-3 right-3 rounded-full bg-[#55b8ed] px-3 py-1.5 text-sm font-black text-white shadow-lg shadow-cyan-950/30">
+        <span className="absolute bottom-4 right-4 rounded-full border border-white/25 bg-[#55b8ed] px-3.5 py-1.5 text-sm font-black text-white shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
           {offer.incentiveAmount}
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col bg-[#1b1e27] p-3.5 sm:p-4">
+      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#1b1e27_0%,#171a22_100%)] p-4 sm:p-5">
         <div className="flex items-start gap-2">
           <button
             type="button"
@@ -122,11 +123,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
             className="min-w-0 flex-1 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2dd4ee]/70 rounded-lg"
           >
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-base font-black text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
+              <h2 className="truncate text-[1.05rem] font-black tracking-[-0.01em] text-white transition-colors group-hover:text-[#2dd4ee] leading-tight">
                 {offer.title}
               </h2>
 
-              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
+              <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
             </div>
           </button>
 
@@ -136,7 +137,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
               onClick={() => setShowDetails((current) => !current)}
               aria-expanded={showDetails}
               aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${offer.company}`}
-              className="focus-ring inline-flex items-center rounded-md border border-white/[0.1] bg-white/[0.04] p-2 text-[10px] font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-white sm:text-xs"
+              className="focus-ring inline-flex items-center rounded-full border border-white/[0.12] bg-white/[0.06] p-2.5 text-[10px] font-semibold text-zinc-200 transition-colors hover:bg-white/[0.12] hover:text-white sm:text-xs"
             >
               <span className="sr-only">{showDetails ? 'Hide' : 'Details'} offer details</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
@@ -144,14 +145,14 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick }) => 
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-zinc-400">
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-zinc-400">
           <span className="text-amber-300">★ <span className="text-zinc-200">{offer.honestTruth.trustScore / 20}</span></span>
           <span>{offer.difficulty}</span>
           <span className={`inline-flex items-center gap-1 ${isRecentlyVerified ? 'text-emerald-300' : 'text-amber-200'}`}>
             <ShieldCheck className="h-3 w-3" /> {isRecentlyVerified ? 'Terms checked' : 'Review terms'}
           </span>
         </div>
-        <div className="mt-3 flex items-center justify-between border-t border-white/[0.07] pt-2 text-[10px] text-zinc-500">
+        <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-3 text-[10px] text-zinc-500">
           <span className="truncate">{offer.company}</span>
           <span className="shrink-0">{offer.payoutSpeed}</span>
         </div>

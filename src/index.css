@@ -26,7 +26,18 @@ h3,
 }
 
 html {
-  background: var(--site-background, #04080d);
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 50% -12%, rgba(45, 212, 238, 0.08), transparent 32rem),
+    var(--site-background, #04080d);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 18%, rgba(45, 212, 238, 0.035), transparent 28rem),
+    radial-gradient(circle at 92% 44%, rgba(99, 102, 241, 0.035), transparent 30rem),
+    transparent;
 }
 
 .retro-window {
