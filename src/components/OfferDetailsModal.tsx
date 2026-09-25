@@ -9,7 +9,15 @@ interface OfferDetailsModalProps {
 }
 
 const Disclosure: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <details className="group rounded-xl border border-white/[0.08] bg-white/[0.025]">
+  <details
+    className="group rounded-xl border border-white/[0.08] bg-white/[0.025]"
+    onToggle={(event) => {
+      if (!event.currentTarget.open) return;
+      event.currentTarget.parentElement?.querySelectorAll('details').forEach((item) => {
+        if (item !== event.currentTarget) item.open = false;
+      });
+    }}
+  >
     <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-zinc-200 marker:hidden">
       {title}
       <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-180" />
