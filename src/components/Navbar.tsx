@@ -12,6 +12,7 @@ interface NavbarProps {
   activeOfferCount: number;
   username?: string | null;
   avatarUrl?: string | null;
+  onSignIn: () => void;
   onAccount: () => void;
   onSignOut: () => void;
   onAdminSection: (section: 'live' | 'blasts') => void;
@@ -32,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeOfferCount,
   username,
   avatarUrl,
+  onSignIn,
   onAccount,
   onSignOut,
   onAdminSection,
@@ -122,6 +124,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
               {accountMenuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
+                  <button onClick={() => { onOpenMyOffers(); setAccountMenuOpen(false); }} className="focus-ring flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">
+                    <ListChecks className="h-3.5 w-3.5 text-cyan-300" /> My Offers
+                    {activeOfferCount > 0 && <span className="ml-auto rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-bold text-[#071016]">{activeOfferCount}</span>}
+                  </button>
                   <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="focus-ring block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
                   {canAccessAdmin && (
                     <>
@@ -141,7 +147,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               )}
             </div>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="retro-button focus-ring inline-flex items-center gap-1.5 rounded-md border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 sm:px-3"
+              aria-label="Sign in with Google (optional)"
+            >
+              Sign in <span className="text-[10px] font-normal text-cyan-300">optional</span>
+            </button>
+          )}
         </div>
 
       </div>

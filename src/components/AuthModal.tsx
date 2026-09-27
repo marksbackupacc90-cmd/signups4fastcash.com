@@ -137,7 +137,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
           {needsUsername ? 'Choose your username' : mode === 'signup' ? 'Create your account' : 'Sign in to your account'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Sign in is only needed for account-specific tools. You can browse offers and visit partner sites without an account.
+          Optional: continue with Google to sync and track your offers across devices. You can browse and use offers without signing in.
         </p>
         {needsUsername ? (
           <form onSubmit={saveUsername} className="mt-5 space-y-3">
@@ -161,7 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
           </button>
         )}
         {error && <p role="alert" className="mt-3 text-xs text-rose-300">{error}</p>}
-        {!needsUsername && <p className="mt-4 text-center text-[11px] text-zinc-500">Google sign-in is optional and does not block access to offers.</p>}
+        {!needsUsername && <p className="mt-4 text-center text-[11px] text-zinc-500">You will only be sent to Google after selecting “Continue with Google.”</p>}
       </section>
     </div>
   );

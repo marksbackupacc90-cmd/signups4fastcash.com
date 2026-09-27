@@ -901,6 +901,7 @@ export default function App() {
         username={authUser?.username}
         avatarUrl={authUser?.avatarUrl}
         userId={authUser?.id}
+        onSignIn={() => setAuthOpenRequest((request) => request + 1)}
         onShare={() => void handleShare()}
         shareCopied={shareCopied}
         onOpenFinder={() => setOfferFinderOpen(true)}
