@@ -15,7 +15,6 @@ import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
-import { CommunityChat } from './components/CommunityChat';
 import { HowItWorks } from './components/HowItWorks';
 import { CashBlueprint } from './components/CashBlueprint';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
@@ -144,10 +143,8 @@ export default function App() {
   const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
-  const [messageNotification, setMessageNotification] = useState<{ count: number; preview: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authOpenRequest, setAuthOpenRequest] = useState(0);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
@@ -163,60 +160,6 @@ export default function App() {
     }
   });
   const liveOfferIds = liveOffers.map((offer) => offer.id).join('|');
-
-  useEffect(() => {
-    if (!authUser) {
-      setMessageNotification(null);
-      return;
-    }
-    const storageKey = `s4fc_last_message_check_${authUser.id}`;
-    const initialSince = localStorage.getItem(storageKey) || new Date().toISOString();
-    let since = initialSince;
-    let cancelled = false;
-    const notify = (messages: Array<{ content?: string }>) => {
-      if (!messages.length || cancelled) return;
-      const preview = messages[0]?.content || 'You received a new message.';
-      setMessageNotification({ count: messages.length, preview });
-      try {
-        const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (AudioContextClass) {
-          const context = new AudioContextClass();
-          const oscillator = context.createOscillator();
-          const gain = context.createGain();
-          oscillator.frequency.value = 880;
-          gain.gain.setValueAtTime(0.08, context.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.25);
-          oscillator.connect(gain);
-          gain.connect(context.destination);
-          oscillator.start();
-          oscillator.stop(context.currentTime + 0.25);
-        }
-      } catch {
-        // Browser audio permissions may block notification sounds.
-      }
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('New message', { body: preview });
-      }
-    };
-    const checkMessages = async () => {
-      const response = await fetch(`/api/direct-messages/notifications?since=${encodeURIComponent(since)}`, { cache: 'no-store' }).catch(() => null);
-      if (!response?.ok) return;
-      const data = await response.json().catch(() => null) as { messages?: Array<{ content?: string; created_at?: string }> } | null;
-      const messages = Array.isArray(data?.messages) ? data.messages : [];
-      if (messages.length) {
-        notify(messages);
-        since = messages[messages.length - 1].created_at || new Date().toISOString();
-        localStorage.setItem(storageKey, since);
-      } else {
-        localStorage.setItem(storageKey, since);
-      }
-    };
-    const timer = window.setInterval(() => void checkMessages(), 10000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [authUser?.id]);
 
   useEffect(() => {
     setRandomOfferOrder((current) => {
@@ -377,7 +320,6 @@ export default function App() {
   const handleDelegatedAdminAccess = async (openPanel = true): Promise<boolean> => {
     if (!authUser) {
       showToast('Sign in first to use delegated admin access.');
-      setAuthMode('signin');
       setAuthOpenRequest((request) => request + 1);
       return false;
     }
@@ -963,15 +905,6 @@ export default function App() {
         shareCopied={shareCopied}
         onOpenFinder={() => setOfferFinderOpen(true)}
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
-        onSignUp={() => {
-          setAuthMode('signup');
-          setAuthOpenRequest((request) => request + 1);
-        }}
-        onSignIn={() => {
-          setAuthMode('signin');
-          setAuthOpenRequest((request) => request + 1);
-        }}
-        hideSignIn={recordingMode}
         onAccount={() => setAccountOpen(true)}
         onSignOut={async () => {
           await fetch('/api/auth/logout', { method: 'POST' });
@@ -1017,11 +950,6 @@ export default function App() {
           onResume={handleResumeOffer}
           onStatusChange={handleMyOfferStatusChange}
         />}
-        {authUser && activeTab === 'offers' && (
-          <>
-            <CommunityChat username={authUser?.username} userId={authUser?.id} avatarUrl={authUser?.avatarUrl} />
-          </>
-        )}
         {activeTab === 'offers' && (
           <div>
             <Hero
@@ -1173,7 +1101,7 @@ export default function App() {
         subscriberCount={subscriberCount}
       />
 
-      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} mode={authMode} disabled={recordingMode} />
+      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} disabled={recordingMode} />
       {accountOpen && authUser && (
         <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
       )}
@@ -1184,21 +1112,6 @@ export default function App() {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <span className="max-w-xs">{toastMessage}</span>
-        </div>
-      )}
-      {messageNotification && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm rounded-xl border border-cyan-300/40 bg-[#0d1724] p-4 text-sm text-cyan-100 shadow-2xl">
-          <div className="font-bold">New message</div>
-          <p className="mt-1 text-xs text-cyan-100/80">
-            {messageNotification.count > 1 ? `${messageNotification.count} new messages` : messageNotification.preview}
-          </p>
-          <button
-            type="button"
-            onClick={() => setMessageNotification(null)}
-            className="mt-3 rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-300/10"
-          >
-            Dismiss
-          </button>
         </div>
       )}
       <Footer

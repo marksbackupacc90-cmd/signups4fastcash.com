@@ -12,9 +12,6 @@ interface NavbarProps {
   activeOfferCount: number;
   username?: string | null;
   avatarUrl?: string | null;
-  onSignUp: () => void;
-  onSignIn: () => void;
-  hideSignIn?: boolean;
   onAccount: () => void;
   onSignOut: () => void;
   onAdminSection: (section: 'live' | 'blasts') => void;
@@ -35,9 +32,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeOfferCount,
   username,
   avatarUrl,
-  onSignUp,
-  onSignIn,
-  hideSignIn = false,
   onAccount,
   onSignOut,
   onAdminSection,
@@ -146,15 +140,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button onClick={() => { onSignOut(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-300 hover:bg-white/10">Sign out</button>
                 </div>
               )}
-            </div>
-          ) : !hideSignIn ? (
-            <div className="flex items-center gap-2">
-              <button onClick={onSignUp} className="retro-button focus-ring border border-cyan-300/50 px-2.5 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10 sm:px-3">
-                Sign up
-              </button>
-              <button onClick={onSignIn} className="retro-button focus-ring border border-white/15 bg-transparent px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 sm:px-3">
-                Sign in
-              </button>
             </div>
           ) : null}
         </div>
