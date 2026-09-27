@@ -1124,10 +1124,17 @@ export default function App() {
           setActiveTab('offers');
         }}
         onSelectAdmin={() => {
+          if (!authUser) {
+            setAuthOpenRequest((request) => request + 1);
+            return;
+          }
           if (isAdminUnlocked) {
             setAdminPanelVisible(true);
             setActiveTab('admin');
+            return;
           }
+          setAdminSection('live');
+          void handleDelegatedAdminAccess(true);
         }}
         isAdminUnlocked={isAdminUnlocked}
       />

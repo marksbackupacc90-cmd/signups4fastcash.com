@@ -83,14 +83,12 @@ export const Footer: React.FC<FooterProps> = ({
                   </button>
                 </li>
               )}
-              {isAdminUnlocked && (
-                <li>
-                  <button onClick={onSelectAdmin} className="min-h-11 hover:text-amber-300 transition-colors text-left flex items-center gap-1 text-zinc-400">
-                    <Lock className="w-3 h-3" />
-                    <span>Admin Panel</span>
-                  </button>
-                </li>
-              )}
+              <li>
+                <button onClick={onSelectAdmin} className="min-h-11 hover:text-amber-300 transition-colors text-left flex items-center gap-1 text-zinc-500">
+                  <Lock className="w-3 h-3" />
+                  <span>{isAdminUnlocked ? 'Admin Panel' : 'Admin access'}</span>
+                </button>
+              </li>
             </ul>
           </div>
 
