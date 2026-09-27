@@ -80,7 +80,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
             {trackedOffers.length === 0 ? (
               <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
                 <p className="text-sm font-semibold text-white">No saved offers yet</p>
-                <p className="mt-1 text-xs text-zinc-400">Click any offer’s Open or Claim button and it will appear here for easy access later.</p>
+                <p className="mt-1 text-xs text-zinc-400">Choose Claim on any offer and it will be saved here. Guest saves stay on this device; sign in to sync them across devices.</p>
               </div>
             ) : (
               <div className="mt-6 space-y-3">

@@ -97,19 +97,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             Offers
           </button>
           <button
-            id="nav-in-progress"
+            id="nav-my-offers"
             type="button"
             onClick={onOpenMyOffers}
             className="retro-button focus-ring hidden shrink-0 items-center gap-1.5 rounded-md border border-white/15 px-4 py-2 text-xs font-medium text-zinc-200 transition-all hover:bg-[#141824] hover:text-white md:inline-flex"
-            aria-label={`Open In Progress, ${activeOfferCount} active`}
+            aria-label={`Open My Offers, ${activeOfferCount} active`}
           >
             <ListChecks className="h-3.5 w-3.5 text-cyan-300" />
-            In Progress
+            My Offers
             {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeOfferCount}</span>}
           </button>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={onOpenMyOffers}
+            className="retro-button focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-zinc-200 hover:bg-white/10 md:hidden"
+            aria-label={`Open My Offers, ${activeOfferCount} active`}
+            title="My Offers"
+          >
+            <ListChecks className="h-4 w-4 text-cyan-300" />
+            {activeOfferCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-[#071016]">{activeOfferCount}</span>}
+          </button>
           {username ? (
             <div ref={accountMenuRef} className="relative">
               <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[10rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>
