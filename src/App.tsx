@@ -948,6 +948,11 @@ export default function App() {
           trackedOfferIds={myOfferIds}
           open={myOffersOpen}
           onClose={() => setMyOffersOpen(false)}
+          onSignIn={() => {
+            setMyOffersOpen(false);
+            setAuthOpenRequest((request) => request + 1);
+          }}
+          isSignedIn={Boolean(authUser)}
           onResume={handleResumeOffer}
           onStatusChange={handleMyOfferStatusChange}
         />}

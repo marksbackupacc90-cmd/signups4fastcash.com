@@ -15,6 +15,8 @@ interface MyOffersProps {
   trackedOfferIds: string[];
   open: boolean;
   onClose: () => void;
+  onSignIn: () => void;
+  isSignedIn: boolean;
   onResume: (offer: Offer) => void;
   onStatusChange: (offerId: string, status: MyOfferStatus) => void;
 }
@@ -35,6 +37,8 @@ export const MyOffers: React.FC<MyOffersProps> = ({
   trackedOfferIds,
   open,
   onClose,
+  onSignIn,
+  isSignedIn,
   onResume,
   onStatusChange,
 }) => {
@@ -119,7 +123,22 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                 })}
               </div>
             )}
-            <p className="mt-5 text-xs leading-relaxed text-zinc-300">Signed-in offers sync to your account. If you are browsing as a guest, saved offers stay on this device.</p>
+            <div className="mt-5 flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-relaxed text-zinc-400">
+                {isSignedIn
+                  ? 'Your saved offers sync to your account.'
+                  : 'Guest saves stay on this device. Sign in to sync your saved offers across devices.'}
+              </p>
+              {!isSignedIn && (
+                <button
+                  type="button"
+                  onClick={onSignIn}
+                  className="shrink-0 rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-200 transition-colors hover:bg-cyan-300/10"
+                >
+                  Sign in to sync
+                </button>
+              )}
+            </div>
           </section>
         </div>
       )}

@@ -100,10 +100,15 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const [imageSourceIndex, setImageSourceIndex] = React.useState(0);
   const imageSource = imageSources[imageSourceIndex] || null;
   const [imageLoaded, setImageLoaded] = React.useState(false);
+  const imageRef = React.useRef<HTMLImageElement | null>(null);
   React.useEffect(() => {
     setImageSourceIndex(0);
     setImageLoaded(false);
   }, [logoUrl, localLogo]);
+  React.useEffect(() => {
+    const image = imageRef.current;
+    if (image?.complete && image.naturalWidth > 0) setImageLoaded(true);
+  }, [imageSource]);
   const tone = {
     bg: 'from-[#0d1724] via-[#111b2a] to-[#0a1220]',
     glow: 'rgba(45, 212, 238, 0.2)',
@@ -115,6 +120,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     return (
       <div className={imageFrameClass}>
         <img
+          ref={imageRef}
           src={imageSource}
           alt={`${companyName} logo`}
           className={`h-full w-full object-contain transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
