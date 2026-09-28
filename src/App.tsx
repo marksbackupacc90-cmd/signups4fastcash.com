@@ -11,7 +11,7 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal, LegalSection } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
-import { CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
@@ -129,7 +129,10 @@ export default function App() {
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
   const recordedImpressions = useRef(new Set<string>());
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
-  const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0 });
+  const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0, moved: false });
+  const suppressCarouselClickRef = useRef(false);
+  const [canScrollOffersLeft, setCanScrollOffersLeft] = useState(false);
+  const [canScrollOffersRight, setCanScrollOffersRight] = useState(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
@@ -778,6 +781,7 @@ export default function App() {
       }
       return 0;
     });
+  const filteredOfferIds = filteredOffers.map((offer) => offer.id).join(',');
 
   useEffect(() => {
     if (activeTab !== 'offers' || filteredOffers.length === 0 || localStorage.getItem('signups4fastcash_admin_token')) return;
@@ -853,10 +857,29 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (offersCarouselRef.current) {
-      offersCarouselRef.current.scrollLeft = 0;
-    }
-  }, [filteredOffers]);
+    const carousel = offersCarouselRef.current;
+    if (!carousel) return;
+    carousel.scrollLeft = 0;
+    const updateScrollControls = () => {
+      setCanScrollOffersLeft(carousel.scrollLeft > 1);
+      setCanScrollOffersRight(carousel.scrollLeft + carousel.clientWidth < carousel.scrollWidth - 1);
+    };
+    updateScrollControls();
+    carousel.addEventListener('scroll', updateScrollControls, { passive: true });
+    window.addEventListener('resize', updateScrollControls);
+    return () => {
+      carousel.removeEventListener('scroll', updateScrollControls);
+      window.removeEventListener('resize', updateScrollControls);
+    };
+  }, [filteredOfferIds]);
+
+  const scrollOffersCarousel = (direction: -1 | 1) => {
+    const carousel = offersCarouselRef.current;
+    if (!carousel) return;
+    const firstCard = carousel.querySelector<HTMLElement>('[data-offer-carousel-item]');
+    const step = firstCard ? firstCard.getBoundingClientRect().width + 16 : carousel.clientWidth * 0.8;
+    carousel.scrollTo({ left: carousel.scrollLeft + direction * step, behavior: 'instant' });
+  };
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const carousel = offersCarouselRef.current;
@@ -865,6 +888,7 @@ export default function App() {
       active: true,
       startX: event.clientX,
       startScrollLeft: carousel.scrollLeft,
+      moved: false,
     };
     carousel.setPointerCapture(event.pointerId);
   };
@@ -873,11 +897,18 @@ export default function App() {
     const drag = carouselDragRef.current;
     const carousel = offersCarouselRef.current;
     if (!drag.active || !carousel) return;
-    carousel.scrollLeft = drag.startScrollLeft - (event.clientX - drag.startX);
+    const distance = event.clientX - drag.startX;
+    if (Math.abs(distance) > 6 && !drag.moved) {
+      drag.moved = true;
+      carousel.style.scrollSnapType = 'none';
+    }
+    if (drag.moved) carousel.scrollTo({ left: drag.startScrollLeft - distance, behavior: 'instant' });
   };
 
-  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>, cancelled = false) => {
+    if (carouselDragRef.current.moved && !cancelled) suppressCarouselClickRef.current = true;
     carouselDragRef.current.active = false;
+    event.currentTarget.style.scrollSnapType = '';
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -1055,22 +1086,66 @@ export default function App() {
                       onPointerDown={handleCarouselPointerDown}
                       onPointerMove={handleCarouselPointerMove}
                       onPointerUp={handleCarouselPointerUp}
-                      onPointerCancel={handleCarouselPointerUp}
+                      onPointerCancel={(event) => handleCarouselPointerUp(event, true)}
+                      onClickCapture={(event) => {
+                        if (!suppressCarouselClickRef.current) return;
+                        suppressCarouselClickRef.current = false;
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                          event.preventDefault();
+                          scrollOffersCarousel(event.key === 'ArrowLeft' ? -1 : 1);
+                        } else if (event.key === 'Home' || event.key === 'End') {
+                          event.preventDefault();
+                          offersCarouselRef.current?.scrollTo({
+                            left: event.key === 'Home' ? 0 : event.currentTarget.scrollWidth,
+                            behavior: 'instant',
+                          });
+                        }
+                      }}
+                      tabIndex={0}
+                      role="region"
+                      aria-roledescription="offer carousel"
                       aria-label="Available offers carousel"
                     >
                       {filteredOffers.map((offer) => (
-                        <div key={offer.id} className="min-w-0 shrink-0 basis-[68vw] snap-start self-start sm:basis-[35%] lg:basis-[24%] xl:basis-[19%]">
+                        <div key={offer.id} data-offer-carousel-item className="min-w-0 shrink-0 basis-[68vw] snap-start self-start sm:basis-[35%] lg:basis-[24%] xl:basis-[19%]">
                           <OfferCard
                             offer={offer}
                             onClaimClick={handleClaimClick}
                             onMoreInfo={setSelectedOffer}
                           />
                         </div>
-                      )                      )}
+                      ))}
                   </div>
-                  <p className="mt-1 text-center text-[10px] font-mono text-zinc-500">
-                    Swipe or scroll to browse offers
-                  </p>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => scrollOffersCarousel(-1)}
+                      disabled={!canScrollOffersLeft}
+                      aria-label="Show previous offers"
+                      className="focus-ring inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#10141d] px-3 text-xs font-semibold text-zinc-200 transition-colors hover:border-cyan-300/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </button>
+                    <p className="text-center text-[10px] font-mono text-zinc-500">
+                      Swipe, drag, or use the arrows to browse
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => scrollOffersCarousel(1)}
+                      disabled={!canScrollOffersRight}
+                      aria-label="Show next offers"
+                      className="focus-ring inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#10141d] px-3 text-xs font-semibold text-zinc-200 transition-colors hover:border-cyan-300/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
