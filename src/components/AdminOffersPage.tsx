@@ -5,6 +5,7 @@ import { CompanyLogo } from './CompanyLogo';
 
 interface AdminOffersPageProps {
   liveOffers: Offer[];
+  newClicksByOffer: Record<string, number>;
   onUpdateLiveOffer: (offerId: string, updates: Partial<Offer>) => void;
   onDeleteLiveOffer: (offerId: string) => void;
   onCreateCustomOffer: (offer: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>) => void;
@@ -41,6 +42,7 @@ const safeOffers = (offers: Offer[]) => (Array.isArray(offers) ? offers.filter(B
 
 export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   liveOffers,
+  newClicksByOffer,
   onUpdateLiveOffer,
   onDeleteLiveOffer,
   onCreateCustomOffer,
@@ -257,7 +259,15 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                       <span className="block truncate text-sm font-bold text-white">{offer.company}</span>
                       <span className="block truncate text-xs text-zinc-400">{offer.title}</span>
                       <span className="mt-1 block text-[10px] uppercase tracking-wider text-emerald-300">{offer.incentiveAmount}</span>
-                      <span className="mt-1 block text-[10px] font-mono text-cyan-200">{Number(offer.clicksCount || 0).toLocaleString()} clicks</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2 font-mono">
+                        <span className="text-[10px] text-cyan-200">{Number(offer.clicksCount || 0).toLocaleString()} total clicks</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${Number(newClicksByOffer[offer.id] || 0) > 0 ? 'bg-emerald-300/15 text-emerald-200' : 'bg-white/[0.06] text-zinc-400'}`}
+                          aria-label={`${Number(newClicksByOffer[offer.id] || 0)} new clicks since your last admin visit`}
+                        >
+                          +{Number(newClicksByOffer[offer.id] || 0)} new
+                        </span>
+                      </span>
                     </span>
                   </button>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">

@@ -11,7 +11,7 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal, LegalSection } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
-import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
@@ -57,6 +57,8 @@ function shuffleOfferIds(offers: Offer[]) {
     .sort(() => Math.random() - 0.5)
     .map((offer) => offer.id);
 }
+
+const OFFER_CLICK_BASELINE_KEY = 'signups4fastcash_offer_click_baseline';
 
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
@@ -130,6 +132,9 @@ export default function App() {
   const recordedImpressions = useRef(new Set<string>());
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
   const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0 });
+  const adminPageVisibleRef = useRef(false);
+  const [newClicksByOffer, setNewClicksByOffer] = useState<Record<string, number>>({});
+  const [offersLoaded, setOffersLoaded] = useState(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
@@ -140,6 +145,11 @@ export default function App() {
   const [legalSection, setLegalSection] = useState<LegalSection | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    Boolean('standalone' in navigator && navigator.standalone)
+  );
   const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
@@ -375,20 +385,35 @@ export default function App() {
       event.preventDefault();
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+      setInstallHelpOpen(false);
+      showToast('Signups4FastCash was added to your device.');
+    };
     window.addEventListener('beforeinstallprompt', handleInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstallApp = async () => {
     if (!installPrompt) {
-      showToast('On desktop, use the browser install icon. On Android, choose Install app from Chrome’s menu. Google Play publishing requires a separate Android release.');
+      setInstallHelpOpen(true);
       return;
     }
 
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice.outcome === 'accepted') showToast('App installation started.');
-    setInstallPrompt(null);
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') showToast('App installation started.');
+      setInstallPrompt(null);
+    } catch (error) {
+      console.error('Could not start app installation:', error);
+      showToast('Could not start installation. Use your browser menu to add this site to your device.');
+    }
   };
 
   useEffect(() => {
@@ -398,11 +423,75 @@ export default function App() {
   useEffect(() => {
     fetch('/api/offers')
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load offers'))))
-      .then((data: { offers: Offer[] }) => setLiveOffers(data.offers.filter(isAvailableOffer)))
+      .then((data: { offers: Offer[] }) => {
+        setLiveOffers(data.offers.filter(isAvailableOffer));
+        setOffersLoaded(true);
+      })
       .catch(() => {
         // Keep the local catalog available when the API is offline.
       });
   }, []);
+
+  useEffect(() => {
+    const shouldCaptureVisit = offersLoaded && activeTab === 'admin' && isAdminUnlocked && adminPanelVisible;
+    if (!shouldCaptureVisit) {
+      adminPageVisibleRef.current = false;
+      return;
+    }
+    if (adminPageVisibleRef.current) return;
+    adminPageVisibleRef.current = true;
+
+    const captureClickChanges = async () => {
+      let offersForSnapshot = liveOffers;
+      try {
+        const response = await fetch('/api/offers');
+        if (!response.ok) throw new Error('Could not refresh offers before comparing click counts.');
+        const data = await response.json() as { offers?: Offer[] };
+        if (!Array.isArray(data.offers)) throw new Error('The offers response did not include an offer list.');
+        offersForSnapshot = data.offers.filter(isAvailableOffer);
+        setLiveOffers(offersForSnapshot);
+      } catch (error) {
+        console.error('Could not refresh offer click counts:', error);
+        showToast('Could not refresh click counts. Showing the last loaded totals.');
+      }
+
+      const currentCounts = Object.fromEntries(offersForSnapshot.map((offer) => [
+        offer.id,
+        Math.max(0, Number(offer.clicksCount) || 0),
+      ]));
+      let previousCounts: Record<string, number> = {};
+      try {
+        const saved = localStorage.getItem(OFFER_CLICK_BASELINE_KEY);
+        if (saved) {
+          const parsed: unknown = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            for (const [offerId, value] of Object.entries(parsed)) {
+              if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+                previousCounts[offerId] = value;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Could not read previous offer click counts:', error);
+      }
+
+      const hasPreviousVisit = Object.keys(previousCounts).length > 0;
+      const newClicks = Object.fromEntries(Object.entries(currentCounts).map(([offerId, clicks]) => {
+        const previousClicks = Number(previousCounts[offerId] ?? 0);
+        return [offerId, hasPreviousVisit && Number.isFinite(previousClicks) ? Math.max(0, clicks - previousClicks) : 0];
+      }));
+      setNewClicksByOffer(newClicks);
+      try {
+        localStorage.setItem(OFFER_CLICK_BASELINE_KEY, JSON.stringify(currentCounts));
+      } catch (error) {
+        console.error('Could not save offer click counts for the next visit:', error);
+        showToast('New-click counts could not be saved for your next visit.');
+      }
+    };
+
+    void captureClickChanges();
+  }, [offersLoaded, activeTab, isAdminUnlocked, adminPanelVisible, liveOffers]);
 
   useEffect(() => {
     fetch('/api/newsletter/subscribers')
@@ -830,26 +919,6 @@ export default function App() {
     showToast('Changes saved successfully.');
   };
 
-  const scrollOffers = (direction: -1 | 1) => {
-    const carousel = offersCarouselRef.current || document.getElementById('offers-carousel') as HTMLDivElement | null;
-    if (!carousel) return;
-    const start = carousel.scrollLeft;
-    const target = Math.max(0, Math.min(
-      start + direction * Math.max(carousel.clientWidth * 0.86, 320),
-      carousel.scrollWidth - carousel.clientWidth,
-    ));
-    const distance = target - start;
-    const duration = 420;
-    const startedAt = performance.now();
-    const animate = (now: number) => {
-      const progress = Math.min((now - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      carousel.scrollLeft = start + distance * eased;
-      if (progress < 1) window.requestAnimationFrame(animate);
-    };
-    window.requestAnimationFrame(animate);
-  };
-
   useEffect(() => {
     if (offersCarouselRef.current) {
       offersCarouselRef.current.scrollLeft = 0;
@@ -930,16 +999,33 @@ export default function App() {
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
 
-      {installPrompt && (
-        <button
-          onClick={async () => {
-            await installPrompt.prompt();
-            setInstallPrompt(null);
-          }}
-          className="fixed bottom-5 left-5 z-40 rounded-lg border border-cyan-400/30 bg-[#10141d] px-3 py-2 text-xs font-semibold text-cyan-200 shadow-xl hover:bg-cyan-400/10"
-        >
-          Install the app
-        </button>
+      {installHelpOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-4 sm:items-center" onClick={() => setInstallHelpOpen(false)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="install-help-title"
+            className="w-full max-w-md rounded-2xl border border-cyan-300/25 bg-[#101722] p-5 shadow-2xl sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="install-help-title" className="text-lg font-bold text-white">Add Signups4FastCash to your home screen</h2>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                  {/iPhone|iPad|iPod/i.test(navigator.userAgent)
+                    ? 'In Safari, tap Share, then choose “Add to Home Screen.”'
+                    : /Android/i.test(navigator.userAgent)
+                      ? 'Open your browser menu and choose “Install app” or “Add to Home screen.”'
+                      : 'Use the install icon in your browser’s address bar, or choose “Install” from its menu.'}
+                </p>
+              </div>
+              <button type="button" onClick={() => setInstallHelpOpen(false)} aria-label="Close installation help" className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white">
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="mt-4 text-xs text-zinc-400">This adds the website to your device; it does not install a separate Play Store or App Store app.</p>
+          </section>
+        </div>
       )}
 
       <main className="flex-1">
@@ -964,6 +1050,7 @@ export default function App() {
               setSearchQuery={setSearchQuery}
               onSearchSubmit={handleSearchChange}
               onOpenFinder={() => setOfferFinderOpen(true)}
+              onInstallApp={isInstalled ? undefined : () => void handleInstallApp()}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
               sortBy={sortBy}
@@ -1028,8 +1115,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="mx-auto max-w-7xl">
-                  <div className="relative">
-                    <div
+                  <div
                       ref={offersCarouselRef}
                       id="offers-carousel"
                       className="flex cursor-grab select-none justify-start touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pl-0 pr-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
@@ -1047,27 +1133,10 @@ export default function App() {
                             onMoreInfo={setSelectedOffer}
                           />
                         </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => scrollOffers(-1)}
-                      className="focus-ring absolute left-0 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:left-2 sm:h-12 sm:w-12"
-                      aria-label="Show previous offers"
-                    >
-                      <ChevronLeft className="h-7 w-7" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => scrollOffers(1)}
-                      className="focus-ring absolute right-0 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-200/35 bg-[#101722]/90 text-cyan-100 shadow-[0_12px_35px_rgba(0,0,0,0.45),0_0_24px_rgba(45,212,238,0.16)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-[#17283a] hover:text-white sm:right-2 sm:h-12 sm:w-12"
-                      aria-label="Show next offers"
-                    >
-                      <ChevronRight className="h-7 w-7" />
-                    </button>
+                      )                      )}
                   </div>
                   <p className="mt-1 text-center text-[10px] font-mono text-zinc-500">
-                    Swipe, scroll, or use the floating arrows to browse offers
+                    Swipe or scroll to browse offers
                   </p>
                 </div>
               )}
@@ -1082,6 +1151,7 @@ export default function App() {
                 initialView={adminSection === 'blasts' ? 'email' : 'offers'}
                 pendingOffers={pendingOffers}
                 liveOffers={liveOffers}
+                newClicksByOffer={newClicksByOffer}
                 subscribers={subscribers}
                 onApproveOffer={handleApproveOffer}
                 onRejectOffer={handleRejectOffer}

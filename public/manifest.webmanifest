@@ -1,11 +1,15 @@
 {
-  "name": "signups4fastcash.com",
+  "id": "/",
+  "name": "Signups4FastCash",
   "short_name": "S4FC",
   "description": "Transparent rewards, cashback, and signup offer comparisons.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#090b0e",
   "theme_color": "#090b0e",
+  "categories": ["finance", "shopping"],
   "icons": [
     {
       "src": "/favicon.svg?v=2",

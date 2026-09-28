@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, BellRing, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ArrowRight, BellRing, Download, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -18,6 +18,7 @@ interface HeroProps {
   featuredOffers: Offer[];
   onOpenFinder?: () => void;
   onOpenNewsletter?: () => void;
+  onInstallApp?: () => void;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -44,6 +45,7 @@ export const Hero: React.FC<HeroProps> = ({
   featuredOffers,
   onOpenFinder,
   onOpenNewsletter,
+  onInstallApp,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const marqueeOffers = featuredOffers.length > 0 ? [...featuredOffers, ...featuredOffers] : [];
@@ -83,6 +85,16 @@ export const Hero: React.FC<HeroProps> = ({
               >
                 <Sparkles className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
                 Find my best match
+              </button>
+            )}
+            {onInstallApp && (
+              <button
+                type="button"
+                onClick={onInstallApp}
+                className="focus-ring inline-flex items-center gap-2 rounded-full border border-cyan-300/20 px-4 py-3 text-xs font-medium text-cyan-100 transition-colors hover:border-cyan-300/40 hover:bg-cyan-300/[0.06]"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                Add to home screen
               </button>
             )}
           </div>

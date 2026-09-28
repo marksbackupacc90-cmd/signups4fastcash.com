@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
-      // The website remains fully usable when offline app installation is unavailable.
+      console.error('Could not register the offline app worker.');
     });
   });
 }

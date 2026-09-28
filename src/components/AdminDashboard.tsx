@@ -9,6 +9,7 @@ interface AdminDashboardProps {
   initialView?: DashboardView;
   pendingOffers: Offer[];
   liveOffers: Offer[];
+  newClicksByOffer: Record<string, number>;
   subscribers: NewsletterSubscriber[];
   onApproveOffer: (offerId: string, referralCode: string, referralUrl: string, blastEmail: boolean, updatedOffer?: Partial<Offer>) => void;
   onRejectOffer: (offerId: string) => void;
@@ -237,6 +238,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {view === 'offers' && (
         <AdminOffersPage
           liveOffers={props.liveOffers}
+          newClicksByOffer={props.newClicksByOffer}
           onUpdateLiveOffer={props.onUpdateLiveOffer}
           onDeleteLiveOffer={props.onDeleteLiveOffer}
           onCreateCustomOffer={props.onCreateCustomOffer}
