@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { ExternalLink, Link as LinkIcon, Save, Search, WalletCards } from 'lucide-react';
 import { Offer, SpeedrunStep } from '../types';
+import type { OfferActivity } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
 interface AdminOffersPageProps {
   liveOffers: Offer[];
-  newClicksByOffer: Record<string, number>;
+  activityByOffer: Record<string, OfferActivity>;
+  activityPeriodDays: 7 | 30;
+  onActivityPeriodChange: (days: 7 | 30) => void;
+  onRefreshActivity: () => void;
   onUpdateLiveOffer: (offerId: string, updates: Partial<Offer>) => void;
   onDeleteLiveOffer: (offerId: string) => void;
   onCreateCustomOffer: (offer: Omit<Offer, 'id' | 'clicksCount' | 'conversionsCount' | 'createdAt' | 'updatedAt'>) => void;
@@ -42,7 +46,10 @@ const safeOffers = (offers: Offer[]) => (Array.isArray(offers) ? offers.filter(B
 
 export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   liveOffers,
-  newClicksByOffer,
+  activityByOffer,
+  activityPeriodDays,
+  onActivityPeriodChange,
+  onRefreshActivity,
   onUpdateLiveOffer,
   onDeleteLiveOffer,
   onCreateCustomOffer,
@@ -162,6 +169,27 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
               Offers
             </h1>
             <p className="mt-1 text-xs text-zinc-400">{filteredOffers.length} offers available to manage.</p>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Activity</span>
+              {([7, 30] as const).map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  aria-pressed={activityPeriodDays === days}
+                  onClick={() => onActivityPeriodChange(days)}
+                  className={`rounded-md px-2.5 py-1.5 text-[10px] font-bold ${activityPeriodDays === days ? 'bg-cyan-300 text-[#061016]' : 'border border-white/10 text-zinc-400 hover:text-white'}`}
+                >
+                  {days} days
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={onRefreshActivity}
+                className="rounded-md border border-white/10 px-2.5 py-1.5 text-[10px] font-bold text-zinc-300 hover:bg-white/[0.06]"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button type="button" onClick={() => setCreating((current) => !current)} className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-[#061016] hover:bg-emerald-300">
@@ -262,10 +290,13 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                       <span className="mt-1 flex flex-wrap items-center gap-2 font-mono">
                         <span className="text-[10px] text-cyan-200">{Number(offer.clicksCount || 0).toLocaleString()} total clicks</span>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${Number(newClicksByOffer[offer.id] || 0) > 0 ? 'bg-emerald-300/15 text-emerald-200' : 'bg-white/[0.06] text-zinc-400'}`}
-                          aria-label={`${Number(newClicksByOffer[offer.id] || 0)} new clicks since your last admin visit`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${(activityByOffer[offer.id]?.clicks || 0) > 0 ? 'bg-emerald-300/15 text-emerald-200' : 'bg-white/[0.06] text-zinc-400'}`}
+                          aria-label={`${activityByOffer[offer.id]?.clicks || 0} clicks in the last ${activityPeriodDays} days`}
                         >
-                          +{Number(newClicksByOffer[offer.id] || 0)} new
+                          {activityByOffer[offer.id]?.clicks || 0} · {activityPeriodDays}d
+                        </span>
+                        <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-zinc-300">
+                          {activityByOffer[offer.id]?.conversions || 0} conv
                         </span>
                       </span>
                     </span>

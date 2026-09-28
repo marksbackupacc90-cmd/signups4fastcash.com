@@ -83,6 +83,16 @@ For the Western Union card, verify `offer-western-union-referral` and
 `https://ssqt.co/mQXPJgc`. Do not rely on an old browser tab or cached JavaScript
 when checking a newly deployed catalog.
 
+## Offer activity reporting
+
+The Admin dashboard provides shared per-offer click and recorded-conversion totals
+for the last 7 or 30 days. These timestamped events are stored in PostgreSQL, and
+events older than 365 days are pruned during application startup. The reporting
+window begins when event tracking is deployed; existing lifetime counters are not
+backfilled with dates, so earlier activity continues to appear only in lifetime
+totals. Conversion totals increase only when an integration records a conversion;
+a referral click alone does not confirm a merchant signup or payout.
+
 ## Monitoring and recovery
 
 - Configure the hosting platform health check to call `/api/health`. It returns HTTP 503 when

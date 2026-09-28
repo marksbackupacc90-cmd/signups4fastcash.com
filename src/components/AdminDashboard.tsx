@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, BarChart3, CheckCircle2, Mail, Send, ShieldCheck, Store } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BarChart3, CheckCircle2, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings } from '../types';
+import type { OfferActivity, OfferActivityReport } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
 
 type DashboardView = 'overview' | 'offers' | 'email';
@@ -9,7 +10,6 @@ interface AdminDashboardProps {
   initialView?: DashboardView;
   pendingOffers: Offer[];
   liveOffers: Offer[];
-  newClicksByOffer: Record<string, number>;
   subscribers: NewsletterSubscriber[];
   onApproveOffer: (offerId: string, referralCode: string, referralUrl: string, blastEmail: boolean, updatedOffer?: Partial<Offer>) => void;
   onRejectOffer: (offerId: string) => void;
@@ -40,8 +40,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedOfferId, setSelectedOfferId] = useState(props.liveOffers[0]?.id || '');
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
+  const [activityPeriodDays, setActivityPeriodDays] = useState<7 | 30>(7);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [activityReport, setActivityReport] = useState<OfferActivityReport | null>(null);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
   const totalClicks = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.clicksCount || 0), 0), [props.liveOffers]);
   const totalConversions = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.conversionsCount || 0), 0), [props.liveOffers]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadActivityReport = async () => {
+      setActivityLoading(true);
+      setActivityError(null);
+      try {
+        const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+        const response = await fetch(`/api/admin/analytics/offers?days=${activityPeriodDays}`, {
+          headers: token ? { 'x-admin-token': token } : {},
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => null) as (OfferActivityReport & { error?: string }) | null;
+        if (!response.ok || !data) throw new Error(data?.error || 'Could not load offer activity.');
+        setActivityReport(data);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('Could not load date-range offer activity:', error);
+        setActivityError(error instanceof Error ? error.message : 'Could not load offer activity.');
+        setActivityReport(null);
+      } finally {
+        if (!controller.signal.aborted) setActivityLoading(false);
+      }
+    };
+    void loadActivityReport();
+    return () => controller.abort();
+  }, [activityPeriodDays, activityRefreshKey]);
+  const activityByOffer = activityReport?.offers || {};
   const offersNeedingReview = useMemo(() => {
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
     return props.liveOffers
@@ -90,6 +122,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'offers' as const, label: 'Offers', icon: Store },
     { id: 'email' as const, label: 'Email', icon: Mail },
   ];
+  const activityPeriods: (7 | 30)[] = [7, 30];
   const sendOfferEmail = async () => {
     if (!selectedOfferId) return;
     setEmailSending(true);
@@ -153,6 +186,86 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             ))}
           </div>
+          <section className="rounded-xl border border-cyan-300/15 bg-[#0e121a] p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-bold text-white">
+                  <MousePointerClick className="h-4 w-4 text-cyan-300" /> Recent offer activity
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                  Shared click and recorded conversion counts, refreshed from the server for this period.
+                </p>
+              </div>
+              <div className="flex gap-1 rounded-lg border border-white/10 bg-[#090d12] p-1" aria-label="Offer activity period">
+                {activityPeriods.map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    aria-pressed={activityPeriodDays === days}
+                    onClick={() => setActivityPeriodDays(days)}
+                    className={`rounded-md px-3 py-2 text-xs font-bold ${activityPeriodDays === days ? 'bg-cyan-300 text-[#061016]' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    {days} days
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setActivityRefreshKey((key) => key + 1)}
+                  disabled={activityLoading}
+                  className="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/[0.06] disabled:opacity-50"
+                >
+                  {activityLoading ? 'Refreshing…' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+            {activityLoading ? (
+              <p className="mt-4 text-xs text-zinc-400" role="status">Loading recent activity…</p>
+            ) : activityError ? (
+              <p className="mt-4 rounded-lg border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-200" role="alert">{activityError}</p>
+            ) : (
+              <>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/[0.07] bg-[#090d12] p-4">
+                    <div className="text-2xl font-black text-cyan-200">{activityReport?.totals.clicks.toLocaleString() || '0'}</div>
+                    <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Clicks · last {activityPeriodDays} days</div>
+                  </div>
+                  <div className="rounded-lg border border-white/[0.07] bg-[#090d12] p-4">
+                    <div className="text-2xl font-black text-emerald-200">{activityReport?.totals.conversions.toLocaleString() || '0'}</div>
+                    <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Conversion events · last {activityPeriodDays} days</div>
+                  </div>
+                </div>
+                <div className="mt-4 divide-y divide-white/[0.07]">
+                  {[...props.liveOffers]
+                    .sort((left, right) => (activityByOffer[right.id]?.clicks || 0) - (activityByOffer[left.id]?.clicks || 0))
+                    .slice(0, 8)
+                    .map((offer) => {
+                      const activity: OfferActivity = activityByOffer[offer.id] || { clicks: 0, conversions: 0 };
+                      return (
+                        <div key={offer.id} className="flex items-center justify-between gap-3 py-2.5">
+                          <div className="min-w-0">
+                            <div className="truncate text-xs font-semibold text-zinc-200">{offer.company}</div>
+                            <div className="truncate text-[10px] text-zinc-500">{offer.title}</div>
+                          </div>
+                          <div className="shrink-0 text-right text-[11px] font-mono">
+                            <span className="text-cyan-200">{activity.clicks} clicks</span>
+                            <span className="mx-2 text-zinc-600">·</span>
+                            <span className="text-emerald-200">{activity.conversions} conversion events</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-zinc-500">
+                  Date-range tracking starts with this release; earlier activity remains in lifetime totals only. Conversion events are recorded signals, not confirmation of a merchant signup or payout.
+                </p>
+                {activityReport && (
+                  <p className="mt-1 text-[10px] text-zinc-600">
+                    Updated {new Date(activityReport.to).toLocaleString()}
+                  </p>
+                )}
+              </>
+            )}
+          </section>
           <div className="grid gap-4 lg:grid-cols-2">
             <button type="button" onClick={() => setView('email')} className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-5 text-left transition-colors hover:bg-cyan-300/10">
               <Mail className="h-5 w-5 text-cyan-300" />
@@ -238,7 +351,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {view === 'offers' && (
         <AdminOffersPage
           liveOffers={props.liveOffers}
-          newClicksByOffer={props.newClicksByOffer}
+          activityByOffer={activityByOffer}
+          activityPeriodDays={activityPeriodDays}
+          onActivityPeriodChange={setActivityPeriodDays}
+          onRefreshActivity={() => setActivityRefreshKey((key) => key + 1)}
           onUpdateLiveOffer={props.onUpdateLiveOffer}
           onDeleteLiveOffer={props.onDeleteLiveOffer}
           onCreateCustomOffer={props.onCreateCustomOffer}

@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, isVerificationCurrent } = await import('../dist/server.cjs');
+const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -96,6 +96,47 @@ test('offer analytics rejects malformed telemetry payloads', async () => {
   assert.equal(response.body.error, 'A valid offerId and event type are required');
 });
 
+test('valid offer click events appear in the shared rolling activity report', async () => {
+  const response = await request('/api/analytics/track', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ offerId: 'offer-western-union-referral', type: 'click' }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.offer.id, 'offer-western-union-referral');
+
+  const report = getOfferActivityReport(7);
+  assert.equal(report.offers['offer-western-union-referral'].clicks, 1);
+  assert.equal(report.totals.clicks, 1);
+});
+
+test('offer activity reports aggregate 7-day and 30-day events by offer', () => {
+  const checkedAt = new Date('2026-09-28T12:00:00.000Z');
+  const daysAgo = (days) => new Date(checkedAt.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+  const events = [
+    { offerId: 'offer-a', type: 'click', recordedAt: daysAgo(1) },
+    { offerId: 'offer-a', type: 'click', recordedAt: daysAgo(6) },
+    { offerId: 'offer-a', type: 'conversion', recordedAt: daysAgo(6) },
+    { offerId: 'offer-b', type: 'click', recordedAt: daysAgo(12) },
+    { offerId: 'offer-b', type: 'conversion', recordedAt: daysAgo(29) },
+    { offerId: 'offer-old', type: 'click', recordedAt: daysAgo(31) },
+    { offerId: 'offer-future', type: 'click', recordedAt: new Date(checkedAt.getTime() + 1000).toISOString() },
+    { offerId: 'offer-invalid', type: 'click', recordedAt: 'not-a-date' },
+  ];
+
+  const sevenDayReport = buildOfferActivityReport(events, 7, checkedAt);
+  assert.equal(sevenDayReport.totals.clicks, 2);
+  assert.equal(sevenDayReport.totals.conversions, 1);
+  assert.deepEqual(sevenDayReport.offers['offer-a'], { clicks: 2, conversions: 1 });
+  assert.equal(sevenDayReport.offers['offer-b'], undefined);
+
+  const thirtyDayReport = buildOfferActivityReport(events, 30, checkedAt);
+  assert.equal(thirtyDayReport.totals.clicks, 3);
+  assert.equal(thirtyDayReport.totals.conversions, 2);
+  assert.deepEqual(thirtyDayReport.offers['offer-b'], { clicks: 1, conversions: 1 });
+  assert.equal(thirtyDayReport.offers['offer-old'], undefined);
+});
+
 test('offer impressions validate offer placement and record position data', async () => {
   const invalid = await request('/api/analytics/impression', {
     method: 'POST',
@@ -143,6 +184,12 @@ test('completion reports are separate from verified conversions', async () => {
 
 test('admin analytics requires an admin token', async () => {
   const response = await request('/api/admin/analytics/visitors');
+  assert.equal(response.status, 401);
+  assert.equal(response.body.error, 'Admin authentication required');
+});
+
+test('date-range offer analytics requires an admin token', async () => {
+  const response = await request('/api/admin/analytics/offers?days=7');
   assert.equal(response.status, 401);
   assert.equal(response.body.error, 'Admin authentication required');
 });

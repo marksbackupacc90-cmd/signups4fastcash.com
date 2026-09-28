@@ -520,6 +520,43 @@ let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
 };
+type OfferAnalyticsEvent = {
+  offerId: string;
+  type: 'click' | 'conversion';
+  recordedAt: string;
+};
+const offerAnalyticsEvents: OfferAnalyticsEvent[] = [];
+
+export function buildOfferActivityReport(events: OfferAnalyticsEvent[], periodDays: 7 | 30, checkedAt = new Date()) {
+  const to = checkedAt.getTime();
+  const from = to - periodDays * 24 * 60 * 60 * 1000;
+  const offers: Record<string, { clicks: number; conversions: number }> = {};
+  for (const event of events) {
+    const recordedAt = Date.parse(event.recordedAt);
+    if (!Number.isFinite(recordedAt) || recordedAt < from || recordedAt > to) continue;
+    const activity = offers[event.offerId] || (offers[event.offerId] = { clicks: 0, conversions: 0 });
+    activity[event.type === 'click' ? 'clicks' : 'conversions'] += 1;
+  }
+  const totals = Object.values(offers).reduce(
+    (result, activity) => ({
+      clicks: result.clicks + activity.clicks,
+      conversions: result.conversions + activity.conversions,
+    }),
+    { clicks: 0, conversions: 0 },
+  );
+  return {
+    periodDays,
+    from: new Date(from).toISOString(),
+    to: checkedAt.toISOString(),
+    totals,
+    offers,
+  };
+}
+
+export function getOfferActivityReport(periodDays: 7 | 30, checkedAt = new Date()) {
+  return buildOfferActivityReport(offerAnalyticsEvents, periodDays, checkedAt);
+}
+
 type OfferImpression = {
   offerId: string;
   position: number;
@@ -785,6 +822,16 @@ async function initializeOfferStore() {
       total_conversions INTEGER NOT NULL DEFAULT 0
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_analytics_events (
+      id TEXT PRIMARY KEY,
+      offer_id TEXT NOT NULL,
+      event_type TEXT NOT NULL CHECK (event_type IN ('click', 'conversion')),
+      occurred_at TIMESTAMPTZ NOT NULL
+    )
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS offer_analytics_events_time_offer_idx ON offer_analytics_events (occurred_at, offer_id)');
+  await database.query("DELETE FROM offer_analytics_events WHERE occurred_at < NOW() - INTERVAL '365 days'");
   await database.query(`
     CREATE TABLE IF NOT EXISTS analytics_report_checkpoints (
       id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -2653,6 +2700,7 @@ app.post('/api/analytics/track', (req, res) => {
   if (!offer) {
     return res.status(404).json({ error: 'Offer not found' });
   }
+  const event: OfferAnalyticsEvent = { offerId, type, recordedAt: new Date().toISOString() };
   if (type === 'click') {
     analyticsStore.totalClicks += 1;
     offer.clicksCount += 1;
@@ -2661,7 +2709,16 @@ app.post('/api/analytics/track', (req, res) => {
     offer.conversionsCount += 1;
   }
   const persist = async () => {
-    if (!database || !['click', 'conversion'].includes(type)) return;
+    if (!database) {
+      offerAnalyticsEvents.push(event);
+      if (offerAnalyticsEvents.length > 50000) offerAnalyticsEvents.shift();
+      return;
+    }
+    await database.query(
+      `INSERT INTO offer_analytics_events (id, offer_id, event_type, occurred_at)
+       VALUES ($1, $2, $3, $4)`,
+      [randomUUID(), offerId, type, event.recordedAt],
+    );
     const column = type === 'click' ? 'total_clicks' : 'total_conversions';
     const result = await database.query<{ total_clicks: number; total_conversions: number }>(
       `UPDATE analytics_counters SET ${column} = ${column} + 1 WHERE id = 1
@@ -2686,6 +2743,55 @@ app.post('/api/analytics/track', (req, res) => {
       },
     }))
     .catch(() => res.status(500).json({ error: 'Could not record analytics' }));
+});
+
+app.get('/api/admin/analytics/offers', requireAdmin, async (req, res) => {
+  const requestedDays = req.query.days === undefined ? 7 : Number(req.query.days);
+  if (requestedDays !== 7 && requestedDays !== 30) {
+    return res.status(400).json({ error: 'Choose a 7-day or 30-day reporting period.' });
+  }
+  const periodDays = requestedDays as 7 | 30;
+  const checkedAt = new Date();
+  if (database) {
+    try {
+      const from = new Date(checkedAt.getTime() - periodDays * 24 * 60 * 60 * 1000);
+      const result = await database.query<{
+        offer_id: string;
+        clicks: string;
+        conversions: string;
+      }>(
+        `SELECT offer_id,
+           COUNT(*) FILTER (WHERE event_type = 'click')::text AS clicks,
+           COUNT(*) FILTER (WHERE event_type = 'conversion')::text AS conversions
+         FROM offer_analytics_events
+         WHERE occurred_at >= $1 AND occurred_at <= $2
+         GROUP BY offer_id`,
+        [from.toISOString(), checkedAt.toISOString()],
+      );
+      const offers = Object.fromEntries(result.rows.map((row) => [
+        row.offer_id,
+        { clicks: Number(row.clicks), conversions: Number(row.conversions) },
+      ]));
+      const totals = Object.values(offers).reduce(
+        (sum, activity) => ({
+          clicks: sum.clicks + activity.clicks,
+          conversions: sum.conversions + activity.conversions,
+        }),
+        { clicks: 0, conversions: 0 },
+      );
+      return res.json({
+        periodDays,
+        from: from.toISOString(),
+        to: checkedAt.toISOString(),
+        totals,
+        offers,
+      });
+    } catch (error) {
+      console.error('Could not load date-range offer analytics:', error);
+      return res.status(500).json({ error: 'Could not load date-range offer analytics.' });
+    }
+  }
+  return res.json(getOfferActivityReport(periodDays, checkedAt));
 });
 
 app.post('/api/analytics/pageview', async (req, res) => {
@@ -2980,6 +3086,7 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
   analyticsStore = { totalClicks: 0, totalConversions: 0 };
   analyticsReportCheckpoint = null;
   offerImpressionsStore.length = 0;
+  offerAnalyticsEvents.length = 0;
   visitorAnalyticsStore = {
     totalPageViews: 0,
     uniqueVisitors: new Set<string>(),
@@ -2996,6 +3103,7 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
     try {
       await database.query('BEGIN');
       await database.query('UPDATE analytics_counters SET total_clicks = 0, total_conversions = 0 WHERE id = 1');
+      await database.query('DELETE FROM offer_analytics_events');
       await database.query('DELETE FROM visitor_events');
       await database.query('DELETE FROM offer_impressions');
       await database.query('DELETE FROM analytics_report_checkpoints');

@@ -58,8 +58,6 @@ function shuffleOfferIds(offers: Offer[]) {
     .map((offer) => offer.id);
 }
 
-const OFFER_CLICK_BASELINE_KEY = 'signups4fastcash_offer_click_baseline';
-
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
   const [activeTab, setActiveTab] = useState<'offers' | 'daily' | 'admin'>('offers');
@@ -132,9 +130,6 @@ export default function App() {
   const recordedImpressions = useRef(new Set<string>());
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
   const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0 });
-  const adminPageVisibleRef = useRef(false);
-  const [newClicksByOffer, setNewClicksByOffer] = useState<Record<string, number>>({});
-  const [offersLoaded, setOffersLoaded] = useState(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
@@ -425,73 +420,11 @@ export default function App() {
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load offers'))))
       .then((data: { offers: Offer[] }) => {
         setLiveOffers(data.offers.filter(isAvailableOffer));
-        setOffersLoaded(true);
       })
       .catch(() => {
         // Keep the local catalog available when the API is offline.
       });
   }, []);
-
-  useEffect(() => {
-    const shouldCaptureVisit = offersLoaded && activeTab === 'admin' && isAdminUnlocked && adminPanelVisible;
-    if (!shouldCaptureVisit) {
-      adminPageVisibleRef.current = false;
-      return;
-    }
-    if (adminPageVisibleRef.current) return;
-    adminPageVisibleRef.current = true;
-
-    const captureClickChanges = async () => {
-      let offersForSnapshot = liveOffers;
-      try {
-        const response = await fetch('/api/offers');
-        if (!response.ok) throw new Error('Could not refresh offers before comparing click counts.');
-        const data = await response.json() as { offers?: Offer[] };
-        if (!Array.isArray(data.offers)) throw new Error('The offers response did not include an offer list.');
-        offersForSnapshot = data.offers.filter(isAvailableOffer);
-        setLiveOffers(offersForSnapshot);
-      } catch (error) {
-        console.error('Could not refresh offer click counts:', error);
-        showToast('Could not refresh click counts. Showing the last loaded totals.');
-      }
-
-      const currentCounts = Object.fromEntries(offersForSnapshot.map((offer) => [
-        offer.id,
-        Math.max(0, Number(offer.clicksCount) || 0),
-      ]));
-      let previousCounts: Record<string, number> = {};
-      try {
-        const saved = localStorage.getItem(OFFER_CLICK_BASELINE_KEY);
-        if (saved) {
-          const parsed: unknown = JSON.parse(saved);
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            for (const [offerId, value] of Object.entries(parsed)) {
-              if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
-                previousCounts[offerId] = value;
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Could not read previous offer click counts:', error);
-      }
-
-      const hasPreviousVisit = Object.keys(previousCounts).length > 0;
-      const newClicks = Object.fromEntries(Object.entries(currentCounts).map(([offerId, clicks]) => {
-        const previousClicks = Number(previousCounts[offerId] ?? 0);
-        return [offerId, hasPreviousVisit && Number.isFinite(previousClicks) ? Math.max(0, clicks - previousClicks) : 0];
-      }));
-      setNewClicksByOffer(newClicks);
-      try {
-        localStorage.setItem(OFFER_CLICK_BASELINE_KEY, JSON.stringify(currentCounts));
-      } catch (error) {
-        console.error('Could not save offer click counts for the next visit:', error);
-        showToast('New-click counts could not be saved for your next visit.');
-      }
-    };
-
-    void captureClickChanges();
-  }, [offersLoaded, activeTab, isAdminUnlocked, adminPanelVisible, liveOffers]);
 
   useEffect(() => {
     fetch('/api/newsletter/subscribers')
@@ -1151,7 +1084,6 @@ export default function App() {
                 initialView={adminSection === 'blasts' ? 'email' : 'offers'}
                 pendingOffers={pendingOffers}
                 liveOffers={liveOffers}
-                newClicksByOffer={newClicksByOffer}
                 subscribers={subscribers}
                 onApproveOffer={handleApproveOffer}
                 onRejectOffer={handleRejectOffer}

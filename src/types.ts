@@ -69,6 +69,19 @@ export interface Offer {
   updatedAt: string;
 }
 
+export interface OfferActivity {
+  clicks: number;
+  conversions: number;
+}
+
+export interface OfferActivityReport {
+  periodDays: 7 | 30;
+  from: string;
+  to: string;
+  totals: OfferActivity;
+  offers: Record<string, OfferActivity>;
+}
+
 export interface CashBotScanResult {
   id: string;
   scannedAt: string;
