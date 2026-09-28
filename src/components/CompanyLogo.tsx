@@ -49,6 +49,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     topcashback: 'topcashback',
     ibotta: 'ibotta',
   };
+  const simpleIconSlug = simpleIconSlugMap[logoSlug];
 
   const localLogoMap: Record<string, string> = {
     sofi: '/company-logos/sofi-logo.png',
@@ -95,7 +96,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const imageSources = [
     logoUrl,
     localLogo,
-    `https://cdn.simpleicons.org/${simpleIconSlugMap[logoSlug] || logoSlug}`,
+    simpleIconSlug ? `https://cdn.simpleicons.org/${simpleIconSlug}` : undefined,
   ].filter((source): source is string => Boolean(source));
   const [imageSourceIndex, setImageSourceIndex] = React.useState(0);
   const imageSource = imageSources[imageSourceIndex] || null;
@@ -104,7 +105,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   React.useEffect(() => {
     setImageSourceIndex(0);
     setImageLoaded(false);
-  }, [logoUrl, localLogo]);
+  }, [logoUrl, localLogo, simpleIconSlug]);
   React.useEffect(() => {
     const image = imageRef.current;
     if (image?.complete && image.naturalWidth > 0) setImageLoaded(true);
