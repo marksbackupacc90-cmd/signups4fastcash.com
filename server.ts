@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Pool } from 'pg';
-import { PUBLIC_OFFERS } from './src/data/initialOffers';
+import { SITE_OFFER_CATALOG as PUBLIC_OFFERS } from './src/data/offerCatalog';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from './src/types';
 
 dotenv.config({ path: '.env.local' });
@@ -176,6 +176,12 @@ function isPublishableOffer(offer: Record<string, unknown>) {
 
 function isVerificationCurrent(offer: { verificationExpiresAt?: string }) {
   return !offer.verificationExpiresAt || Date.parse(offer.verificationExpiresAt) > Date.now();
+}
+
+export function resolveUpdatedOfferStatus(existingStatus: string, requestedStatus: unknown) {
+  return requestedStatus === 'live' || requestedStatus === 'hidden'
+    ? requestedStatus
+    : existingStatus;
 }
 
 app.use(express.json());
@@ -2216,7 +2222,7 @@ app.put('/api/offers/:id', requireAdmin, async (req, res) => {
     ...liveOffersStore[index],
     ...req.body,
     id: liveOffersStore[index].id,
-    status: req.body.status === 'hidden' ? 'hidden' : 'live',
+    status: resolveUpdatedOfferStatus(liveOffersStore[index].status, req.body.status),
     verificationStatus: 'reviewed',
     verifiedAt: new Date().toISOString(),
     verificationExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),

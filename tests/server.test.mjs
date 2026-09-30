@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent } = await import('../dist/server.cjs');
+const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -59,11 +59,30 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.doesNotMatch(response.body, /\?offer=/);
 });
 
+test('new bank offer candidates are not exposed in the public offer catalog', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const candidateIds = [
+    'candidate-wells-fargo-everyday-checking-325',
+    'candidate-capital-one-360-checking-250',
+    'candidate-pnc-virtual-wallet-400',
+  ];
+  const publicIds = response.body.offers.map((offer) => offer.id);
+  candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
+});
+
 test('offer verification expiry accepts only current or legacy dates', () => {
   assert.equal(isVerificationCurrent({ verificationExpiresAt: new Date(Date.now() + 86400000).toISOString() }), true);
   assert.equal(isVerificationCurrent({ verificationExpiresAt: new Date(Date.now() - 86400000).toISOString() }), false);
   assert.equal(isVerificationCurrent({}), true);
   assert.equal(isVerificationCurrent({ verificationExpiresAt: 'not-a-date' }), false);
+});
+
+test('editing a hidden offer link does not publish the offer', () => {
+  assert.equal(resolveUpdatedOfferStatus('hidden', undefined), 'hidden');
+  assert.equal(resolveUpdatedOfferStatus('hidden', 'hidden'), 'hidden');
+  assert.equal(resolveUpdatedOfferStatus('hidden', 'live'), 'live');
+  assert.equal(resolveUpdatedOfferStatus('live', undefined), 'live');
 });
 
 test('pageview analytics rejects missing visitor identifiers', async () => {

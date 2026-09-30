@@ -890,7 +890,6 @@ export default function App() {
       startScrollLeft: carousel.scrollLeft,
       moved: false,
     };
-    carousel.setPointerCapture(event.pointerId);
   };
 
   const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -901,6 +900,7 @@ export default function App() {
     if (Math.abs(distance) > 6 && !drag.moved) {
       drag.moved = true;
       carousel.style.scrollSnapType = 'none';
+      carousel.setPointerCapture(event.pointerId);
     }
     if (drag.moved) carousel.scrollTo({ left: drag.startScrollLeft - distance, behavior: 'instant' });
   };

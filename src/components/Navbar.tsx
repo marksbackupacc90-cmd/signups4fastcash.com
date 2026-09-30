@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
-      <div className="relative mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-6 lg:px-8">
         
         {/* Brand */}
         <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="brand-logo-btn"
             aria-label={settings.brandName || settings.siteName}
           >
-            <SfcCoinLogo />
+            <SfcCoinLogo size="sm" />
             <div className="min-w-0">
               <span className="block max-w-[calc(100vw-125px)] truncate font-mono text-sm font-bold tracking-tight text-white sm:text-lg">
                 {settings.brandName || settings.siteName}
@@ -164,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="retro-button focus-ring inline-flex items-center gap-1.5 rounded-md border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 sm:px-3"
               aria-label="Sign in with Google (optional)"
             >
-              Sign in <span className="text-[10px] font-normal text-cyan-300">optional</span>
+              Sign in <span className="hidden text-[10px] font-normal text-cyan-300 min-[360px]:inline">optional</span>
             </button>
           )}
         </div>
