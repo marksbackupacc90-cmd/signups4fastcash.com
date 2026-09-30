@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ArrowRight, Check, SlidersHorizontal, X } from 'lucide-react';
 import { Offer } from '../types';
+import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
 
 interface OfferFinderProps {
   offers: Offer[];
@@ -12,6 +13,7 @@ type Budget = 'zero' | 'under25' | 'any';
 type Verification = 'none' | 'any';
 
 export const OfferFinder: React.FC<OfferFinderProps> = ({ offers, onViewOffer, onClose }) => {
+  const dialogRef = useRef<HTMLElement>(null);
   const [budget, setBudget] = useState<Budget>('zero');
   const [category, setCategory] = useState('all');
   const [verification, setVerification] = useState<Verification>('any');
@@ -22,6 +24,7 @@ export const OfferFinder: React.FC<OfferFinderProps> = ({ offers, onViewOffer, o
       return [];
     }
   });
+  useDialogAccessibility(dialogRef, onClose);
 
   const categories = Array.from(new Set(offers.map((offer) => offer.category)));
   const matches = useMemo(() => offers
@@ -46,7 +49,7 @@ export const OfferFinder: React.FC<OfferFinderProps> = ({ offers, onViewOffer, o
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 px-4 py-8 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" aria-labelledby="offer-finder-title" className="mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 shadow-2xl sm:p-7">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="offer-finder-title" className="light-dialog mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-mono uppercase tracking-wider text-cyan-300">Personalized offer finder</p>

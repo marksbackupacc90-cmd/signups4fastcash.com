@@ -134,10 +134,10 @@ export interface SiteSettings {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: 'Signups4FastCash.com',
-  siteTagline: 'Rewards and cashback with clear terms',
-  heroBadge: 'Rewards and cashback with clear terms',
-  mainHeadline: 'Compare rewards before you sign up.',
-  subHeadline: 'Review signup bonuses, cashback offers, and referral rewards with requirements, payout timing, and important terms shown upfront.',
+  siteTagline: 'Clear terms. Better-informed choices.',
+  heroBadge: 'Rewards, with the fine print included',
+  mainHeadline: 'Find offers worth your time.',
+  subHeadline: 'Compare signup bonuses, cashback, and rewards in one place — with the requirements and important details clearly laid out.',
   brandName: 'Signups4FastCash.com',
   brandBadge: 'Verified terms shown',
   footerBlurb: 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.',
@@ -148,9 +148,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   trustSubtext: 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.',
   metaTitle: 'Compare Rewards Before You Sign Up | Signups4FastCash.com',
   metaDescription: 'Compare signup bonuses, cashback offers, and referral rewards with requirements, payout timing, and important terms shown upfront.',
-  themeBackgroundColor: '#02070d',
-  themeAccentColor: '#2dd4ee',
-  themePanelColor: '#0b1520',
+  themeBackgroundColor: '#f5f8f6',
+  themeAccentColor: '#197344',
+  themePanelColor: '#ffffff',
 };
 
 export interface AnalyticsSummary {

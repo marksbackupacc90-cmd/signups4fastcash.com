@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Bell, ChevronDown, Download, ListChecks, Menu, Search, Share2, Sparkles, X } from 'lucide-react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
-import { Bell, ChevronDown, ListChecks, Search, Share2 } from 'lucide-react';
 
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
@@ -22,6 +22,8 @@ interface NavbarProps {
   shareCopied: boolean;
   onOpenFinder: () => void;
   onOpenNewsletter: () => void;
+  onFocusSearch?: () => void;
+  onInstallApp?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,137 +40,140 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignOut,
   onAdminSection,
   canAccessAdmin = false,
-  userId,
   onShare,
   shareCopied,
   onOpenFinder,
   onOpenNewsletter,
+  onFocusSearch,
+  onInstallApp,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!accountMenuOpen) return;
-    const handleOutsidePointerDown = (event: PointerEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
-        setAccountMenuOpen(false);
-      }
+    if (!menuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
     };
-    document.addEventListener('pointerdown', handleOutsidePointerDown);
-    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
-  }, [accountMenuOpen]);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [menuOpen]);
+
+  const goTo = (selector: string) => {
+    setMenuOpen(false);
+    setActiveTab('offers');
+    window.setTimeout(() => document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
+
+  const openSignIn = () => {
+    setMenuOpen(false);
+    onSignIn();
+  };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
-      <div className="relative mx-auto flex min-h-16 max-w-7xl items-center gap-2 px-2 py-2 sm:gap-3 sm:px-6 lg:px-8">
-        
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setActiveTab('offers')}
-            className="retro-button focus-ring min-w-0 flex items-center gap-2.5 text-left group focus:outline-none"
-            id="brand-logo-btn"
-            aria-label={settings.brandName || settings.siteName}
-          >
-            <SfcCoinLogo size="sm" />
-            <div className="min-w-0">
-              <span className="block max-w-[calc(100vw-125px)] truncate font-mono text-sm font-bold tracking-tight text-white sm:text-lg">
-                {settings.brandName || settings.siteName}
-              </span>
-              <span className="hidden max-w-[calc(100vw-125px)] truncate text-[10px] font-mono text-cyan-300 sm:block sm:text-[11px]">
-                {settings.siteTagline || 'Rewards and cashback with clear terms'}
-              </span>
-            </div>
-          </button>
-        </div>
+    <header className="site-header">
+      <div className="mx-auto flex min-h-[68px] max-w-[1320px] items-center gap-2 px-3 sm:px-5 lg:px-8">
+        <button
+          type="button"
+          onClick={() => { setActiveTab('offers'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          className="nav-brand flex min-w-0 shrink items-center gap-2.5 text-left"
+          aria-label={`${settings.brandName || settings.siteName} home`}
+        >
+          <SfcCoinLogo size="sm" />
+          <span className="min-w-0">
+            <span className="block max-w-[48vw] truncate text-[0.9rem] font-extrabold tracking-tight text-slate-900 sm:max-w-none sm:text-base">
+              {settings.brandName || settings.siteName}
+            </span>
+            <span className="hidden text-[0.67rem] font-medium text-slate-500 sm:block">
+              {settings.siteTagline || 'Clear terms. Better-informed choices.'}
+            </span>
+          </span>
+        </button>
 
-        {/* Center / Navigation Links */}
-        <nav className="hidden flex-1 items-center justify-center gap-2 overflow-visible px-1 py-1 md:flex">
-          <button
-            id="nav-offers-tab"
-            onClick={() => setActiveTab('offers')}
-            className={`retro-button focus-ring shrink-0 rounded-md border border-white/15 px-4 py-2 text-xs font-medium transition-all ${
-              activeTab === 'offers'
-                ? 'border-[#2dd4ee]/60 bg-[#2dd4ee] text-[#06131a] font-semibold'
-                : 'text-zinc-200 hover:bg-[#141824] hover:text-[#f1e6cf]'
-            }`}
-          >
-            Offers
-          </button>
-          <button
-            id="nav-my-offers"
-            type="button"
-            onClick={onOpenMyOffers}
-            className="retro-button focus-ring hidden shrink-0 items-center gap-1.5 rounded-md border border-white/15 px-4 py-2 text-xs font-medium text-zinc-200 transition-all hover:bg-[#141824] hover:text-white md:inline-flex"
-            aria-label={`Open My Offers, ${activeOfferCount} active`}
-          >
-            <ListChecks className="h-3.5 w-3.5 text-cyan-300" />
-            My Offers
-            {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeOfferCount}</span>}
+        <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex" aria-label="Main navigation">
+          <button type="button" onClick={() => goTo('#offers')} className="nav-link">Browse offers</button>
+          <button type="button" onClick={() => goTo('#categories')} className="nav-link">Categories</button>
+          <button type="button" onClick={() => goTo('#how-it-works')} className="nav-link">How it works</button>
+          <button type="button" onClick={() => { onFocusSearch?.(); setMenuOpen(false); }} className="nav-link inline-flex items-center gap-1.5">
+            <Search className="h-4 w-4" /> Search
           </button>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button
             type="button"
-            onClick={onOpenMyOffers}
-            className="retro-button focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-zinc-200 hover:bg-white/10 md:hidden"
-            aria-label={`Open My Offers, ${activeOfferCount} active`}
-            title="My Offers"
+            onClick={() => { onFocusSearch?.(); setMenuOpen(false); }}
+            className="nav-icon-button lg:hidden"
+            aria-label="Search offers"
           >
-            <ListChecks className="h-4 w-4 text-cyan-300" />
-            {activeOfferCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-[#071016]">{activeOfferCount}</span>}
+            <Search className="h-5 w-5" />
           </button>
-          {username ? (
-            <div ref={accountMenuRef} className="relative">
-              <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[10rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-cyan-300/40" />
-                ) : (
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-[10px] font-bold text-cyan-200 ring-1 ring-cyan-300/25">
-                    {username.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-                @{username}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {accountMenuOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
-                  <button onClick={() => { onOpenMyOffers(); setAccountMenuOpen(false); }} className="focus-ring flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">
-                    <ListChecks className="h-3.5 w-3.5 text-cyan-300" /> My Offers
-                    {activeOfferCount > 0 && <span className="ml-auto rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-bold text-[#071016]">{activeOfferCount}</span>}
-                  </button>
-                  <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="focus-ring block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
-                  {canAccessAdmin && (
-                    <>
-                      <div className="my-1 border-t border-white/10" />
-                      <button
-                        onClick={() => { onAdminSection('live'); setAccountMenuOpen(false); }}
-                        className={`focus-ring block w-full rounded-md px-3 py-2 text-left text-xs hover:bg-amber-300/10 ${adminSection ? 'font-semibold text-amber-100' : 'text-zinc-200'}`}
-                      >
-                        Admin
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => { onOpenNewsletter(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Bell className="h-3.5 w-3.5" /> Subscribe to alerts</button>
-                  <button onClick={() => { onOpenFinder(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Search className="h-3.5 w-3.5" /> Find my best offers</button>
-                  <button onClick={() => { onShare(); setAccountMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10"><Share2 className="h-3.5 w-3.5" /> {shareCopied ? 'Message copied' : 'Share site'}</button>
-                  <button onClick={() => { onSignOut(); setAccountMenuOpen(false); }} className="block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-300 hover:bg-white/10">Sign out</button>
-                </div>
-              )}
-            </div>
-          ) : (
+          <div ref={menuRef} className="relative">
             <button
               type="button"
-              onClick={onSignIn}
-              className="retro-button focus-ring inline-flex items-center gap-1.5 rounded-md border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 sm:px-3"
-              aria-label="Sign in with Google (optional)"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="nav-icon-button"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
             >
-              Sign in <span className="hidden text-[10px] font-normal text-cyan-300 min-[360px]:inline">optional</span>
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5 lg:hidden" />}
+              {!menuOpen && <span className="hidden lg:inline-flex items-center gap-2 px-1 text-sm font-semibold">{username ? `@${username}` : 'Account'}<ChevronDown className="h-4 w-4" /></span>}
             </button>
-          )}
-        </div>
 
+            {menuOpen && (
+              <div className="nav-menu absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1.5rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="grid gap-1">
+                  <button type="button" onClick={() => { onOpenMyOffers(); setMenuOpen(false); }} className="nav-menu-item">
+                    <ListChecks className="h-4 w-4 text-emerald-700" />
+                    <span>My Offers <small>{activeOfferCount ? `${activeOfferCount} active` : 'Saved offers'}</small></span>
+                  </button>
+                  <button type="button" onClick={() => { onOpenFinder(); setMenuOpen(false); }} className="nav-menu-item">
+                    <Sparkles className="h-4 w-4 text-emerald-700" />
+                    <span>Find my match</span>
+                  </button>
+                  <button type="button" onClick={() => { onOpenNewsletter(); setMenuOpen(false); }} className="nav-menu-item">
+                    <Bell className="h-4 w-4 text-emerald-700" />
+                    <span>Email alerts</span>
+                  </button>
+                  {onInstallApp && (
+                    <button type="button" onClick={() => { onInstallApp(); setMenuOpen(false); }} className="nav-menu-item">
+                      <Download className="h-4 w-4 text-emerald-700" />
+                      <span>Add to home screen</span>
+                    </button>
+                  )}
+                  {username ? (
+                    <>
+                      <button type="button" onClick={() => { onAccount(); setMenuOpen(false); }} className="nav-menu-item">My account</button>
+                      {canAccessAdmin && <button type="button" onClick={() => { onAdminSection(adminSection || 'live'); setMenuOpen(false); }} className="nav-menu-item">Admin</button>}
+                      <button type="button" onClick={() => { onSignOut(); setMenuOpen(false); }} className="nav-menu-item">Sign out</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={openSignIn} className="nav-menu-item">Sign in (optional)</button>
+                  )}
+                  <button type="button" onClick={() => { onShare(); setMenuOpen(false); }} className="nav-menu-item">
+                    <Share2 className="h-4 w-4 text-slate-500" />
+                    <span>{shareCopied ? 'Link copied' : 'Share site'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => goTo('#offers')}
+            className="nav-get-started hidden min-h-10 items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 sm:inline-flex"
+          >
+            Get started
+          </button>
+        </div>
       </div>
     </header>
   );

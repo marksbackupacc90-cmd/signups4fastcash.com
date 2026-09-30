@@ -11,13 +11,14 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal, LegalSection } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
-import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { HowItWorks } from './components/HowItWorks';
 import { CashBlueprint } from './components/CashBlueprint';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
+import { ComparisonDialog } from './components/ComparisonDialog';
 
 interface AuthUser {
   id: string;
@@ -128,11 +129,6 @@ export default function App() {
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
   const recordedImpressions = useRef(new Set<string>());
-  const offersCarouselRef = useRef<HTMLDivElement | null>(null);
-  const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0, moved: false });
-  const suppressCarouselClickRef = useRef(false);
-  const [canScrollOffersLeft, setCanScrollOffersLeft] = useState(false);
-  const [canScrollOffersRight, setCanScrollOffersRight] = useState(false);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
   const [adminPanelVisible, setAdminPanelVisible] = useState(false);
   const [adminSection, setAdminSection] = useState<'live' | 'blasts'>('live');
@@ -157,6 +153,12 @@ export default function App() {
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const publicOffers = useMemo(() => liveOffers.filter((offer) => offer.status === 'live'), [liveOffers]);
+  const [compareOfferIds, setCompareOfferIds] = useState<string[]>([]);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const comparisonOffers = useMemo(
+    () => compareOfferIds.map((id) => publicOffers.find((offer) => offer.id === id)).filter((offer): offer is Offer => Boolean(offer)),
+    [compareOfferIds, publicOffers],
+  );
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
@@ -305,6 +307,24 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     window.setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const toggleOfferComparison = (offerId: string) => {
+    if (compareOfferIds.includes(offerId)) {
+      setCompareOfferIds(compareOfferIds.filter((id) => id !== offerId));
+      return;
+    }
+    if (compareOfferIds.length >= 3) {
+      showToast('Compare up to three offers at a time.');
+      return;
+    }
+    setCompareOfferIds([...compareOfferIds, offerId]);
+  };
+
+  const removeComparedOffer = (offerId: string) => {
+    const next = compareOfferIds.filter((id) => id !== offerId);
+    setCompareOfferIds(next);
+    if (next.length < 2) setComparisonOpen(false);
   };
 
   const getAdminHeaders = () => {
@@ -856,64 +876,6 @@ export default function App() {
     showToast('Changes saved successfully.');
   };
 
-  useEffect(() => {
-    const carousel = offersCarouselRef.current;
-    if (!carousel) return;
-    carousel.scrollLeft = 0;
-    const updateScrollControls = () => {
-      setCanScrollOffersLeft(carousel.scrollLeft > 1);
-      setCanScrollOffersRight(carousel.scrollLeft + carousel.clientWidth < carousel.scrollWidth - 1);
-    };
-    updateScrollControls();
-    carousel.addEventListener('scroll', updateScrollControls, { passive: true });
-    window.addEventListener('resize', updateScrollControls);
-    return () => {
-      carousel.removeEventListener('scroll', updateScrollControls);
-      window.removeEventListener('resize', updateScrollControls);
-    };
-  }, [filteredOfferIds]);
-
-  const scrollOffersCarousel = (direction: -1 | 1) => {
-    const carousel = offersCarouselRef.current;
-    if (!carousel) return;
-    const firstCard = carousel.querySelector<HTMLElement>('[data-offer-carousel-item]');
-    const step = firstCard ? firstCard.getBoundingClientRect().width + 16 : carousel.clientWidth * 0.8;
-    carousel.scrollTo({ left: carousel.scrollLeft + direction * step, behavior: 'instant' });
-  };
-
-  const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const carousel = offersCarouselRef.current;
-    if (!carousel || (event.target instanceof Element && event.target.closest('button, a, input, select, textarea'))) return;
-    carouselDragRef.current = {
-      active: true,
-      startX: event.clientX,
-      startScrollLeft: carousel.scrollLeft,
-      moved: false,
-    };
-  };
-
-  const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = carouselDragRef.current;
-    const carousel = offersCarouselRef.current;
-    if (!drag.active || !carousel) return;
-    const distance = event.clientX - drag.startX;
-    if (Math.abs(distance) > 6 && !drag.moved) {
-      drag.moved = true;
-      carousel.style.scrollSnapType = 'none';
-      carousel.setPointerCapture(event.pointerId);
-    }
-    if (drag.moved) carousel.scrollTo({ left: drag.startScrollLeft - distance, behavior: 'instant' });
-  };
-
-  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>, cancelled = false) => {
-    if (carouselDragRef.current.moved && !cancelled) suppressCarouselClickRef.current = true;
-    carouselDragRef.current.active = false;
-    event.currentTarget.style.scrollSnapType = '';
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  };
-
   return (
     <div
       data-site-theme="custom"
@@ -922,7 +884,7 @@ export default function App() {
         '--site-accent': siteSettings.themeAccentColor,
         '--site-panel': siteSettings.themePanelColor,
       } as React.CSSProperties}
-      className="retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black"
+      className="app-shell retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-100 selection:text-emerald-950"
     >
       <Navbar
         siteSettings={siteSettings}
@@ -939,6 +901,11 @@ export default function App() {
         shareCopied={shareCopied}
         onOpenFinder={() => setOfferFinderOpen(true)}
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
+        onInstallApp={isInstalled ? undefined : () => void handleInstallApp()}
+        onFocusSearch={() => {
+          setActiveTab('offers');
+          window.setTimeout(() => document.getElementById('search-offers-input')?.focus(), 0);
+        }}
         onAccount={() => setAccountOpen(true)}
         onSignOut={async () => {
           await fetch('/api/auth/logout', { method: 'POST' });
@@ -1014,7 +981,6 @@ export default function App() {
               setSearchQuery={setSearchQuery}
               onSearchSubmit={handleSearchChange}
               onOpenFinder={() => setOfferFinderOpen(true)}
-              onInstallApp={isInstalled ? undefined : () => void handleInstallApp()}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
               sortBy={sortBy}
@@ -1039,115 +1005,56 @@ export default function App() {
                   window.open(sofiOffer.referralUrl || sofiOffer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
                 }}
               />
-              <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
-                <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
+              <div className="partner-disclosure">
+                <strong>Affiliate disclosure:</strong>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono font-bold uppercase tracking-wider text-[#f1e6cf]" aria-live="polite">
-                    Available Offers ({filteredOffers.length})
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <div className="offers-section" aria-labelledby="available-offers-title">
+                <div className="offers-heading">
+                  <div>
+                    <h2 id="available-offers-title">Offers worth a look</h2>
+                    <p aria-live="polite">Showing {filteredOffers.length} of {publicOffers.length} offers. Compare the reward with what you need to do.</p>
+                  </div>
+                  <span className="offer-count hidden sm:inline">Provider terms may change</span>
                 </div>
-                <span className="text-xs font-mono text-zinc-500 hidden sm:inline">
-                  Requirements and availability can change on the merchant site
-                </span>
-              </div>
 
-              {filteredOffers.length === 0 ? (
-                <div className="p-12 text-center rounded-xl bg-[#0e121a] border border-white/[0.08]">
-                  <div className="w-10 h-10 rounded-lg bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto mb-3">
-                    $
-                  </div>
-                  <h3 className="text-base font-bold text-white">No Matching Offers Found</h3>
-                  <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-                    Try adjusting your search keywords or switching category filters to see all available referral signups.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('all');
-                      setOfferFilter('all');
-                    }}
-                    className="mt-4 px-3 py-1.5 rounded bg-white/10 text-xs font-mono text-white hover:bg-white/20"
-                  >
-                    Reset Filters
-                  </button>
-                </div>
-              ) : (
-                <div className="mx-auto max-w-7xl">
-                  <div
-                      ref={offersCarouselRef}
-                      id="offers-carousel"
-                      className="flex cursor-grab select-none justify-start touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pl-0 pr-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
-                      onPointerDown={handleCarouselPointerDown}
-                      onPointerMove={handleCarouselPointerMove}
-                      onPointerUp={handleCarouselPointerUp}
-                      onPointerCancel={(event) => handleCarouselPointerUp(event, true)}
-                      onClickCapture={(event) => {
-                        if (!suppressCarouselClickRef.current) return;
-                        suppressCarouselClickRef.current = false;
-                        event.preventDefault();
-                        event.stopPropagation();
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                          event.preventDefault();
-                          scrollOffersCarousel(event.key === 'ArrowLeft' ? -1 : 1);
-                        } else if (event.key === 'Home' || event.key === 'End') {
-                          event.preventDefault();
-                          offersCarouselRef.current?.scrollTo({
-                            left: event.key === 'Home' ? 0 : event.currentTarget.scrollWidth,
-                            behavior: 'instant',
-                          });
-                        }
-                      }}
-                      tabIndex={0}
-                      role="region"
-                      aria-roledescription="offer carousel"
-                      aria-label="Available offers carousel"
-                    >
-                      {filteredOffers.map((offer) => (
-                        <div key={offer.id} data-offer-carousel-item className="min-w-0 shrink-0 basis-[68vw] snap-start self-start sm:basis-[35%] lg:basis-[24%] xl:basis-[19%]">
-                          <OfferCard
-                            offer={offer}
-                            onClaimClick={handleClaimClick}
-                            onMoreInfo={setSelectedOffer}
-                          />
-                        </div>
-                      ))}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => scrollOffersCarousel(-1)}
-                      disabled={!canScrollOffersLeft}
-                      aria-label="Show previous offers"
-                      className="focus-ring inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#10141d] px-3 text-xs font-semibold text-zinc-200 transition-colors hover:border-cyan-300/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline">Previous</span>
-                    </button>
-                    <p className="text-center text-[10px] font-mono text-zinc-500">
-                      Swipe, drag, or use the arrows to browse
+                {filteredOffers.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-xl font-semibold text-emerald-800" aria-hidden="true">?</div>
+                    <h3 className="mt-4 text-lg font-bold text-slate-900">Nothing matched that search.</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-600">
+                      Try a broader search or remove a filter. Search for cashback, banking, apps, or no deposit.
                     </p>
                     <button
                       type="button"
-                      onClick={() => scrollOffersCarousel(1)}
-                      disabled={!canScrollOffersRight}
-                      aria-label="Show next offers"
-                      className="focus-ring inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#10141d] px-3 text-xs font-semibold text-zinc-200 transition-colors hover:border-cyan-300/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedCategory('all');
+                        setOfferFilter('all');
+                      }}
+                      className="button-secondary mt-5"
                     >
-                      <span className="hidden sm:inline">Next</span>
-                      <ArrowRight className="h-4 w-4" />
+                      Clear all filters
                     </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="offer-grid" role="list" aria-label="Available offers">
+                    {filteredOffers.map((offer) => (
+                      <div key={offer.id} role="listitem" className="min-w-0">
+                        <OfferCard
+                          offer={offer}
+                          onClaimClick={handleClaimClick}
+                          onMoreInfo={setSelectedOffer}
+                          isCompared={compareOfferIds.includes(offer.id)}
+                          onToggleCompare={toggleOfferComparison}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <TrustAndFaq siteSettings={siteSettings} />
@@ -1176,6 +1083,27 @@ export default function App() {
         )}
 
       </main>
+
+      {comparisonOffers.length > 0 && (
+        <aside className="compare-tray" aria-label="Selected offers for comparison">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-900">Compare offers</p>
+            <p className="mt-0.5 truncate text-xs text-slate-600">{comparisonOffers.map((offer) => offer.company).join(' · ')}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setComparisonOpen(true)}
+              disabled={comparisonOffers.length < 2}
+              className="compare-open-button"
+              aria-label={`Compare ${comparisonOffers.length} selected offers`}
+            >
+              Compare {comparisonOffers.length}
+            </button>
+            <button type="button" onClick={() => setCompareOfferIds([])} className="compare-clear-button">Clear</button>
+          </div>
+        </aside>
+      )}
 
       <NewsletterModal
         isOpen={isNewsletterOpen}
@@ -1223,6 +1151,13 @@ export default function App() {
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
+      {comparisonOpen && comparisonOffers.length >= 2 && (
+        <ComparisonDialog
+          offers={comparisonOffers}
+          onRemove={removeComparedOffer}
+          onClose={() => setComparisonOpen(false)}
+        />
+      )}
       {offerFinderOpen && <OfferFinder offers={publicOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
       {selectedOffer && (
         <OfferDetailsModal

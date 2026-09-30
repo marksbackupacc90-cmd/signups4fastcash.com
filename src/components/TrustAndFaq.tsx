@@ -10,7 +10,7 @@ export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
 
   return (
-    <section id="trust" className="mx-auto max-w-7xl space-y-6 border-t border-white/[0.08] px-4 pb-8 pt-8 sm:px-6 lg:px-8">
+    <section id="trust" className="trust-section space-y-6">
       <div className="max-w-3xl">
         <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs uppercase tracking-wider">
           <ShieldCheck className="w-4 h-4" />
