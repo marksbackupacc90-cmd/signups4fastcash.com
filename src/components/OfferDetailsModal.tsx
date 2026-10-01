@@ -1,7 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Check, ChevronDown, Copy, ExternalLink, X } from 'lucide-react';
 import { Offer } from '../types';
-import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
 
 interface OfferDetailsModalProps {
   offer: Offer;
@@ -30,10 +29,8 @@ const Disclosure: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
 );
 
 export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onClose, onClaimClick }) => {
-  const dialogRef = useRef<HTMLDivElement>(null);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [completionStatus, setCompletionStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
-  useDialogAccessibility(dialogRef, onClose);
   const claimUrl = offer.referralUrl || offer.officialMerchantUrl;
 
   const copyCode = async () => {
@@ -70,64 +67,32 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       role="dialog"
-      ref={dialogRef}
       aria-modal="true"
       aria-labelledby={`offer-modal-title-${offer.id}`}
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
-      <div className="offer-detail-dialog light-dialog flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border sm:max-h-[90vh] sm:rounded-2xl">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+      <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-cyan-200/20 bg-[#0d1724] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800">{offer.company}</p>
-            <h2 id={`offer-modal-title-${offer.id}`} className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">{offer.title}</h2>
+            <p className="text-[10px] uppercase tracking-widest text-cyan-300">{offer.company}</p>
+            <h2 id={`offer-modal-title-${offer.id}`} className="truncate text-lg font-bold text-white">{offer.title}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Close offer details">
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-zinc-400 hover:bg-white/10 hover:text-white" aria-label="Close offer details">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-4 sm:px-6">
-          <p className="text-sm leading-relaxed text-slate-600">{offer.honestTruth.summary}</p>
-          <div className="offer-detail-reward mt-4 p-4 sm:p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-emerald-800">What you may earn</p>
-            <p className="mt-1 text-3xl font-extrabold tracking-tight text-emerald-900 tabular-nums sm:text-4xl">{offer.incentiveAmount}</p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600">This is the advertised reward—not the amount of any deposit or purchase you may need to make.</p>
+        <div className="overflow-y-auto px-5 py-4">
+          <p className="text-sm leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>
+          <div className="mt-4 rounded-xl border border-cyan-200/15 bg-cyan-200/[0.05] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/70">Advertised reward</p>
+            <p className="mt-1 text-xl font-bold text-white">{offer.incentiveAmount}</p>
+            <p className="mt-2 text-xs text-zinc-400">
+              {offer.depositRequired} deposit <span className="px-1 text-zinc-600">·</span> {offer.payoutSpeed} payout
+            </p>
           </div>
-
-          <div className="mt-4">
-            <p className="text-sm font-bold text-slate-900">What you need to do</p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">{offer.depositRequired}</p>
-            <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Effort</dt>
-                <dd className="mt-1 text-xs font-semibold text-slate-800">{offer.difficulty}</dd>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Requirement</dt>
-                <dd className="mt-1 text-xs font-semibold text-slate-800">{offer.depositRequired}</dd>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Payout</dt>
-                <dd className="mt-1 text-xs font-semibold text-slate-800">{offer.payoutSpeed}</dd>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Eligibility</dt>
-                <dd className="mt-1 text-xs font-semibold text-slate-800">{offer.availability}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <section className="before-you-sign-up mt-4" aria-labelledby={`before-you-sign-up-${offer.id}`}>
-            <h3 id={`before-you-sign-up-${offer.id}`} className="text-sm font-bold text-slate-900">Before you sign up</h3>
-            <ul className="mt-2 grid gap-2 text-xs leading-relaxed text-slate-700 sm:grid-cols-2">
-              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700" /> Confirm you meet the provider's eligibility rules.</li>
-              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700" /> Review the provider's current terms and any deadline.</li>
-              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700" /> Check fees and make sure the requirement fits your plans.</li>
-              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700" /> Understand how and when the provider pays.</li>
-            </ul>
-          </section>
 
           <div className="mt-4 space-y-2">
             <Disclosure title={`How to earn · ${offer.speedrunHints.length} steps`}>
@@ -185,11 +150,11 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
           </div>
         </div>
 
-        <div className="offer-dialog-footer border-t p-4 sm:px-6">
-          <button type="button" onClick={claim} className="button-primary w-full">
-            Visit {offer.company} offer <ExternalLink className="h-4 w-4" />
+        <div className="border-t border-white/[0.08] bg-[#0d1724] p-4">
+          <button type="button" onClick={claim} className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#06131a] hover:bg-cyan-200">
+            Claim offer <ExternalLink className="h-4 w-4" />
           </button>
-          <p className="mt-2 text-center text-xs leading-relaxed text-slate-500">You’ll continue to {offer.company}. Signups4FastCash may receive compensation from this link at no extra cost to you. Confirm current terms with the provider.</p>
+          <p className="mt-2 text-center text-[10px] text-zinc-500">Confirm the latest terms on {offer.company}’s site.</p>
         </div>
       </div>
     </div>

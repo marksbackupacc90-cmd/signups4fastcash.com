@@ -1,5 +1,4 @@
-import React, { useRef, useState } from 'react';
-import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
+import React, { useState } from 'react';
 
 interface AccountUser {
   id: string;
@@ -55,7 +54,6 @@ function createPresetAvatar(background: string, accent: string, mark: string) {
 }
 
 export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, onClose }) => {
-  const dialogRef = useRef<HTMLElement>(null);
   const [form, setForm] = useState({
     username: user.username || '',
     avatarUrl: user.avatarUrl || '',
@@ -122,11 +120,9 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
     }
   };
 
-  useDialogAccessibility(dialogRef, onClose);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
-      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="profile-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-cyan-400/30 bg-[#10141d] p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Account settings</p>

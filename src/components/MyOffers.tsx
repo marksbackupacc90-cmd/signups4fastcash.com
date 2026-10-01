@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ExternalLink, RotateCcw, X } from 'lucide-react';
 import { Offer } from '../types';
-import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
 
 export type MyOfferStatus = 'active' | 'completed';
 
@@ -43,9 +42,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
   onResume,
   onStatusChange,
 }) => {
-  const dialogRef = useRef<HTMLElement>(null);
   const [entries, setEntries] = useState<MyOfferEntry[]>(readMyOfferEntries);
-  useDialogAccessibility(dialogRef, onClose, open);
   const trackedOffers = useMemo(
     () => trackedOfferIds.map((id) => offers.find((offer) => offer.id === id)).filter((offer): offer is Offer => Boolean(offer)),
     [offers, trackedOfferIds],
@@ -74,7 +71,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
     <>
       {open && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 px-4 py-8 backdrop-blur-sm">
-          <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="my-offers-title" className="light-dialog mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 sm:p-7">
+          <section role="dialog" aria-modal="true" aria-labelledby="my-offers-title" className="mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200">Saved offers</p>

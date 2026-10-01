@@ -20,7 +20,7 @@ const STEPS = [
 ];
 
 export const HowItWorks: React.FC = () => (
-  <section id="how-it-works" aria-labelledby="how-it-works-title" className="how-it-works-strip rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 sm:px-5 scroll-mt-24">
+  <section aria-labelledby="how-it-works-title" className="how-it-works-strip rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 sm:px-5">
     <div className="flex flex-col gap-3">
       <h2 id="how-it-works-title" className="shrink-0 text-xs font-bold uppercase tracking-[0.14em] text-white">
         How it works

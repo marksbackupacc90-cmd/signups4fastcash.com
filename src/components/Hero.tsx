@@ -1,14 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  ArrowRight,
-  BellRing,
-  Check,
-  Download,
-  ExternalLink,
-  Search,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react';
+import React from 'react';
+import { ArrowRight, BellRing, Download, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -31,30 +22,13 @@ interface HeroProps {
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: 'All offers' },
-  { id: 'fintech', label: 'Bank bonuses' },
-  { id: 'brokerage', label: 'Stocks & investing' },
-  { id: 'cashback', label: 'Cashback' },
-  { id: 'apps', label: 'Apps & rewards' },
-  { id: 'crypto', label: 'Crypto' },
+  { id: 'all', label: 'All Offers' },
+  { id: 'fintech', label: 'Banking & Fintech' },
+  { id: 'brokerage', label: 'Free Stocks & Brokerages' },
+  { id: 'cashback', label: 'Cashback & Rebates' },
+  { id: 'apps', label: 'Apps & Rewards' },
+  { id: 'crypto', label: 'Crypto & Web3' },
 ];
-
-const REQUIREMENT_FILTERS = [
-  ['all', 'Any requirement'],
-  ['no-deposit', 'No deposit'],
-  ['paypal', 'PayPal cashout'],
-  ['fast', 'Fast payout'],
-  ['beginner', 'Beginner-friendly'],
-  ['purchase', 'Purchase required'],
-] as const;
-
-const CATEGORY_LABELS: Record<Offer['category'], string> = {
-  fintech: 'Banking',
-  brokerage: 'Investing',
-  cashback: 'Cashback',
-  apps: 'Apps & rewards',
-  crypto: 'Crypto',
-};
 
 export const Hero: React.FC<HeroProps> = ({
   siteSettings,
@@ -74,188 +48,220 @@ export const Hero: React.FC<HeroProps> = ({
   onInstallApp,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
-  const searchRef = useRef<HTMLInputElement | null>(null);
-  const previewOffers = useMemo(() => featuredOffers.slice(0, 3), [featuredOffers]);
-
-  useEffect(() => {
-    const focusSearchShortcut = (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
-      const target = event.target;
-      if (target instanceof HTMLElement && (
-        target.isContentEditable ||
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-      )) return;
-      event.preventDefault();
-      searchRef.current?.focus();
-    };
-    window.addEventListener('keydown', focusSearchShortcut);
-    return () => window.removeEventListener('keydown', focusSearchShortcut);
-  }, []);
-
-  const scrollToOffers = () => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const marqueeOffers = featuredOffers.length > 0 ? [...featuredOffers, ...featuredOffers] : [];
 
   return (
-    <section className="hero-section" aria-label="Find rewards and offers">
-      <div className="hero-layout">
-        <div className="hero-copy">
-          <p className="hero-eyebrow"><Sparkles className="h-4 w-4" aria-hidden="true" /> {settings.heroBadge || 'Rewards, with the fine print included'}</p>
-          <h1 className="hero-title">{settings.mainHeadline || 'Find offers worth your time.'}</h1>
-          <p className="hero-description">{settings.subHeadline || 'Compare signup bonuses, cashback, and rewards in one place — with the requirements and important details clearly laid out.'}</p>
-          <p className="hero-note">Independent comparison. Providers set eligibility, approval, and payout terms. Always check the official offer before signing up.</p>
-          <div className="hero-actions">
-            <button type="button" onClick={scrollToOffers} className="button-primary">
-              Explore offers <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="retro-window overflow-hidden rounded-[1.75rem] border-white/[0.1] bg-[radial-gradient(circle_at_80%_0%,rgba(45,212,238,0.14),transparent_32%),#0d1724] shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+          <div className="bg-white/[0.025] p-5 sm:p-7 lg:p-9">
+        
+        {/* Main Headline */}
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.08]">
+            {settings.mainHeadline}
+          </h1>
+          <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
+            {settings.subHeadline}
+          </p>
+          <p className="mt-3 text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl">
+            This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="focus-ring inline-flex items-center gap-2 rounded-full bg-[#2dd4ee] px-5 py-3 text-xs font-bold text-[#06131a] shadow-[0_10px_28px_rgba(45,212,238,0.2)] transition-all hover:-translate-y-0.5 hover:bg-[#67e8f9]"
+            >
+              Browse offers
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
-            <a href="#how-it-works" className="button-secondary">
-              How it works
-            </a>
             {onOpenFinder && (
-              <button type="button" onClick={onOpenFinder} className="button-secondary">
-                <Sparkles className="h-4 w-4" aria-hidden="true" /> Find my match
+              <button
+                type="button"
+                onClick={onOpenFinder}
+                className="focus-ring inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-xs font-semibold text-zinc-200 transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
+                Find my best match
               </button>
             )}
             {onInstallApp && (
-              <button type="button" onClick={onInstallApp} className="button-secondary">
-                <Download className="h-4 w-4" aria-hidden="true" /> Add to home screen
+              <button
+                type="button"
+                onClick={onInstallApp}
+                className="focus-ring inline-flex items-center gap-2 rounded-full border border-cyan-300/20 px-4 py-3 text-xs font-medium text-cyan-100 transition-colors hover:border-cyan-300/40 hover:bg-cyan-300/[0.06]"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                Add to home screen
               </button>
             )}
           </div>
-        </div>
-
-        <aside className="hero-preview" aria-label="Examples from current offers">
-          <div className="hero-preview-heading">
-            <span>Offers, at a glance</span>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> Real listings</span>
           </div>
-          {previewOffers.length > 0 ? (
-            <>
-              <div className="hero-preview-list">
-                {previewOffers.map((offer) => (
-                  <div className="hero-preview-row" key={offer.id}>
+          <div className="w-full max-w-[13rem] self-start sm:max-w-[15rem] lg:w-64">
+            <div className="overflow-hidden rounded-xl bg-transparent py-2">
+              <div className="logo-marquee-track flex w-max items-center gap-3">
+                {marqueeOffers.map((offer, index) => (
+                  <div
+                    key={`${offer.id}-${index}`}
+                    className="flex shrink-0 items-center justify-center"
+                  >
                     <CompanyLogo
                       companyName={offer.company}
                       slug={offer.companySlug}
                       logoUrl={offer.logoUrl}
                       size="sm"
+                      loading="eager"
+                      className="!h-14 !w-14 sm:!h-16 sm:!w-16"
                     />
-                    <div className="min-w-0">
-                      <p className="hero-preview-company">{offer.company}</p>
-                      <p className="hero-preview-requirement">{offer.depositRequired}</p>
-                    </div>
-                    <p className="hero-preview-reward">{offer.incentiveAmount}</p>
                   </div>
                 ))}
               </div>
-              <p className="hero-preview-caption">Rewards and requirements shown from listed offers. Provider terms and eligibility can change.</p>
-            </>
-          ) : (
-            <p className="hero-preview-caption">Browse current offers to compare provider rewards and requirements.</p>
-          )}
-        </aside>
-      </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/[0.08] pt-5 text-xs font-mono text-zinc-400">
+          <span><strong className="text-white">{totalOffersCount}</strong> listed offers</span>
+          <span><strong className="text-emerald-400">Terms shown</strong> before you click</span>
+          <span><strong className="text-white">$0</strong> payment handling</span>
+        </div>
 
-      <div className="trust-strip" aria-label="How we help you compare">
-        <div className="trust-strip-item"><ShieldCheck className="h-4 w-4" aria-hidden="true" /> Requirements shown before you visit</div>
-        <div className="trust-strip-item"><ExternalLink className="h-4 w-4" aria-hidden="true" /> Apply directly with the provider</div>
-        <div className="trust-strip-item"><Check className="h-4 w-4" aria-hidden="true" /> Affiliate links disclosed</div>
-      </div>
+        {onOpenNewsletter && (
+          <div className="mt-5 flex flex-col gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
+                <BellRing className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Get the best new offers sent to you</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">Choose instant drops, a daily digest, or a weekly shortlist. Confirm your email and unsubscribe anytime.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenNewsletter}
+              className="focus-ring inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-cyan-300 px-4 py-2.5 text-xs font-bold text-[#06131a] transition-colors hover:bg-cyan-200"
+            >
+              Subscribe to alerts
+              <ArrowRight className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
-      <div className="hero-controls" aria-label="Search and filter offers">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="hero-search min-w-0 flex-1">
-            <Search className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+          <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-400">Popular guides:</span>
+          <a href="/cashback-offers" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Cashback offers</a>
+          <a href="/signup-bonus-sites" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Signup bonus sites</a>
+          <a href="/best-no-deposit-bonuses-this-month" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit bonuses</a>
+          <a href="/how-to-compare-referral-bonuses-safely" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Referral safety guide</a>
+          <a href="/best-fintech-bonuses" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Fintech bonuses</a>
+          <a href="/best-rewards-apps" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Rewards apps</a>
+          <a href="/best-free-stock-offers-for-beginners" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Free stock for beginners</a>
+          <a href="/best-fintech-bonuses-without-deposit" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit fintech</a>
+        </div>
+
+        {/* Search and Filters Bar */}
+        <div className="mt-6 flex flex-col items-stretch justify-between gap-4 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 md:flex-row md:items-center">
+          
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
-              ref={searchRef}
               type="text"
               id="search-offers-input"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') onSearchSubmit?.((event.target as HTMLInputElement).value);
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  onSearchSubmit?.((e.target as HTMLInputElement).value);
+                }
               }}
-              placeholder="Search offers, brands, or categories..."
+              placeholder="Search companies, cash bonuses, or $0 deposit..."
+              className="w-full rounded-lg border border-white/10 bg-[#10141d] py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-zinc-500 transition-colors focus:border-[#00f2fe]/50 focus:outline-none focus:ring-1 focus:ring-[#00f2fe]/50 font-sans"
               aria-label="Search offers"
-              autoComplete="off"
             />
-            {searchQuery ? (
-              <button type="button" onClick={() => setSearchQuery('')} className="offer-search-clear" aria-label="Clear offer search">Clear</button>
-            ) : (
-              <kbd className="search-shortcut" aria-hidden="true">/</kbd>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="focus-ring absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded px-1 text-xs text-zinc-400 hover:text-white"
+                aria-label="Clear offer search"
+              >
+                Clear
+              </button>
             )}
-          </label>
-          <label className="sr-only" htmlFor="sort-offers">Sort offers</label>
-          <select
-            id="sort-offers"
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as HeroProps['sortBy'])}
-            aria-label="Sort offers"
-          >
-            <option value="random">Recommended order</option>
-            <option value="highest">Highest reward</option>
-            <option value="fastest">Fastest payout</option>
-            <option value="easiest">Lowest deposit</option>
-          </select>
-        </div>
-
-        <nav className="category-nav" id="categories" aria-label="Offer categories">
-          {CATEGORIES.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => { setSelectedCategory(id); scrollToOffers(); }}
-              aria-pressed={selectedCategory === id}
-              className="category-chip"
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="requirement-nav" aria-label="Filter offers by requirements">
-          {REQUIREMENT_FILTERS.map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => { setOfferFilter(id); scrollToOffers(); }}
-              aria-pressed={offerFilter === id}
-              className="requirement-chip"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {(searchQuery || selectedCategory !== 'all' || offerFilter !== 'all') && (
-          <div className="active-filter-list" aria-label="Active filters">
-            {searchQuery && <button type="button" className="active-filter-chip" onClick={() => setSearchQuery('')}>Search: {searchQuery} <span aria-hidden="true">×</span></button>}
-            {selectedCategory !== 'all' && <button type="button" className="active-filter-chip" onClick={() => setSelectedCategory('all')}>{CATEGORIES.find((item) => item.id === selectedCategory)?.label || selectedCategory} <span aria-hidden="true">×</span></button>}
-            {offerFilter !== 'all' && <button type="button" className="active-filter-chip" onClick={() => setOfferFilter('all')}>{REQUIREMENT_FILTERS.find(([id]) => id === offerFilter)?.[1] || offerFilter} <span aria-hidden="true">×</span></button>}
-            <button type="button" className="active-filter-clear" onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setOfferFilter('all'); }}>Clear all</button>
           </div>
-        )}
-      </div>
 
-      <div className="popular-guides" aria-label="Popular guides">
-        <span>Popular guides:</span>
-        <a href="/cashback-offers">Cashback offers</a>
-        <a href="/signup-bonus-sites">Signup bonuses</a>
-        <a href="/best-no-deposit-bonuses-this-month">No-deposit offers</a>
-        <a href="/how-to-compare-referral-bonuses-safely">Compare safely</a>
-      </div>
-
-      {onOpenNewsletter && (
-        <div className="mx-auto mt-4 flex max-w-7xl flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce6df] bg-white px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <BellRing className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
-            <p className="text-sm text-slate-700">Get offer updates by email. Choose a frequency and unsubscribe anytime.</p>
+          {/* Sort Selector */}
+          <div className="flex items-center gap-2 shrink-0">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-500" />
+            <label htmlFor="sort-offers" className="text-xs font-mono text-zinc-400">SORT:</label>
+            <select
+              id="sort-offers"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as 'random' | 'highest' | 'fastest' | 'easiest')}
+              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#2dd4ee]"
+            >
+              <option value="random">Random order</option>
+              <option value="highest">Highest Cash</option>
+              <option value="fastest">Fastest Payout</option>
+              <option value="easiest">Lowest Deposit</option>
+            </select>
           </div>
-          <button type="button" onClick={onOpenNewsletter} className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">
-            Email alerts <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
-      <p className="sr-only">{totalOffersCount} offers listed</p>
+        </div>
+
+        {/* Quick category filters */}
+        <div className="mt-4" aria-label="Filter offers by category">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  aria-pressed={isSelected}
+                  className={`focus-ring shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isSelected
+                      ? 'border-cyan-300/60 bg-cyan-300 text-[#06131a]'
+                      : 'border-white/10 bg-[#10141d] text-zinc-300 hover:border-cyan-300/40 hover:text-white'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2" aria-label="Filter offers by requirements">
+            {([
+              ['all', 'All requirements'],
+              ['no-deposit', 'No deposit'],
+              ['paypal', 'PayPal cashout'],
+              ['fast', 'Fast payout'],
+              ['beginner', 'Beginner-friendly'],
+              ['purchase', 'Purchase required'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setOfferFilter(id)}
+                aria-pressed={offerFilter === id}
+                className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                  offerFilter === id
+                    ? 'border-emerald-300/60 bg-emerald-300 text-[#06131a]'
+                    : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-emerald-300/40 hover:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+          </div>
+        </div>
+
+      </div>
     </section>
   );
 };

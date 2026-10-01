@@ -58,15 +58,15 @@ export const CashBlueprint: React.FC<CashBlueprintProps> = ({ onOpenSofi }) => {
   };
 
   return (
-    <section className="feature-callout overflow-hidden rounded-2xl border border-cyan-300/20 p-5 sm:p-7">
+    <section className="overflow-hidden rounded-2xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_right,rgba(45,212,238,0.12),transparent_34%),#0d1724] p-5 shadow-[0_18px_50px_rgba(2,10,18,0.28)] sm:p-7">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.16em] text-cyan-200">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            Optional example pathway
+            Featured money path
           </div>
           <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-            One way to explore SoFi and Debbie
+            New to SoFi or Debbie? Don&apos;t miss this.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-zinc-300">
             The SoFi + Debbie cash blueprint is simply a way to explore separate opportunities at your own pace. You can still earn from options that do not require a bank link or deposit, and you can skip any step that is not right for you.
