@@ -16,6 +16,7 @@ export const REFERRAL_OFFER_CANDIDATES: Offer[] = [
     officialMerchantUrl: 'https://ero.app',
     referralCode: 'v7tfsepe5d',
     referralUrl: 'https://ero.app/r/v7tfsepe5d?link=bgp4v6nfbrt6',
+    logoUrl: '/company-logos/ero.png',
     verificationStatus: 'unverified',
     honestTruth: {
       summary: 'The supplied invitation says eligible earnings during the first 24 hours after joining with the referral code are boosted by 50%.',
