@@ -22,7 +22,7 @@ Set these in the hosting panel:
 - `NEWSLETTER_UNSUBSCRIBE_SECRET` — long random secret used to sign unsubscribe links
 - `NEWSLETTER_WEBHOOK_SECRET` — separate secret configured on the email-provider webhook
 - `ADMIN_SESSION_HOURS` — optional admin-token lifetime, default `2`
-- `VISITOR_ANALYTICS_RETENTION_DAYS` — optional visitor-event retention, default `365`
+- `VISITOR_ANALYTICS_RETENTION_DAYS` — optional retention for legacy visitor events, default `365`
 
 Once `CPX_SECURE_HASH` is configured, the Surveys & Rewards category generates a signed CPX iframe URL for each anonymous browser session. Without this secret, the site intentionally shows a configuration message instead of a broken survey wall.
 
@@ -83,15 +83,20 @@ For the Western Union card, verify `offer-western-union-referral` and
 `https://ssqt.co/mQXPJgc`. Do not rely on an old browser tab or cached JavaScript
 when checking a newly deployed catalog.
 
-## Offer activity reporting
+## Offer activity reporting and visitor privacy
 
-The Admin dashboard provides shared per-offer click and recorded-conversion totals
-for the last 7 or 30 days. These timestamped events are stored in PostgreSQL, and
-events older than 365 days are pruned during application startup. The reporting
-window begins when event tracking is deployed; existing lifetime counters are not
-backfilled with dates, so earlier activity continues to appear only in lifetime
-totals. Conversion totals increase only when an integration records a conversion;
-a referral click alone does not confirm a merchant signup or payout.
+Visitor page views, visitor IDs, approximate locations, and offer impressions are
+not collected. The legacy page-view and impression endpoints return HTTP 410.
+The optional `VISITOR_ANALYTICS_RETENTION_DAYS` setting remains only to expire
+historical visitor events already stored before collection was disabled.
+
+The Admin dashboard shows offer clicks and recorded-conversion events since the
+last successful check in that browser. Its first check includes the previous 30
+days; subsequent checks start at the saved browser-local cursor. Offer events are
+stored in PostgreSQL and older events are pruned during startup. Click records
+contain the offer ID and event time, not a visitor ID or location. Conversion
+totals increase only when an integration records a conversion; a referral click
+alone does not confirm a merchant signup or payout.
 
 ## Monitoring and recovery
 
