@@ -3,6 +3,7 @@ import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
+import { CompanyLogo } from './components/CompanyLogo';
 import { OfferCard } from './components/OfferCard';
 import { OfferDetailsModal } from './components/OfferDetailsModal';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -963,6 +964,37 @@ export default function App() {
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
 
+      {activeTab === 'offers' && orderedLiveOffers.length > 0 && (
+        <div
+          role="region"
+          aria-label="Featured offer logos"
+          className="w-full overflow-hidden bg-[#04080d]"
+        >
+          <div className="logo-marquee-track flex w-max items-center">
+            {[0, 1].map((copy) => (
+              <div
+                key={`offer-logo-row-${copy}`}
+                aria-hidden={copy === 1}
+                className="flex w-max min-w-[100vw] shrink-0 items-center justify-around gap-3 px-3 py-2 sm:gap-4 sm:px-6"
+              >
+                {orderedLiveOffers.map((offer) => (
+                  <CompanyLogo
+                    key={`${copy}-${offer.id}`}
+                    companyName={offer.company}
+                    slug={offer.companySlug}
+                    logoUrl={offer.logoUrl}
+                    size="sm"
+                    loading="eager"
+                    bare
+                    className="!h-12 !w-12 shrink-0 overflow-hidden rounded-2xl sm:!h-14 sm:!w-14"
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {installHelpOpen && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-4 sm:items-center" onClick={() => setInstallHelpOpen(false)}>
           <section
@@ -1022,7 +1054,6 @@ export default function App() {
               offerFilter={offerFilter}
               setOfferFilter={setOfferFilter}
               totalOffersCount={publicOffers.length}
-              featuredOffers={orderedLiveOffers}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
             />
 

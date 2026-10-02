@@ -59,7 +59,12 @@ function newsletterEmailLayout(content: string, footer = '') {
   return `<!doctype html>
 <html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="supported-color-schemes" content="dark">
     <style>
+      :root { color-scheme: dark; }
       @font-face {
         font-family: "Glory";
         src: url("https://signups4fastcash.com/fonts/Glory-Variable.ttf") format("truetype");
@@ -69,27 +74,60 @@ function newsletterEmailLayout(content: string, footer = '') {
       body, table, td, div, p, h1, h2, h3, a, button {
         font-family: "Glory", Arial, Helvetica, sans-serif !important;
       }
+      @media only screen and (max-width: 600px) {
+        .email-shell { padding: 16px 8px !important; }
+        .email-content { padding: 24px 20px !important; }
+        .email-header, .email-footer { padding-left: 20px !important; padding-right: 20px !important; }
+      }
     </style>
   </head>
-  <body style="margin:0;background:#06131a;color:#e5e7eb;font-family:'Glory',Arial,Helvetica,sans-serif;">
-    <div style="padding:32px 16px;background:linear-gradient(135deg,#06131a 0%,#0d1724 55%,#102a35 100%);">
-      <div style="max-width:600px;margin:0 auto;background:#0d1724;border:1px solid rgba(45,212,238,.24);border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.28);">
-        <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08);">
-          <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#67e8f9;font-weight:700;">Signups4FastCash.com</div>
-          <div style="margin-top:8px;font-size:13px;color:#94a3b8;">Rewards and cashback with clear terms</div>
-        </div>
-        <div style="padding:30px 28px;">${content}</div>
-        <div style="padding:18px 28px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;line-height:1.6;color:#64748b;">
-          ${footer || 'Independent offer comparisons. Merchant terms and availability can change.'}
-        </div>
-      </div>
-    </div>
+  <body style="margin:0;padding:0;background-color:#04080d;color:#e5e7eb;font-family:'Glory',Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#04080d" style="width:100%;border-collapse:collapse;background-color:#04080d;">
+      <tr>
+        <td class="email-shell" align="center" style="padding:32px 16px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#0d1724" style="width:100%;max-width:600px;border-collapse:separate;border:1px solid #173143;border-radius:16px;background-color:#0d1724;overflow:hidden;">
+            <tr>
+              <td class="email-header" bgcolor="#090d18" style="padding:22px 28px;border-bottom:1px solid #243244;background-color:#090d18;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                  <tr>
+                    <td valign="middle" bgcolor="#2dd4ee" style="width:40px;height:40px;border:2px solid #2dd4ee;border-radius:12px;background-color:#2dd4ee;color:#071016;text-align:center;vertical-align:middle;font-size:11px;font-weight:900;letter-spacing:-.5px;">S4FC</td>
+                    <td valign="middle" style="padding-left:12px;vertical-align:middle;">
+                      <div style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-.2px;">Signups4FastCash.com</div>
+                      <div style="margin-top:3px;color:#2dd4ee;font-size:11px;">Rewards and cashback with clear terms</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td class="email-content" style="padding:30px 28px;color:#e5e7eb;font-family:'Glory',Arial,Helvetica,sans-serif;">${content}</td>
+            </tr>
+            <tr>
+              <td class="email-footer" style="padding:18px 28px;border-top:1px solid #243244;color:#64748b;font-size:11px;line-height:1.6;">
+                ${footer || 'Independent offer comparisons. Merchant terms and availability can change.'}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>`;
 }
 
+function escapeEmailHtml(value: string) {
+  const replacements: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return value.replace(/[&<>"']/g, (character) => replacements[character] || character);
+}
+
 function emailButton(url: string, label: string) {
-  return `<a href="${url}" style="display:inline-block;background:#67e8f9;color:#06131a;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">${label}</a>`;
+  return `<a href="${escapeEmailHtml(url)}" style="display:inline-block;background:#2dd4ee;color:#04080d;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">${escapeEmailHtml(label)}</a>`;
 }
 
 function getApproximateLocation(req: express.Request) {
@@ -3145,16 +3183,16 @@ app.post('/api/admin/newsletter/broadcast', requireAdmin, async (req, res) => {
         email,
         `New offer listed: ${offer.incentiveAmount} on ${offer.company}`,
         newsletterEmailLayout(
-          `<div style="display:inline-block;padding:6px 10px;border:1px solid rgba(52,211,153,.35);border-radius:999px;color:#86efac;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">New offer drop</div>
-           <h1 style="margin:18px 0 10px;color:#fff;font-size:28px;line-height:1.2;">${offer.company}</h1>
-           <p style="margin:0 0 22px;color:#cbd5e1;font-size:16px;line-height:1.5;">${offer.title}</p>
+          `<div style="display:inline-block;padding:6px 10px;border:1px solid rgba(45,212,238,.35);border-radius:999px;color:#2dd4ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">New offer drop</div>
+           <h1 style="margin:18px 0 10px;color:#fff;font-size:28px;line-height:1.2;">${escapeEmailHtml(String(offer.company))}</h1>
+           <p style="margin:0 0 22px;color:#cbd5e1;font-size:16px;line-height:1.5;">${escapeEmailHtml(String(offer.title))}</p>
            <div style="padding:16px;border:1px solid rgba(45,212,238,.2);border-radius:12px;background:rgba(45,212,238,.06);">
              <div style="font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Advertised reward</div>
-             <div style="margin-top:6px;color:#67e8f9;font-size:24px;font-weight:700;">${offer.incentiveAmount}</div>
+             <div style="margin-top:6px;color:#2dd4ee;font-size:24px;font-weight:700;">${escapeEmailHtml(String(offer.incentiveAmount))}</div>
            </div>
            <p style="margin:22px 0;color:#cbd5e1;font-size:14px;line-height:1.6;">Review the current requirements and merchant terms before applying.</p>
            ${emailButton(offer.referralUrl, 'Review this offer')}
-           <p style="margin:24px 0 0;font-size:11px;"><a href="${unsubscribeUrl}" style="color:#94a3b8;">Unsubscribe from offer alerts</a></p>`,
+           <p style="margin:24px 0 0;font-size:11px;"><a href="${escapeEmailHtml(unsubscribeUrl)}" style="color:#94a3b8;">Unsubscribe from offer alerts</a></p>`,
           'You are receiving this because you confirmed email alerts from Signups4FastCash.com. Offers and terms can change.',
         ),
       );
@@ -3218,7 +3256,7 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
         normalizedEmail,
         'Confirm your Signups4FastCash.com alerts',
         newsletterEmailLayout(
-          `<div style="display:inline-block;padding:6px 10px;border:1px solid rgba(45,212,238,.35);border-radius:999px;color:#67e8f9;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Email alerts</div>
+          `<div style="display:inline-block;padding:6px 10px;border:1px solid rgba(45,212,238,.35);border-radius:999px;color:#2dd4ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Email alerts</div>
            <h1 style="margin:18px 0 12px;color:#fff;font-size:28px;line-height:1.2;">Confirm your subscription</h1>
            <p style="margin:0 0 24px;color:#cbd5e1;font-size:15px;line-height:1.6;">You selected <strong style="color:#fff;">${subscriberFrequency}</strong> offer alerts. Confirm your email to start receiving carefully explained rewards and cashback opportunities.</p>
            ${emailButton(confirmationUrl, 'Confirm subscription')}
@@ -3261,10 +3299,10 @@ app.get('/api/newsletter/confirm', async (req, res) => {
         'You are subscribed to Signups4FastCash.com alerts',
         newsletterEmailLayout(
           `<div style="text-align:center;">
-             <div style="display:inline-block;padding:6px 10px;border:1px solid rgba(134,239,172,.35);border-radius:999px;color:#86efac;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">You are in</div>
+             <div style="display:inline-block;padding:6px 10px;border:1px solid rgba(45,212,238,.35);border-radius:999px;color:#2dd4ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">You are in</div>
              <h1 style="margin:18px 0 12px;color:#fff;font-size:28px;line-height:1.2;">Your alerts are active</h1>
              <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.6;">We’ll send new offer drops according to the frequency you selected. Each alert links back to the official provider and keeps the requirements visible before you click.</p>
-             <a href="${appUrl}/" style="display:inline-block;margin-top:24px;background:#67e8f9;color:#06131a;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">Browse current offers</a>
+             ${emailButton(`${appUrl}/`, 'Browse current offers')}
            </div>`,
           'You can unsubscribe from any alert in one click. We do not sell subscriber addresses.',
         ),
@@ -3274,7 +3312,7 @@ app.get('/api/newsletter/confirm', async (req, res) => {
     }
   }
   res.type('html').send(newsletterEmailLayout(
-    `<div style="text-align:center;"><div style="font-size:40px;color:#86efac;">✓</div><h1 style="margin:12px 0;color:#fff;">Email alerts confirmed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You are now subscribed to Signups4FastCash.com alerts.</p><a href="${appUrl}/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>`,
+    `<div style="text-align:center;"><div style="font-size:40px;color:#2dd4ee;">✓</div><h1 style="margin:12px 0;color:#fff;">Email alerts confirmed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You are now subscribed to Signups4FastCash.com alerts.</p>${emailButton(`${appUrl}/`, 'Return to the offers')}</div>`,
   ));
 });
 
@@ -3292,7 +3330,7 @@ app.get('/api/newsletter/unsubscribe', async (req, res) => {
   const appUrl = getRequestAppUrl(req);
   await database.query('UPDATE newsletter_subscribers SET unsubscribed_at = NOW(), verified = FALSE WHERE email = $1', [email]);
   res.type('html').send(newsletterEmailLayout(
-    `<div style="text-align:center;"><h1 style="margin:0 0 12px;color:#fff;">You are unsubscribed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You will not receive further alerts from this list.</p><a href="${appUrl}/" style="display:inline-block;margin-top:10px;color:#67e8f9;font-weight:700;">Return to the offers</a></div>`,
+    `<div style="text-align:center;"><h1 style="margin:0 0 12px;color:#fff;">You are unsubscribed</h1><p style="color:#cbd5e1;font-size:15px;line-height:1.6;">You will not receive further alerts from this list.</p>${emailButton(`${appUrl}/`, 'Return to the offers')}</div>`,
   ));
 });
 
@@ -3345,7 +3383,7 @@ async function startServer() {
   });
 }
 
-export { app, isVerificationCurrent };
+export { app, isVerificationCurrent, newsletterEmailLayout };
 
 if (env.NODE_ENV !== 'test') {
   initializeOfferStore()

@@ -7,6 +7,7 @@ interface CompanyLogoProps {
   size?: 'sm' | 'md' | 'lg';
   loading?: 'lazy' | 'eager';
   className?: string;
+  bare?: boolean;
 }
 
 export const CompanyLogo: React.FC<CompanyLogoProps> = ({
@@ -16,6 +17,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   size = 'md',
   loading = 'lazy',
   className = '',
+  bare = false,
 }) => {
   const sizeClasses = {
     sm: 'w-14 h-14 text-base',
@@ -134,6 +136,14 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
             setImageSourceIndex((current) => (current + 1 < imageSources.length ? current + 1 : imageSources.length));
           }}
         />
+      </div>
+    );
+  }
+
+  if (bare) {
+    return (
+      <div className={`${imageFrameClass} text-white/90`}>
+        <span className="font-black tracking-[-0.12em] select-none">{initials || '$'}</span>
       </div>
     );
   }

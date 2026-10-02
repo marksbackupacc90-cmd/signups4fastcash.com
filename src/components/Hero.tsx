@@ -1,7 +1,6 @@
 import React from 'react';
 import { ArrowRight, BellRing, Download, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from '../types';
-import { CompanyLogo } from './CompanyLogo';
+import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
 interface HeroProps {
   siteSettings?: SiteSettings;
@@ -15,7 +14,6 @@ interface HeroProps {
   offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase';
   setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase') => void;
   totalOffersCount: number;
-  featuredOffers: Offer[];
   onOpenFinder?: () => void;
   onOpenNewsletter?: () => void;
   onInstallApp?: () => void;
@@ -42,13 +40,11 @@ export const Hero: React.FC<HeroProps> = ({
   offerFilter,
   setOfferFilter,
   totalOffersCount,
-  featuredOffers,
   onOpenFinder,
   onOpenNewsletter,
   onInstallApp,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
-  const marqueeOffers = featuredOffers.length > 0 ? [...featuredOffers, ...featuredOffers] : [];
 
   return (
     <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
@@ -57,7 +53,7 @@ export const Hero: React.FC<HeroProps> = ({
           <div className="bg-white/[0.025] p-5 sm:p-7 lg:p-9">
         
         {/* Main Headline */}
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-5">
           <div className="max-w-3xl">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.08]">
             {settings.mainHeadline}
@@ -98,27 +94,6 @@ export const Hero: React.FC<HeroProps> = ({
               </button>
             )}
           </div>
-          </div>
-          <div className="w-full max-w-[13rem] self-start sm:max-w-[15rem] lg:w-64">
-            <div className="overflow-hidden rounded-xl bg-transparent py-2">
-              <div className="logo-marquee-track flex w-max items-center gap-3">
-                {marqueeOffers.map((offer, index) => (
-                  <div
-                    key={`${offer.id}-${index}`}
-                    className="flex shrink-0 items-center justify-center"
-                  >
-                    <CompanyLogo
-                      companyName={offer.company}
-                      slug={offer.companySlug}
-                      logoUrl={offer.logoUrl}
-                      size="sm"
-                      loading="eager"
-                      className="!h-14 !w-14 sm:!h-16 sm:!w-16"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/[0.08] pt-5 text-xs font-mono text-zinc-400">

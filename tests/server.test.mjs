@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent, newsletterEmailLayout, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -82,6 +82,22 @@ test('new referral offer candidates are not exposed in the public offer catalog'
   ];
   const publicIds = response.body.offers.map((offer) => offer.id);
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
+});
+
+test('the old Era subscription offer is removed from the public catalog', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  assert.equal(response.body.offers.some((offer) => offer.id === 'offer-era-referral'), false);
+});
+
+test('newsletter email layout uses the website theme and Glory typography', () => {
+  const html = newsletterEmailLayout('<h1>Test message</h1>');
+  assert.match(html, /font-family: "Glory", Arial, Helvetica, sans-serif/);
+  assert.match(html, /https:\/\/signups4fastcash\.com\/fonts\/Glory-Variable\.ttf/);
+  assert.match(html, /bgcolor="#04080d"/);
+  assert.match(html, /bgcolor="#0d1724"/);
+  assert.match(html, /#2dd4ee/);
+  assert.match(html, /Test message/);
 });
 
 test('offer verification expiry accepts only current or legacy dates', () => {
