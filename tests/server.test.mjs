@@ -71,6 +71,19 @@ test('new bank offer candidates are not exposed in the public offer catalog', as
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
 });
 
+test('new referral offer candidates are not exposed in the public offer catalog', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const candidateIds = [
+    'candidate-ero-app-referral',
+    'candidate-measure-protocol-msr-referral',
+    'candidate-fetch-referral-a7qrrp',
+    'candidate-triumph-rips-referral-jsxfnvt',
+  ];
+  const publicIds = response.body.offers.map((offer) => offer.id);
+  candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
+});
+
 test('offer verification expiry accepts only current or legacy dates', () => {
   assert.equal(isVerificationCurrent({ verificationExpiresAt: new Date(Date.now() + 86400000).toISOString() }), true);
   assert.equal(isVerificationCurrent({ verificationExpiresAt: new Date(Date.now() - 86400000).toISOString() }), false);
