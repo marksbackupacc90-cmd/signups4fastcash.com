@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent, newsletterEmailLayout, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -88,6 +88,49 @@ test('the old Era subscription offer is removed from the public catalog', async 
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   assert.equal(response.body.offers.some((offer) => offer.id === 'offer-era-referral'), false);
+});
+
+test('Kalshi public offer reflects the supplied referral URL and reward conditions', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-kalshi');
+  assert.ok(offer);
+  assert.equal(offer.referralUrl, 'https://kalshi.com/r/75f5cdb1-f534-4db6-8ec3-ba0ca0003a23');
+  assert.match(offer.incentiveAmount, /\$25–\$2,000/);
+  assert.match(offer.depositRequired, /\$5/);
+  assert.match(offer.honestTruth.summary, /\$25 in qualifying trading volume/);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /loss/);
+  assert.doesNotMatch(offer.honestTruth.summary, /10% off fees/);
+});
+
+test('newer Kalshi catalog terms replace stale saved terms while preserving offer status and counts', () => {
+  const catalogOffer = {
+    id: 'offer-kalshi',
+    title: 'Current reward',
+    referralUrl: 'https://kalshi.com/r/current',
+    updatedAt: '2026-10-02T15:45:00.000Z',
+    status: 'live',
+    clicksCount: 0,
+    conversionsCount: 0,
+  };
+  const savedOffer = {
+    id: 'offer-kalshi',
+    title: 'Old reward',
+    referralUrl: 'https://kalshi.com/r/old',
+    updatedAt: '2026-09-16T22:25:33Z',
+    status: 'hidden',
+    clicksCount: 12,
+    conversionsCount: 3,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, 'Current reward');
+  assert.equal(merged.referralUrl, 'https://kalshi.com/r/current');
+  assert.equal(merged.status, 'hidden');
+  assert.equal(merged.clicksCount, 12);
+  assert.equal(merged.conversionsCount, 3);
+
+  const newerSaved = { ...savedOffer, title: 'Admin-edited title', updatedAt: '2026-10-03T00:00:00.000Z' };
+  assert.equal(mergeCatalogOffer(catalogOffer, newerSaved).title, 'Admin-edited title');
 });
 
 test('newsletter email layout uses the website theme and Glory typography', () => {

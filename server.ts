@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Pool } from 'pg';
 import { SITE_OFFER_CATALOG as PUBLIC_OFFERS } from './src/data/offerCatalog';
-import { DEFAULT_SITE_SETTINGS, SiteSettings } from './src/types';
+import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from './src/types';
 
 dotenv.config({ path: '.env.local' });
 
@@ -158,6 +158,35 @@ const temporarilyHiddenOfferTerms = ['triumph', 'polymarket'];
 function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?: string }) {
   const searchable = `${offer.company || ''} ${offer.title || ''}`.toLowerCase();
   return temporarilyHiddenOfferIds.has(offer.id || '') || temporarilyHiddenOfferTerms.some((term) => searchable.includes(term));
+}
+
+function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) {
+  const existingUpdatedAt = Date.parse(existingOffer?.updatedAt || '');
+  const catalogUpdatedAt = Date.parse(catalogOffer.updatedAt);
+  const refreshKalshiTerms = catalogOffer.id === 'offer-kalshi'
+    && Number.isFinite(catalogUpdatedAt)
+    && (!Number.isFinite(existingUpdatedAt) || catalogUpdatedAt > existingUpdatedAt);
+
+  return {
+    ...catalogOffer,
+    ...(existingOffer || {}),
+    ...(refreshKalshiTerms ? {
+      title: catalogOffer.title,
+      incentiveAmount: catalogOffer.incentiveAmount,
+      incentiveValue: catalogOffer.incentiveValue,
+      payoutSpeed: catalogOffer.payoutSpeed,
+      difficulty: catalogOffer.difficulty,
+      depositRequired: catalogOffer.depositRequired,
+      availability: catalogOffer.availability,
+      referralUrl: catalogOffer.referralUrl,
+      verificationStatus: catalogOffer.verificationStatus,
+      honestTruth: catalogOffer.honestTruth,
+      speedrunHints: catalogOffer.speedrunHints,
+      updatedAt: catalogOffer.updatedAt,
+    } : {}),
+    clicksCount: Number.isFinite(Number(existingOffer?.clicksCount)) ? Number(existingOffer?.clicksCount) : 0,
+    conversionsCount: Number.isFinite(Number(existingOffer?.conversionsCount)) ? Number(existingOffer?.conversionsCount) : 0,
+  };
 }
 
 function applyCoinsBackTerms<T extends Record<string, any>>(offer: T): T {
@@ -1061,12 +1090,7 @@ async function initializeOfferStore() {
 
     const mergedOffers = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer)).map((offer) => {
       const existingOffer = existingOffers.find((row) => row.id === offer.id);
-      return {
-        ...offer,
-        ...(existingOffer || {}),
-        clicksCount: Number.isFinite(Number(existingOffer?.clicksCount)) ? Number(existingOffer.clicksCount) : 0,
-        conversionsCount: Number.isFinite(Number(existingOffer?.conversionsCount)) ? Number(existingOffer.conversionsCount) : 0,
-      };
+      return mergeCatalogOffer(offer, existingOffer);
     });
 
     const extraOffers = existingOffers.filter((offer) => !catalogMap.has(offer.id));
@@ -3383,7 +3407,7 @@ async function startServer() {
   });
 }
 
-export { app, isVerificationCurrent, newsletterEmailLayout };
+export { app, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout };
 
 if (env.NODE_ENV !== 'test') {
   initializeOfferStore()
