@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, RotateCcw, X } from 'lucide-react';
+import { CheckCircle2, ExternalLink, RotateCcw, Trash2, X } from 'lucide-react';
 import { Offer } from '../types';
 
 export type MyOfferStatus = 'active' | 'completed';
@@ -19,6 +19,7 @@ interface MyOffersProps {
   isSignedIn: boolean;
   onResume: (offer: Offer) => void;
   onStatusChange: (offerId: string, status: MyOfferStatus) => void;
+  onRemove: (offerId: string) => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'signups4fastcash_my_offers';
@@ -41,6 +42,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
   isSignedIn,
   onResume,
   onStatusChange,
+  onRemove,
 }) => {
   const [entries, setEntries] = useState<MyOfferEntry[]>(readMyOfferEntries);
   const trackedOffers = useMemo(
@@ -67,6 +69,13 @@ export const MyOffers: React.FC<MyOffersProps> = ({
     onStatusChange(offerId, status);
   };
 
+  const removeOffer = async (offerId: string) => {
+    if (!await onRemove(offerId)) return;
+    const next = entries.filter((entry) => entry.offerId !== offerId);
+    setEntries(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  };
+
   return (
     <>
       {open && (
@@ -84,7 +93,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
             {trackedOffers.length === 0 ? (
               <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
                 <p className="text-sm font-semibold text-white">No saved offers yet</p>
-                <p className="mt-1 text-xs text-zinc-400">Choose Claim on any offer and it will be saved here. Guest saves stay on this device; sign in to sync them across devices.</p>
+                <p className="mt-1 text-xs text-zinc-400">Choose View offer to save it here. Guest saves stay on this device; sign in to sync them across devices.</p>
               </div>
             ) : (
               <div className="mt-6 space-y-3">
@@ -115,6 +124,11 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                         {status !== 'active' && (
                           <button type="button" onClick={() => updateStatus(offer.id, 'active')} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5">
                             <RotateCcw className="h-3.5 w-3.5" /> Reopen
+                          </button>
+                        )}
+                        {status === 'completed' && (
+                          <button type="button" onClick={() => void removeOffer(offer.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300/30 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-300/10">
+                            <Trash2 className="h-3.5 w-3.5" /> Remove from My Offers
                           </button>
                         )}
                       </div>

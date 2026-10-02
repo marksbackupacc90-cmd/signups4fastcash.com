@@ -14,8 +14,8 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
     body: (
       <>
         <p>We collect information you choose to submit, such as your email address when you subscribe to alerts. We use it to provide the requested alerts and maintain the service.</p>
-        <p>We may also receive basic technical information from your browser and hosting provider, such as request time, device type, and IP address, for security and reliability. With your permission, we use hosting-provider location signals to estimate a visitor's general country and region for aggregate analytics; we do not store exact GPS locations or raw IP addresses for this feature.</p>
-        <p>Optional analytics can be declined without limiting access to the site. Visitor analytics are retained for up to 365 days by default, subject to the site's configured retention period, and are then deleted. To request access to or deletion of information associated with you, or to withdraw newsletter consent, contact the site operator at the support address shown below.</p>
+        <p>Our hosting provider may process basic technical information, such as request time, device type, and IP address, for security and reliability. We no longer collect visitor page views, visitor IDs, approximate locations, or offer impressions.</p>
+        <p>When someone follows an offer link, we record only the offer and event time so the site can show aggregate referral-click counts. This click record does not include a visitor ID or location. Previously collected visitor analytics, if any, remain subject to the configured retention period (365 days by default). To request access to or deletion of information associated with you, or to withdraw newsletter consent, contact the site operator at the support address shown below.</p>
         <p>We do not sell your personal information. Merchant websites have their own privacy policies, and you should review them before applying through an external link.</p>
         <p>To request removal of a newsletter address or ask a privacy question, contact the site operator through the email address listed in the deployment configuration.</p>
       </>
@@ -67,7 +67,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ section, onClose }) => {
         </button>
         <h2 className="pr-8 text-xl font-bold text-white">{content.title}</h2>
         <div className="mt-5 space-y-4">{content.body}</div>
-        <p className="mt-6 border-t border-white/[0.08] pt-4 text-xs text-zinc-400">Last reviewed: September 10, 2026. This information is general and may need updating as the service changes.</p>
+        <p className="mt-6 border-t border-white/[0.08] pt-4 text-xs text-zinc-400">Last reviewed: October 2, 2026. Offer-specific terms can change at any time; confirm them with the provider before proceeding.</p>
       </div>
     </div>
   );

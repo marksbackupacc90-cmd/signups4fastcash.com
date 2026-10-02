@@ -128,9 +128,10 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'random' | 'highest' | 'fastest' | 'easiest'>('random');
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
-  const recordedImpressions = useRef(new Set<string>());
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
   const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0, moved: false });
+  const carouselHoverDirectionRef = useRef<-1 | 0 | 1>(0);
+  const carouselHoverFrameRef = useRef<number | null>(null);
   const suppressCarouselClickRef = useRef(false);
   const [canScrollOffersLeft, setCanScrollOffersLeft] = useState(false);
   const [canScrollOffersRight, setCanScrollOffersRight] = useState(false);
@@ -160,15 +161,16 @@ export default function App() {
   const publicOffers = useMemo(() => liveOffers.filter((offer) => offer.status === 'live'), [liveOffers]);
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
-  const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
-    try {
-      const saved = localStorage.getItem('signups4fastcash_analytics_consent');
-      return saved === 'granted' || saved === 'denied' ? saved : 'unknown';
-    } catch {
-      return 'unknown';
-    }
-  });
   const liveOfferIds = liveOffers.map((offer) => offer.id).join('|');
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem('signups4fastcash_analytics_consent');
+      localStorage.removeItem('signups4fastcash_visitor_id');
+    } catch (error) {
+      console.warn('Could not clear legacy visitor analytics storage:', error);
+    }
+  }, []);
 
   useEffect(() => {
     setRandomOfferOrder((current) => {
@@ -200,40 +202,6 @@ export default function App() {
     }
     meta.content = siteSettings.metaDescription || DEFAULT_SITE_SETTINGS.metaDescription;
   }, [siteSettings]);
-
-  useEffect(() => {
-    if (analyticsConsent !== 'granted') return;
-    const storageKey = 'signups4fastcash_visitor_id';
-    let visitorId = localStorage.getItem(storageKey);
-    if (!visitorId) {
-      visitorId = crypto.randomUUID();
-      localStorage.setItem(storageKey, visitorId);
-    }
-    const params = new URLSearchParams(window.location.search);
-    const source = params.get('utm_source')
-      ? `${params.get('utm_source')}:${params.get('utm_medium') || 'unknown'}`
-      : document.referrer ? new URL(document.referrer).hostname : 'direct';
-    void fetch('/api/analytics/pageview', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(() => {
-          const token = localStorage.getItem('signups4fastcash_admin_token');
-          return token ? { 'x-admin-token': token } : {};
-        })(),
-      },
-      body: JSON.stringify({ visitorId, path: window.location.pathname, source }),
-    });
-  }, [analyticsConsent]);
-
-  const updateAnalyticsConsent = (consent: 'granted' | 'denied') => {
-    try {
-      localStorage.setItem('signups4fastcash_analytics_consent', consent);
-    } catch {
-      // Continue with the in-memory choice if storage is unavailable.
-    }
-    setAnalyticsConsent(consent);
-  };
 
   useEffect(() => {
     try {
@@ -784,21 +752,6 @@ export default function App() {
     });
   const filteredOfferIds = filteredOffers.map((offer) => offer.id).join(',');
 
-  useEffect(() => {
-    if (activeTab !== 'offers' || filteredOffers.length === 0 || localStorage.getItem('signups4fastcash_admin_token')) return;
-    const visitorId = localStorage.getItem('signups4fastcash_visitor_id') || undefined;
-    filteredOffers.forEach((offer, index) => {
-      const impressionKey = `${offer.id}:${index}`;
-      if (recordedImpressions.current.has(impressionKey)) return;
-      recordedImpressions.current.add(impressionKey);
-      void fetch('/api/analytics/impression', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ offerId: offer.id, position: index + 1, visitorId }),
-      }).catch(() => {});
-    });
-  }, [activeTab, filteredOffers.map((offer) => offer.id).join('|')]);
-
   const shareUrl = 'https://signups4fastcash.com/?utm_source=visitor_share&utm_medium=referral&utm_campaign=share_cta';
   const shareMessage = `I found a comparison site for signup bonuses, cashback, and no-deposit offers. It shows the requirements and fine print before you click: ${shareUrl}`;
   const handleShare = async () => {
@@ -837,6 +790,21 @@ export default function App() {
       body: JSON.stringify({ confirmed: true }),
     }).catch(() => null);
     showToast(response?.ok ? 'Thanks — your completion was saved.' : 'Saved locally, but we could not send the confirmation.');
+  };
+
+  const handleMyOfferRemove = async (offerId: string) => {
+    if (authUser) {
+      const response = await fetch(`/api/account/offer-entries/${offerId}`, { method: 'DELETE' }).catch(() => null);
+      if (!response?.ok) {
+        showToast('Could not remove this offer from your account. Please try again.');
+        return false;
+      }
+    }
+    const remaining = readMyOfferEntries().filter((entry) => entry.offerId !== offerId);
+    localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(remaining));
+    setMyOfferIds(remaining.map((entry) => entry.offerId));
+    showToast('Completed offer removed from My Offers.');
+    return true;
   };
 
   const handleUpdateSiteSettings = async (updates: Partial<SiteSettings>) => {
@@ -880,6 +848,41 @@ export default function App() {
     const firstCard = carousel.querySelector<HTMLElement>('[data-offer-carousel-item]');
     const step = firstCard ? firstCard.getBoundingClientRect().width + 16 : carousel.clientWidth * 0.8;
     carousel.scrollTo({ left: carousel.scrollLeft + direction * step, behavior: 'instant' });
+  };
+
+  const stopCarouselHoverScroll = () => {
+    carouselHoverDirectionRef.current = 0;
+    if (carouselHoverFrameRef.current !== null) {
+      window.cancelAnimationFrame(carouselHoverFrameRef.current);
+      carouselHoverFrameRef.current = null;
+    }
+  };
+
+  const handleCarouselMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const edgeZone = Math.min(96, bounds.width * 0.12);
+    carouselHoverDirectionRef.current = event.clientX < bounds.left + edgeZone
+      ? -1
+      : event.clientX > bounds.right - edgeZone ? 1 : 0;
+    if (carouselHoverDirectionRef.current === 0 || carouselHoverFrameRef.current !== null) return;
+
+    const moveTowardPointer = () => {
+      const carousel = offersCarouselRef.current;
+      const direction = carouselHoverDirectionRef.current;
+      if (!carousel || direction === 0) {
+        carouselHoverFrameRef.current = null;
+        return;
+      }
+      const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+      if ((direction < 0 && carousel.scrollLeft <= 0) || (direction > 0 && carousel.scrollLeft >= maxScroll)) {
+        stopCarouselHoverScroll();
+        return;
+      }
+      carousel.scrollLeft += direction * 8;
+      carouselHoverFrameRef.current = window.requestAnimationFrame(moveTowardPointer);
+    };
+    carouselHoverFrameRef.current = window.requestAnimationFrame(moveTowardPointer);
   };
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -1037,6 +1040,7 @@ export default function App() {
           isSignedIn={Boolean(authUser)}
           onResume={handleResumeOffer}
           onStatusChange={handleMyOfferStatusChange}
+          onRemove={handleMyOfferRemove}
         />}
         {activeTab === 'offers' && (
           <div>
@@ -1109,15 +1113,35 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="mx-auto max-w-7xl">
+                <div className="relative mx-auto max-w-7xl">
+                  <button
+                    type="button"
+                    onClick={() => scrollOffersCarousel(-1)}
+                    disabled={!canScrollOffersLeft}
+                    aria-label="Show previous offers"
+                    className="focus-ring absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#10141d]/95 text-zinc-200 shadow-lg transition-colors hover:border-cyan-300/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollOffersCarousel(1)}
+                    disabled={!canScrollOffersRight}
+                    aria-label="Show next offers"
+                    className="focus-ring absolute right-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#10141d]/95 text-zinc-200 shadow-lg transition-colors hover:border-cyan-300/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
                   <div
                       ref={offersCarouselRef}
                       id="offers-carousel"
-                      className="flex cursor-grab select-none justify-start touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pl-0 pr-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin]"
+                      className="flex cursor-grab select-none justify-start touch-pan-x items-start snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pl-0 pr-1 pb-4 active:cursor-grabbing [scrollbar-color:rgba(148,163,184,.35)_transparent] [scrollbar-width:thin] lg:mx-14"
                       onPointerDown={handleCarouselPointerDown}
                       onPointerMove={handleCarouselPointerMove}
                       onPointerUp={handleCarouselPointerUp}
                       onPointerCancel={(event) => handleCarouselPointerUp(event, true)}
+                      onMouseMove={handleCarouselMouseMove}
+                      onMouseLeave={stopCarouselHoverScroll}
                       onClickCapture={(event) => {
                         if (!suppressCarouselClickRef.current) return;
                         suppressCarouselClickRef.current = false;
@@ -1152,7 +1176,7 @@ export default function App() {
                         </div>
                       ))}
                   </div>
-                  <div className="mt-1 flex items-center justify-between gap-3">
+                  <div className="mt-1 flex items-center justify-between gap-3 lg:hidden">
                     <button
                       type="button"
                       onClick={() => scrollOffersCarousel(-1)}
@@ -1261,31 +1285,6 @@ export default function App() {
           onClose={() => setSelectedOffer(null)}
           onClaimClick={handleClaimClick}
         />
-      )}
-      {analyticsConsent === 'unknown' && (
-        <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-2xl rounded-xl border border-cyan-400/30 bg-[#0d1724] p-4 shadow-2xl shadow-black/40">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs leading-relaxed text-zinc-300">
-              We use optional analytics to understand aggregate visits and approximate country/region. No exact location or raw IP is stored for this feature. You can decline and still use the site.
-            </p>
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => updateAnalyticsConsent('denied')}
-                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-mono text-zinc-300 hover:bg-white/10"
-              >
-                Decline
-              </button>
-              <button
-                type="button"
-                onClick={() => updateAnalyticsConsent('granted')}
-                className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-mono font-semibold text-[#06131a] hover:bg-cyan-300"
-              >
-                Allow analytics
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

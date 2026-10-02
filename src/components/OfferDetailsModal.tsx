@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, ChevronDown, Copy, ExternalLink, X } from 'lucide-react';
 import { Offer } from '../types';
+import { getIdVerificationDescription, getOfferReviewBadge, getOfferReviewDescription } from '../offerTransparency';
 
 interface OfferDetailsModalProps {
   offer: Offer;
@@ -32,6 +33,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [completionStatus, setCompletionStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const claimUrl = offer.referralUrl || offer.officialMerchantUrl;
+  const reviewBadge = getOfferReviewBadge(offer);
 
   const copyCode = async () => {
     if (!offer.referralCode) return;
@@ -79,12 +81,19 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
+          <div className="mb-3 rounded-lg border border-amber-200/15 bg-amber-200/[0.04] p-3">
+            <p className={`text-xs font-semibold ${reviewBadge.className}`}>{reviewBadge.label}</p>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-300">{getOfferReviewDescription(offer)}</p>
+          </div>
           <p className="text-sm leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>
           <div className="mt-4 rounded-xl border border-cyan-200/15 bg-cyan-200/[0.05] p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/70">Advertised reward</p>
             <p className="mt-1 text-xl font-bold text-white">{offer.incentiveAmount}</p>
             <p className="mt-2 text-xs text-zinc-400">
-              {offer.depositRequired} deposit <span className="px-1 text-zinc-600">·</span> {offer.payoutSpeed} payout
+              <span className="font-semibold text-zinc-300">Upfront requirement:</span> {offer.depositRequired}
+            </p>
+            <p className="mt-1 text-xs text-zinc-400">
+              <span className="font-semibold text-zinc-300">Reward timing:</span> {offer.payoutSpeed}
             </p>
           </div>
 
@@ -105,10 +114,11 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
 
             <Disclosure title="Requirements & payout details">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-                <div><dt className="text-zinc-500">Effort</dt><dd className="mt-0.5 text-zinc-200">{offer.difficulty}</dd></div>
+                <div><dt className="text-zinc-500">Signup setup estimate</dt><dd className="mt-0.5 text-zinc-200">{offer.difficulty}</dd></div>
                 <div><dt className="text-zinc-500">Availability</dt><dd className="mt-0.5 text-zinc-200">{offer.availability}</dd></div>
-                <div className="col-span-2"><dt className="text-zinc-500">Payout timing</dt><dd className="mt-0.5 text-zinc-200">{offer.payoutSpeed}</dd></div>
+                <div className="col-span-2"><dt className="text-zinc-500">Reward timing</dt><dd className="mt-0.5 text-zinc-200">{offer.payoutSpeed}</dd></div>
               </dl>
+              <p className="mt-3 text-xs text-zinc-400">Setup time is an estimate for signing up only. Qualifying steps, provider review, and receiving a reward may take longer.</p>
               {offer.referralCode && (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-3">
                   <span className="text-xs text-zinc-400">Referral code <strong className="ml-1 text-cyan-100">{offer.referralCode}</strong></span>
@@ -126,7 +136,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
               <p className="mt-3 text-xs text-zinc-400">{offer.honestTruth.hiddenFeesWarning}</p>
               <dl className="mt-3 grid gap-2 border-t border-white/[0.08] pt-3 text-xs sm:grid-cols-2">
                 <div><dt className="text-zinc-500">Minimum hold</dt><dd className="mt-0.5">{offer.honestTruth.minimumHoldTime}</dd></div>
-                <div><dt className="text-zinc-500">ID verification</dt><dd className="mt-0.5">{offer.honestTruth.idVerificationRequired ? 'May be required' : 'Not required'}</dd></div>
+                <div><dt className="text-zinc-500">ID verification</dt><dd className="mt-0.5">{getIdVerificationDescription(offer.honestTruth.idVerificationRequired)}</dd></div>
               </dl>
             </Disclosure>
 
@@ -146,9 +156,9 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
 
         <div className="border-t border-white/[0.08] bg-[#0d1724] p-4">
           <a href={claimUrl} target="_blank" rel="noopener noreferrer" onClick={() => onClaimClick(offer.id)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#06131a] hover:bg-cyan-200">
-            Claim offer <ExternalLink className="h-4 w-4" />
+            Continue to {offer.company} <ExternalLink className="h-4 w-4" />
           </a>
-          <p className="mt-2 text-center text-[10px] text-zinc-500">Confirm the latest terms on {offer.company}’s site.</p>
+          <p className="mt-2 text-center text-[10px] leading-relaxed text-zinc-400">This may be a referral link. {offer.company} controls eligibility, approval, reward value, and payment. Confirm the current terms before proceeding.</p>
         </div>
       </div>
     </div>

@@ -7,8 +7,6 @@ import { CompanyLogo } from './CompanyLogo';
 interface AdminOffersPageProps {
   liveOffers: Offer[];
   activityByOffer: Record<string, OfferActivity>;
-  activityPeriodDays: 7 | 30;
-  onActivityPeriodChange: (days: 7 | 30) => void;
   onRefreshActivity: () => void;
   onUpdateLiveOffer: (offerId: string, updates: Partial<Offer>) => void;
   onDeleteLiveOffer: (offerId: string) => void;
@@ -47,8 +45,6 @@ const safeOffers = (offers: Offer[]) => (Array.isArray(offers) ? offers.filter(B
 export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
   liveOffers,
   activityByOffer,
-  activityPeriodDays,
-  onActivityPeriodChange,
   onRefreshActivity,
   onUpdateLiveOffer,
   onDeleteLiveOffer,
@@ -170,24 +166,13 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             </h1>
             <p className="mt-1 text-xs text-zinc-400">{filteredOffers.length} offers available to manage.</p>
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Activity</span>
-              {([7, 30] as const).map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  aria-pressed={activityPeriodDays === days}
-                  onClick={() => onActivityPeriodChange(days)}
-                  className={`rounded-md px-2.5 py-1.5 text-[10px] font-bold ${activityPeriodDays === days ? 'bg-cyan-300 text-[#061016]' : 'border border-white/10 text-zinc-400 hover:text-white'}`}
-                >
-                  {days} days
-                </button>
-              ))}
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Clicks since last check</span>
               <button
                 type="button"
                 onClick={onRefreshActivity}
                 className="rounded-md border border-white/10 px-2.5 py-1.5 text-[10px] font-bold text-zinc-300 hover:bg-white/[0.06]"
               >
-                Refresh
+                Check new clicks
               </button>
             </div>
           </div>
@@ -221,7 +206,7 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                 ['company', 'Company / merchant name', 'e.g. Discover Bank'],
                 ['title', 'Offer title', 'e.g. Earn $100 after qualifying deposit'],
                 ['incentiveAmount', 'Reward shown on card', '$100 cash bonus'],
-                ['payoutSpeed', 'Payout speed', 'Instant or within 24 hours'],
+                ['payoutSpeed', 'Reward timing', 'Provider review or redemption timing'],
                 ['depositRequired', 'Deposit / spend requirement', '$0 or $500 direct deposit'],
                 ['referralCode', 'Referral code', 'Your provider code'],
                 ['referralUrl', 'Your referral link', 'https://...'],
@@ -288,15 +273,14 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                       <span className="block truncate text-xs text-zinc-400">{offer.title}</span>
                       <span className="mt-1 block text-[10px] uppercase tracking-wider text-emerald-300">{offer.incentiveAmount}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-2 font-mono">
-                        <span className="text-[10px] text-cyan-200">{Number(offer.clicksCount || 0).toLocaleString()} total clicks</span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${(activityByOffer[offer.id]?.clicks || 0) > 0 ? 'bg-emerald-300/15 text-emerald-200' : 'bg-white/[0.06] text-zinc-400'}`}
-                          aria-label={`${activityByOffer[offer.id]?.clicks || 0} clicks in the last ${activityPeriodDays} days`}
+                          aria-label={`${activityByOffer[offer.id]?.clicks || 0} clicks since your last check`}
                         >
-                          {activityByOffer[offer.id]?.clicks || 0} · {activityPeriodDays}d
+                          {activityByOffer[offer.id]?.clicks || 0} new clicks
                         </span>
                         <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-zinc-300">
-                          {activityByOffer[offer.id]?.conversions || 0} conv
+                          {activityByOffer[offer.id]?.conversions || 0} conversion events
                         </span>
                       </span>
                     </span>

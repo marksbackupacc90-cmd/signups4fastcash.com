@@ -9,8 +9,8 @@ const STEPS = [
   },
   {
     icon: ExternalLink,
-    title: 'Apply direct',
-    description: 'Use the official partner link when you are ready.',
+    title: 'Visit provider',
+    description: 'Open the referral link and confirm the live terms.',
   },
   {
     icon: CheckCircle2,
@@ -39,8 +39,8 @@ export const HowItWorks: React.FC = () => (
         ))}
       </div>
       <p className="border-t border-white/[0.06] pt-2 text-[11px] leading-relaxed text-zinc-500">
-        Rewards are paid by the merchant after you meet the listed requirements. Amounts, approval,
-        eligibility, and payout timing can change, so check the offer terms before applying.
+        The provider controls approval and rewards. Amounts, eligibility, requirements, fees, and timing
+        can change; confirm the current terms before spending money, sharing data, or applying.
       </p>
     </div>
   </section>

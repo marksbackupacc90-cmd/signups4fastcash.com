@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, buildOfferActivityReport, getOfferActivityReport, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -98,6 +98,80 @@ test('hidden referral offer candidates are not exposed in the public offer catal
   ];
   const publicIds = response.body.offers.map((offer) => offer.id);
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
+});
+
+test('public offers disclose complete requirements without unsupported trust or payout guarantees', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offers = response.body.offers;
+  assert.ok(offers.length >= 20, 'the audit should cover the full public offer catalog');
+  assert.equal(new Set(offers.map((offer) => offer.id)).size, offers.length, 'offer IDs should be unique');
+
+  for (const offer of offers) {
+    assert.equal(offer.status, 'live', `${offer.company} should be live`);
+    assert.ok(offer.id && offer.company && offer.title, `${offer.company} should have identifying details`);
+    assert.ok(offer.category, `${offer.company} should have a category`);
+    assert.ok(offer.incentiveAmount, `${offer.company} should state the advertised reward`);
+    assert.ok(Number.isFinite(offer.incentiveValue) && offer.incentiveValue >= 0, `${offer.company} should have a valid sort value`);
+    assert.ok(offer.payoutSpeed, `${offer.company} should disclose reward timing`);
+    assert.ok(offer.difficulty, `${offer.company} should disclose setup effort`);
+    assert.ok(offer.depositRequired, `${offer.company} should disclose upfront requirements`);
+    assert.ok(offer.availability, `${offer.company} should disclose availability`);
+    assert.match(offer.officialMerchantUrl, /^https:/, `${offer.company} provider URL should use HTTPS`);
+    assert.match(offer.referralUrl, /^https:/, `${offer.company} referral URL should use HTTPS`);
+    assert.ok(offer.honestTruth?.summary, `${offer.company} should summarize what the user may receive`);
+    assert.ok(offer.honestTruth?.theCatch, `${offer.company} should disclose conditions`);
+    assert.ok(offer.honestTruth?.minimumHoldTime, `${offer.company} should disclose when the reward may be available`);
+    assert.ok(offer.honestTruth?.hiddenFeesWarning, `${offer.company} should disclose costs and risks`);
+    assert.equal(typeof offer.honestTruth?.idVerificationRequired, 'boolean', `${offer.company} should state ID verification information`);
+    assert.ok(Array.isArray(offer.speedrunHints) && offer.speedrunHints.length > 0, `${offer.company} should have qualifying steps`);
+    offer.speedrunHints.forEach((hint, index) => {
+      assert.equal(hint.step, index + 1, `${offer.company} steps should be in order`);
+      assert.ok(hint.instruction, `${offer.company} step ${index + 1} should be explained`);
+    });
+    assert.ok(!offer.verificationStatus || ['unverified', 'reviewed', 'terms-vary'].includes(offer.verificationStatus), `${offer.company} should have a recognized review status`);
+    if (offer.verificationStatus === 'unverified') {
+      assert.match(`${offer.honestTruth.summary} ${offer.honestTruth.theCatch}`, /report|suppl|not independently|not been independently/i, `${offer.company} should identify unverified details as reported`);
+    }
+  }
+});
+
+test('unsupported Acebet and Debbie promos are kept out of public listings', () => {
+  assert.equal(isTemporarilyHiddenOffer({ id: 'custom-acebet', company: 'Acebet' }), true);
+  assert.equal(isTemporarilyHiddenOffer({ id: 'custom-debbie', company: 'Debbie' }), true);
+  assert.equal(isTemporarilyHiddenOffer({ id: 'offer-ibotta', company: 'Ibotta' }), false);
+});
+
+test('CoinsBack details remain explicitly unverified after offer-store initialization', () => {
+  const offer = applyCoinsBackTerms({
+    company: 'Coinsback Casino',
+    verifiedAt: '2026-10-01T00:00:00.000Z',
+    verificationExpiresAt: '2026-11-01T00:00:00.000Z',
+  });
+  assert.equal(offer.verificationStatus, 'unverified');
+  assert.equal(offer.verifiedAt, undefined);
+  assert.equal(offer.verificationExpiresAt, undefined);
+  assert.match(offer.honestTruth.theCatch, /not independently confirmed|may not be cash/i);
+  assert.match(offer.incentiveAmount, /reported/i);
+});
+
+test('offer content edits invalidate old reviews until details are checked again', () => {
+  const existing = {
+    verificationStatus: 'reviewed',
+    verifiedAt: '2026-10-01T00:00:00.000Z',
+    verificationExpiresAt: '2026-11-01T00:00:00.000Z',
+  };
+  const edited = resolveOfferVerificationUpdate(existing, { incentiveAmount: '$50 reported bonus' });
+  assert.equal(edited.verificationStatus, 'unverified');
+  assert.equal(edited.verifiedAt, undefined);
+  assert.equal(edited.verificationExpiresAt, undefined);
+
+  const markedReviewed = resolveOfferVerificationUpdate(existing, {
+    verificationStatus: 'reviewed',
+    verifiedAt: new Date().toISOString(),
+    verificationExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+  });
+  assert.equal(markedReviewed.verificationStatus, 'reviewed');
 });
 
 test('Measure Protocol offer is published with the reported YouTube and Netflix reward', async () => {
@@ -339,8 +413,9 @@ test('newer Ero referral details replace stale saved terms without changing its 
 
 test('newsletter email layout uses the website theme and Glory typography', () => {
   const html = newsletterEmailLayout('<h1>Test message</h1>');
-  assert.match(html, /font-family: "Glory", Arial, Helvetica, sans-serif/);
+  assert.match(html, /font-family: "Glory", sans-serif/);
   assert.match(html, /https:\/\/signups4fastcash\.com\/fonts\/Glory-Variable\.ttf/);
+  assert.match(html, /class="email-typography" style="font-family:'Glory',sans-serif !important;"/);
   assert.match(html, /bgcolor="#04080d"/);
   assert.match(html, /bgcolor="#0d1724"/);
   assert.match(html, /#2dd4ee/);
@@ -361,24 +436,14 @@ test('editing a hidden offer link does not publish the offer', () => {
   assert.equal(resolveUpdatedOfferStatus('live', undefined), 'live');
 });
 
-test('pageview analytics rejects missing visitor identifiers', async () => {
-  const response = await request('/api/analytics/pageview', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ path: '/', source: 'test' }),
-  });
-  assert.equal(response.status, 400);
-  assert.equal(response.body.error, 'A visitor identifier is required.');
-});
-
-test('pageview analytics records a valid memory-mode event', async () => {
+test('visitor page-view analytics are disabled', async () => {
   const response = await request('/api/analytics/pageview', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ visitorId: 'test-visitor', path: '/', source: 'test' }),
   });
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.body, { success: true });
+  assert.equal(response.status, 410);
+  assert.equal(response.body.error, 'Visitor page-view tracking is disabled.');
 });
 
 test('offer analytics rejects malformed telemetry payloads', async () => {
@@ -432,21 +497,33 @@ test('offer activity reports aggregate 7-day and 30-day events by offer', () => 
   assert.equal(thirtyDayReport.offers['offer-old'], undefined);
 });
 
-test('offer impressions validate offer placement and record position data', async () => {
-  const invalid = await request('/api/analytics/impression', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ offerId: 'offer-western-union-referral', position: 0 }),
+test('offer activity since a saved cursor reports only newly recorded events by offer', () => {
+  const from = new Date('2026-10-01T00:00:00.000Z');
+  const checkedAt = new Date('2026-10-02T12:00:00.000Z');
+  const report = buildOfferActivitySinceReport([
+    { offerId: 'offer-ibotta', type: 'click', recordedAt: '2026-09-30T23:59:59.000Z' },
+    { offerId: 'offer-ibotta', type: 'click', recordedAt: '2026-10-01T00:00:00.000Z' },
+    { offerId: 'offer-chime', type: 'click', recordedAt: '2026-10-02T11:00:00.000Z' },
+    { offerId: 'offer-chime', type: 'conversion', recordedAt: '2026-10-02T11:30:00.000Z' },
+    { offerId: 'offer-ibotta', type: 'click', recordedAt: '2026-10-02T12:00:01.000Z' },
+  ], from.toISOString(), checkedAt);
+  assert.equal(report.from, from.toISOString());
+  assert.equal(report.to, checkedAt.toISOString());
+  assert.deepEqual(report.totals, { clicks: 2, conversions: 1 });
+  assert.deepEqual(report.offers, {
+    'offer-ibotta': { clicks: 1, conversions: 0 },
+    'offer-chime': { clicks: 1, conversions: 1 },
   });
-  assert.equal(invalid.status, 400);
+});
 
-  const recorded = await request('/api/analytics/impression', {
+test('offer impression tracking endpoint is disabled', async () => {
+  const response = await request('/api/analytics/impression', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ offerId: 'offer-western-union-referral', position: 2, visitorId: 'test-visitor' }),
   });
-  assert.equal(recorded.status, 201);
-  assert.deepEqual(recorded.body, { success: true });
+  assert.equal(response.status, 410);
+  assert.equal(response.body.error, 'Offer impression tracking is disabled.');
 });
 
 test('offer exposure reports are owner-protected', async () => {

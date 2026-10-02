@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, CheckCircle2, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings } from '../types';
-import type { OfferActivity, OfferActivityReport } from '../types';
+import type { OfferActivity, OfferActivitySinceReport } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
 
 type DashboardView = 'overview' | 'offers' | 'email';
@@ -24,6 +24,18 @@ interface AdminDashboardProps {
   onUpdateAdminUsernames?: (usernames: string[]) => void;
 }
 
+const OFFER_ACTIVITY_CURSOR_KEY = 'signups4fastcash_offer_activity_last_checked';
+
+function readOfferActivityCursor() {
+  try {
+    const saved = localStorage.getItem(OFFER_ACTIVITY_CURSOR_KEY);
+    if (saved && Number.isFinite(Date.parse(saved)) && Date.parse(saved) <= Date.now()) return saved;
+  } catch (error) {
+    console.error('Could not read the last-checked offer activity time:', error);
+  }
+  return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   initialView = 'overview',
   ...props
@@ -40,13 +52,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedOfferId, setSelectedOfferId] = useState(props.liveOffers[0]?.id || '');
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
-  const [activityPeriodDays, setActivityPeriodDays] = useState<7 | 30>(7);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
-  const [activityReport, setActivityReport] = useState<OfferActivityReport | null>(null);
+  const [activityReport, setActivityReport] = useState<OfferActivitySinceReport | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
-  const totalClicks = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.clicksCount || 0), 0), [props.liveOffers]);
-  const totalConversions = useMemo(() => props.liveOffers.reduce((total, offer) => total + Number(offer.conversionsCount || 0), 0), [props.liveOffers]);
+  const [initialActivityCursor] = useState(readOfferActivityCursor);
+  const activityCursorRef = useRef(initialActivityCursor);
   useEffect(() => {
     const controller = new AbortController();
     const loadActivityReport = async () => {
@@ -54,16 +65,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setActivityError(null);
       try {
         const token = localStorage.getItem('signups4fastcash_admin_token') || '';
-        const response = await fetch(`/api/admin/analytics/offers?days=${activityPeriodDays}`, {
+        const response = await fetch(`/api/admin/analytics/offers/since?from=${encodeURIComponent(activityCursorRef.current)}`, {
           headers: token ? { 'x-admin-token': token } : {},
           signal: controller.signal,
         });
-        const data = await response.json().catch(() => null) as (OfferActivityReport & { error?: string }) | null;
+        const data = await response.json().catch(() => null) as (OfferActivitySinceReport & { error?: string }) | null;
         if (!response.ok || !data) throw new Error(data?.error || 'Could not load offer activity.');
         setActivityReport(data);
+        try {
+          localStorage.setItem(OFFER_ACTIVITY_CURSOR_KEY, data.to);
+          activityCursorRef.current = data.to;
+        } catch (error) {
+          console.error('Could not save the last-checked offer activity time:', error);
+          setActivityError('Clicks are shown, but this browser could not save the last-checked time. The same clicks may appear again next time.');
+        }
       } catch (error) {
         if (controller.signal.aborted) return;
-        console.error('Could not load date-range offer activity:', error);
+        console.error('Could not load clicks since the last check:', error);
         setActivityError(error instanceof Error ? error.message : 'Could not load offer activity.');
         setActivityReport(null);
       } finally {
@@ -72,12 +90,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
     void loadActivityReport();
     return () => controller.abort();
-  }, [activityPeriodDays, activityRefreshKey]);
+  }, [activityRefreshKey]);
   const activityByOffer = activityReport?.offers || {};
   const offersNeedingReview = useMemo(() => {
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
     return props.liveOffers
-      .filter((offer) => !offer.verifiedAt || !Number.isFinite(Date.parse(offer.verifiedAt)) || Date.parse(offer.verifiedAt) < cutoff)
+      .filter((offer) => offer.verificationStatus !== 'reviewed'
+        || !offer.verifiedAt
+        || !Number.isFinite(Date.parse(offer.verifiedAt))
+        || Date.parse(offer.verifiedAt) < cutoff
+        || (offer.verificationExpiresAt && Date.parse(offer.verificationExpiresAt) < Date.now()))
       .sort((a, b) => {
         const aDate = a.verifiedAt ? Date.parse(a.verifiedAt) : 0;
         const bDate = b.verifiedAt ? Date.parse(b.verifiedAt) : 0;
@@ -122,7 +144,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'offers' as const, label: 'Offers', icon: Store },
     { id: 'email' as const, label: 'Email', icon: Mail },
   ];
-  const activityPeriods: (7 | 30)[] = [7, 30];
   const sendOfferEmail = async () => {
     if (!selectedOfferId) return;
     setEmailSending(true);
@@ -152,7 +173,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               One place to monitor the site, manage the offer catalog, and send important email.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-xs text-emerald-200">
+          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0b1520] px-3 py-2 text-xs text-zinc-100">
             <span className="h-2 w-2 rounded-full bg-emerald-400" /> Admin session active
           </div>
         </div>
@@ -175,8 +196,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
               ['Live offers', props.liveOffers.length, Store],
-              ['Offer clicks', totalClicks, BarChart3],
-              ['Conversions', totalConversions, ShieldCheck],
+              ['New clicks since last check', activityReport?.totals.clicks.toLocaleString() ?? (activityLoading ? '…' : '—'), BarChart3],
+              ['Conversion events since last check', activityReport?.totals.conversions.toLocaleString() ?? (activityLoading ? '…' : '—'), ShieldCheck],
               ['Subscribers', props.subscribers.length, Mail],
             ].map(([label, value, Icon]) => (
               <div key={String(label)} className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
@@ -193,51 +214,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <MousePointerClick className="h-4 w-4 text-cyan-300" /> Recent offer activity
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                  Shared click and recorded conversion counts, refreshed from the server for this period.
+                  New clicks and recorded conversion events since the last successful check in this browser. Your first check includes the last 30 days.
                 </p>
               </div>
-              <div className="flex gap-1 rounded-lg border border-white/10 bg-[#090d12] p-1" aria-label="Offer activity period">
-                {activityPeriods.map((days) => (
-                  <button
-                    key={days}
-                    type="button"
-                    aria-pressed={activityPeriodDays === days}
-                    onClick={() => setActivityPeriodDays(days)}
-                    className={`rounded-md px-3 py-2 text-xs font-bold ${activityPeriodDays === days ? 'bg-cyan-300 text-[#061016]' : 'text-zinc-400 hover:text-white'}`}
-                  >
-                    {days} days
-                  </button>
-                ))}
+              <div className="flex gap-1 rounded-lg border border-white/10 bg-[#090d12] p-1">
                 <button
                   type="button"
                   onClick={() => setActivityRefreshKey((key) => key + 1)}
                   disabled={activityLoading}
                   className="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/[0.06] disabled:opacity-50"
                 >
-                  {activityLoading ? 'Refreshing…' : 'Refresh'}
+                  {activityLoading ? 'Checking…' : 'Check new clicks'}
                 </button>
               </div>
             </div>
             {activityLoading ? (
-              <p className="mt-4 text-xs text-zinc-400" role="status">Loading recent activity…</p>
-            ) : activityError ? (
+              <p className="mt-4 text-xs text-zinc-400" role="status">Loading clicks since the last check…</p>
+            ) : activityError && !activityReport ? (
               <p className="mt-4 rounded-lg border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-200" role="alert">{activityError}</p>
             ) : (
               <>
+                {activityError && <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 text-xs text-amber-100" role="alert">{activityError}</p>}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border border-white/[0.07] bg-[#090d12] p-4">
                     <div className="text-2xl font-black text-cyan-200">{activityReport?.totals.clicks.toLocaleString() || '0'}</div>
-                    <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Clicks · last {activityPeriodDays} days</div>
+                    <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">New clicks since last check</div>
                   </div>
                   <div className="rounded-lg border border-white/[0.07] bg-[#090d12] p-4">
                     <div className="text-2xl font-black text-emerald-200">{activityReport?.totals.conversions.toLocaleString() || '0'}</div>
-                    <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Conversion events · last {activityPeriodDays} days</div>
+                    <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Recorded conversion events since last check</div>
                   </div>
                 </div>
                 <div className="mt-4 divide-y divide-white/[0.07]">
                   {[...props.liveOffers]
                     .sort((left, right) => (activityByOffer[right.id]?.clicks || 0) - (activityByOffer[left.id]?.clicks || 0))
-                    .slice(0, 8)
+                    .filter((offer) => (activityByOffer[offer.id]?.clicks || 0) > 0 || (activityByOffer[offer.id]?.conversions || 0) > 0)
                     .map((offer) => {
                       const activity: OfferActivity = activityByOffer[offer.id] || { clicks: 0, conversions: 0 };
                       return (
@@ -255,12 +266,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       );
                     })}
                 </div>
+                {activityReport && Object.keys(activityReport.offers).length === 0 && (
+                  <p className="mt-4 text-xs text-zinc-400">No referral clicks have been recorded since your last check.</p>
+                )}
+                {activityReport?.limitedByRetention && (
+                  <p className="mt-3 text-xs text-amber-200">Click history is available for up to 365 days, so older activity is not included.</p>
+                )}
                 <p className="mt-3 text-[10px] leading-relaxed text-zinc-500">
-                  Date-range tracking starts with this release; earlier activity remains in lifetime totals only. Conversion events are recorded signals, not confirmation of a merchant signup or payout.
+                  Later checks begin at the last successful check in this browser. Conversion events are self-reported signals, not confirmation of a merchant signup or payout.
                 </p>
                 {activityReport && (
                   <p className="mt-1 text-[10px] text-zinc-600">
-                    Updated {new Date(activityReport.to).toLocaleString()}
+                    Checked through {new Date(activityReport.to).toLocaleString()}
                   </p>
                 )}
               </>
@@ -280,7 +297,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {offersNeedingReview.length ? <AlertTriangle className="h-4 w-4 text-amber-300" /> : <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
                   Offer verification queue
                 </div>
-                <p className="mt-1 text-xs text-zinc-400">Check referral links, reward terms, and requirements at least once every 30 days.</p>
+                <p className="mt-1 text-xs text-zinc-400">Check the provider page for the link, reward, requirements, costs, and payout terms. Only mark an offer reviewed after checking those details.</p>
               </div>
               <button type="button" onClick={() => setView('offers')} className="text-xs font-bold text-cyan-300 hover:text-cyan-200">Open offer manager</button>
             </div>
@@ -292,10 +309,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div key={offer.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="text-sm font-bold text-white">{offer.company}</div>
-                      <div className="text-xs text-zinc-500">{offer.verifiedAt ? `Last checked ${new Date(offer.verifiedAt).toLocaleDateString()}` : 'Never checked'}</div>
+                      <div className="text-xs text-zinc-500">{offer.verifiedAt ? `Last reviewed ${new Date(offer.verifiedAt).toLocaleDateString()}` : 'Not independently reviewed'}</div>
                     </div>
                     <button type="button" onClick={() => markOfferChecked(offer)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/25 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-300/10">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark checked today
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark reviewed today
                     </button>
                   </div>
                 ))}
@@ -352,8 +369,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <AdminOffersPage
           liveOffers={props.liveOffers}
           activityByOffer={activityByOffer}
-          activityPeriodDays={activityPeriodDays}
-          onActivityPeriodChange={setActivityPeriodDays}
           onRefreshActivity={() => setActivityRefreshKey((key) => key + 1)}
           onUpdateLiveOffer={props.onUpdateLiveOffer}
           onDeleteLiveOffer={props.onDeleteLiveOffer}

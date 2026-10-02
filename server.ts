@@ -70,9 +70,10 @@ function newsletterEmailLayout(content: string, footer = '') {
         src: url("https://signups4fastcash.com/fonts/Glory-Variable.ttf") format("truetype");
         font-weight: 100 900;
         font-style: normal;
+        font-display: swap;
       }
       body, table, td, div, p, h1, h2, h3, a, button {
-        font-family: "Glory", Arial, Helvetica, sans-serif !important;
+        font-family: "Glory", sans-serif !important;
       }
       @media only screen and (max-width: 600px) {
         .email-shell { padding: 16px 8px !important; }
@@ -81,7 +82,7 @@ function newsletterEmailLayout(content: string, footer = '') {
       }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#04080d;color:#e5e7eb;font-family:'Glory',Arial,Helvetica,sans-serif;">
+  <body style="margin:0;padding:0;background-color:#04080d;color:#e5e7eb;font-family:'Glory',sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#04080d" style="width:100%;border-collapse:collapse;background-color:#04080d;">
       <tr>
         <td class="email-shell" align="center" style="padding:32px 16px;">
@@ -100,7 +101,9 @@ function newsletterEmailLayout(content: string, footer = '') {
               </td>
             </tr>
             <tr>
-              <td class="email-content" style="padding:30px 28px;color:#e5e7eb;font-family:'Glory',Arial,Helvetica,sans-serif;">${content}</td>
+              <td class="email-content" style="padding:30px 28px;color:#e5e7eb;font-family:'Glory',sans-serif;">
+                <div class="email-typography" style="font-family:'Glory',sans-serif !important;">${content}</div>
+              </td>
             </tr>
             <tr>
               <td class="email-footer" style="padding:18px 28px;border-top:1px solid #243244;color:#64748b;font-size:11px;line-height:1.6;">
@@ -153,7 +156,7 @@ const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
 const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const delegatedAdminUsernames = new Set<string>();
 const temporarilyHiddenOfferIds = new Set(['offer-acebet']);
-const temporarilyHiddenOfferTerms = ['triumph', 'polymarket'];
+const temporarilyHiddenOfferTerms = ['triumph', 'polymarket', 'acebet', 'debbie'];
 
 function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?: string }) {
   const searchable = `${offer.company || ''} ${offer.title || ''}`.toLowerCase();
@@ -180,6 +183,7 @@ function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) 
       availability: catalogOffer.availability,
       referralUrl: catalogOffer.referralUrl,
       verifiedAt: catalogOffer.verifiedAt,
+      verificationExpiresAt: catalogOffer.verificationExpiresAt,
       verificationStatus: catalogOffer.verificationStatus,
       honestTruth: catalogOffer.honestTruth,
       speedrunHints: catalogOffer.speedrunHints,
@@ -195,28 +199,74 @@ function applyCoinsBackTerms<T extends Record<string, any>>(offer: T): T {
   if (!`${offer.company || ''} ${offer.title || ''}`.toLowerCase().includes('coinsback')) return offer;
   return {
     ...offer,
-    title: 'CoinsBack Casino: Free $2 Welcome Coin Pack + 50% CoinsBack',
-    incentiveAmount: 'Free $2 welcome coin pack + 50% CoinsBack on every spin',
+    title: 'CoinsBack Casino: Reported $2 welcome coin pack and spin rewards',
+    incentiveAmount: 'Reported $2 welcome coin pack; confirm spin reward terms',
     incentiveValue: 2,
-    payoutSpeed: 'CoinsBack timing depends on the current program terms',
-    depositRequired: '$0 (no purchase necessary)',
+    payoutSpeed: 'Confirm reward and redemption timing with CoinsBack',
+    depositRequired: '$0 purchase listed for welcome pack; verify current terms',
     availability: 'Verify current country and state eligibility',
-    verificationStatus: 'reviewed',
-    verifiedAt: new Date().toISOString(),
+    verificationStatus: 'unverified',
+    verifiedAt: undefined,
+    verificationExpiresAt: undefined,
     honestTruth: {
-      summary: 'CoinsBack Casino advertises a free $2 welcome coin pack after account verification and 50% CoinsBack on every spin.',
-      theCatch: 'The welcome coin pack requires account verification. Review the current CoinsBack terms for eligibility, gameplay, and redemption rules.',
-      minimumHoldTime: 'No purchase is required for the advertised welcome coin pack; redemption timing depends on the current terms.',
+      summary: 'An existing listing reports a $2 welcome coin pack after account verification and a spin reward. These details have not been independently confirmed.',
+      theCatch: 'The reported coin pack and spin reward may be subject to account, age, location, playthrough, and redemption rules. Virtual coins may not be cash. Confirm the current terms before creating an account or playing.',
+      minimumHoldTime: 'Not confirmed; check the provider’s current playthrough and redemption rules.',
       idVerificationRequired: true,
-      hiddenFeesWarning: 'Confirm the current eligibility and redemption terms before playing or relying on any reward.',
+      hiddenFeesWarning: 'Do not assume virtual coins can be redeemed for cash. Check purchase requirements, playthrough, minimum redemption, and fees; do not spend money to pursue a reported reward.',
       trustScore: 95,
     },
     speedrunHints: [
-      { step: 1, instruction: 'Open the CoinsBack Casino referral link and create an account.', proTip: 'Use accurate information so verification can be completed.' },
-      { step: 2, instruction: 'Verify your account to receive the free $2 welcome coin pack.', proTip: 'The welcome pack is advertised as requiring verification, not a purchase.' },
-      { step: 3, instruction: 'Review the account for 50% CoinsBack on every spin and the current redemption terms.', proTip: 'Program terms and eligibility can change.' },
+      { step: 1, instruction: 'Review the current CoinsBack Casino promotion, eligibility, and sweepstakes rules before signing up.', proTip: 'The reward details listed here have not been independently confirmed.' },
+      { step: 2, instruction: 'Confirm whether the coin pack is cash-redeemable and whether any playthrough or purchase is required.', proTip: 'Do not deposit or play solely to pursue a reward.' },
+      { step: 3, instruction: 'If you choose to participate, follow the provider’s current verification and redemption terms.', proTip: 'The provider controls eligibility and whether any reward is issued.' },
     ],
     updatedAt: new Date().toISOString(),
+  };
+}
+
+function resolveOfferVerificationUpdate(existingOffer: Partial<Offer>, updates: Partial<Offer>): Partial<Offer> {
+  const reviewDate = typeof updates.verifiedAt === 'string' ? Date.parse(updates.verifiedAt) : NaN;
+  const expiryDate = typeof updates.verificationExpiresAt === 'string' ? Date.parse(updates.verificationExpiresAt) : NaN;
+  if (
+    updates.verificationStatus === 'reviewed'
+    && Number.isFinite(reviewDate)
+    && Number.isFinite(expiryDate)
+    && expiryDate > Date.now()
+  ) {
+    return {
+      verificationStatus: 'reviewed',
+      verifiedAt: updates.verifiedAt,
+      verificationExpiresAt: updates.verificationExpiresAt,
+    };
+  }
+
+  if (updates.verificationStatus === 'terms-vary') {
+    return { verificationStatus: 'terms-vary', verifiedAt: undefined, verificationExpiresAt: undefined };
+  }
+
+  const termsFields: (keyof Offer)[] = [
+    'title',
+    'incentiveAmount',
+    'payoutSpeed',
+    'difficulty',
+    'depositRequired',
+    'availability',
+    'officialMerchantUrl',
+    'referralUrl',
+    'referralCode',
+    'honestTruth',
+    'speedrunHints',
+  ];
+  const termsChanged = termsFields.some((field) => Object.prototype.hasOwnProperty.call(updates, field));
+  if (updates.verificationStatus === 'unverified' || termsChanged) {
+    return { verificationStatus: 'unverified', verifiedAt: undefined, verificationExpiresAt: undefined };
+  }
+
+  return {
+    verificationStatus: existingOffer.verificationStatus,
+    verifiedAt: existingOffer.verifiedAt,
+    verificationExpiresAt: existingOffer.verificationExpiresAt,
   };
 }
 
@@ -605,10 +655,18 @@ const offerAnalyticsEvents: OfferAnalyticsEvent[] = [];
 export function buildOfferActivityReport(events: OfferAnalyticsEvent[], periodDays: 7 | 30, checkedAt = new Date()) {
   const to = checkedAt.getTime();
   const from = to - periodDays * 24 * 60 * 60 * 1000;
+  const report = buildOfferActivitySinceReport(events, new Date(from).toISOString(), checkedAt);
+  return { ...report, periodDays };
+}
+
+export function buildOfferActivitySinceReport(events: OfferAnalyticsEvent[], from: string, checkedAt = new Date()) {
+  const fromTime = Date.parse(from);
+  if (!Number.isFinite(fromTime)) throw new Error('A valid start time is required for the activity report.');
+  const to = checkedAt.getTime();
   const offers: Record<string, { clicks: number; conversions: number }> = {};
   for (const event of events) {
     const recordedAt = Date.parse(event.recordedAt);
-    if (!Number.isFinite(recordedAt) || recordedAt < from || recordedAt > to) continue;
+    if (!Number.isFinite(recordedAt) || recordedAt < fromTime || recordedAt > to) continue;
     const activity = offers[event.offerId] || (offers[event.offerId] = { clicks: 0, conversions: 0 });
     activity[event.type === 'click' ? 'clicks' : 'conversions'] += 1;
   }
@@ -620,8 +678,7 @@ export function buildOfferActivityReport(events: OfferAnalyticsEvent[], periodDa
     { clicks: 0, conversions: 0 },
   );
   return {
-    periodDays,
-    from: new Date(from).toISOString(),
+    from: new Date(fromTime).toISOString(),
     to: checkedAt.toISOString(),
     totals,
     offers,
@@ -1401,6 +1458,20 @@ app.put('/api/account/offer-entries/:offerId', requireAuthenticatedUser, async (
     userOfferEntriesStore.set(user.id, next);
   }
   return res.json({ entry: { offerId: offer.id, status, updatedAt } });
+});
+
+app.delete('/api/account/offer-entries/:offerId', requireAuthenticatedUser, async (_req, res) => {
+  const user = res.locals.authenticatedUser as { id: string };
+  const offerId = _req.params.offerId;
+  if (database) {
+    await database.query('DELETE FROM user_offer_entries WHERE user_id = $1 AND offer_id = $2', [user.id, offerId]);
+  } else {
+    const entries = userOfferEntriesStore.get(user.id) || [];
+    const remaining = entries.filter((entry) => entry.offerId !== offerId);
+    if (remaining.length) userOfferEntriesStore.set(user.id, remaining);
+    else userOfferEntriesStore.delete(user.id);
+  }
+  return res.json({ success: true });
 });
 
 app.post('/api/offers/:id/completion-report', (req, res) => {
@@ -2282,14 +2353,14 @@ app.put('/api/offers/:id', requireAdmin, async (req, res) => {
     return res.status(404).json({ error: 'Offer not found' });
   }
 
+  const existingOffer = liveOffersStore[index];
+  const verificationUpdate = resolveOfferVerificationUpdate(existingOffer, req.body);
   const updatedOffer = {
-    ...liveOffersStore[index],
+    ...existingOffer,
     ...req.body,
+    ...verificationUpdate,
     id: liveOffersStore[index].id,
     status: resolveUpdatedOfferStatus(liveOffersStore[index].status, req.body.status),
-    verificationStatus: 'reviewed',
-    verifiedAt: new Date().toISOString(),
-    verificationExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   };
   if (updatedOffer.status === 'live' && !isPublishableOffer(updatedOffer)) {
@@ -2307,15 +2378,17 @@ app.put('/api/offers/:id', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/offers', requireAdmin, async (req, res) => {
+  const verificationUpdate = resolveOfferVerificationUpdate({}, req.body);
   const offer = {
     ...req.body,
+    ...verificationUpdate,
     id: req.body.id || `custom-${Date.now()}`,
     status: 'live',
+    verificationStatus: verificationUpdate.verificationStatus || 'unverified',
     clicksCount: req.body.clicksCount || 0,
     conversionsCount: req.body.conversionsCount || 0,
     createdAt: req.body.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    verificationExpiresAt: req.body.verificationExpiresAt || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   };
   if (!isPublishableOffer(offer)) {
     return res.status(400).json({ error: 'A live offer needs valid HTTP(S) merchant and referral URLs and a referral code.' });
@@ -2713,45 +2786,8 @@ Provide a structured consensus response answering the user's specific scenario w
   }
 });
 
-// API: Track offer exposure telemetry. Position is the 1-based catalog position
-// rendered to the visitor, so reports can compare placement performance.
-app.post('/api/analytics/impression', async (req, res) => {
-  const adminToken = req.header('x-admin-token');
-  const adminSession = adminToken ? adminTokens.get(adminToken) : undefined;
-  if (adminSession && adminSession.expiresAt > Date.now()) {
-    return res.json({ success: true, excluded: true });
-  }
-
-  const offerId = typeof req.body?.offerId === 'string' ? req.body.offerId.trim() : '';
-  const position = Number(req.body?.position);
-  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.trim().slice(0, 100) : undefined;
-  if (!offerId || !Number.isInteger(position) || position < 1 || position > 10000) {
-    return res.status(400).json({ error: 'A valid offerId and positive position are required' });
-  }
-  if (!liveOffersStore.some((offer) => offer.id === offerId)) {
-    return res.status(404).json({ error: 'Offer not found' });
-  }
-
-  const impression: OfferImpression = {
-    offerId,
-    position,
-    ...(visitorId ? { visitorId } : {}),
-    recordedAt: new Date().toISOString(),
-  };
-  offerImpressionsStore.push(impression);
-  if (database) {
-    try {
-      await database.query(
-        `INSERT INTO offer_impressions (id, offer_id, position, visitor_id, recorded_at)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [randomUUID(), offerId, position, visitorId || null, impression.recordedAt],
-      );
-    } catch (error) {
-      console.error('Could not persist offer impression:', error);
-      return res.status(500).json({ error: 'Could not record offer impression.' });
-    }
-  }
-  return res.status(201).json({ success: true });
+app.post('/api/analytics/impression', (_req, res) => {
+  return res.status(410).json({ error: 'Offer impression tracking is disabled.' });
 });
 
 // API: Track click & conversion telemetry
@@ -2864,45 +2900,63 @@ app.get('/api/admin/analytics/offers', requireAdmin, async (req, res) => {
   return res.json(getOfferActivityReport(periodDays, checkedAt));
 });
 
-app.post('/api/analytics/pageview', async (req, res) => {
-  const adminToken = req.header('x-admin-token');
-  const adminSession = adminToken ? adminTokens.get(adminToken) : undefined;
-  if (adminSession && adminSession.expiresAt > Date.now()) {
-    return res.json({ success: true, excluded: true });
+app.get('/api/admin/analytics/offers/since', requireAdmin, async (req, res) => {
+  const requestedFrom = typeof req.query.from === 'string' ? Date.parse(req.query.from) : NaN;
+  if (!Number.isFinite(requestedFrom)) {
+    return res.status(400).json({ error: 'A valid last-checked timestamp is required.' });
   }
 
-  const visitorId = typeof req.body?.visitorId === 'string' ? req.body.visitorId.trim() : '';
-  const path = typeof req.body?.path === 'string' ? req.body.path.slice(0, 200) : '/';
-  const source = typeof req.body?.source === 'string' && req.body.source.trim()
-    ? req.body.source.trim().slice(0, 100)
-    : 'direct';
-  if (!visitorId || visitorId.length > 100) {
-    return res.status(400).json({ error: 'A visitor identifier is required.' });
-  }
-
-  visitorAnalyticsStore.totalPageViews += 1;
-  visitorAnalyticsStore.uniqueVisitors.add(visitorId);
-  visitorAnalyticsStore.sources.set(source, (visitorAnalyticsStore.sources.get(source) || 0) + 1);
-  const location = getApproximateLocation(req);
-  const locationKey = `${location.country}\u0000${location.region}`;
-  const locationSummary = visitorAnalyticsStore.locations.get(locationKey)
-    || { ...location, pageViews: 0, visitors: new Set<string>() };
-  locationSummary.pageViews += 1;
-  locationSummary.visitors.add(visitorId);
-  visitorAnalyticsStore.locations.set(locationKey, locationSummary);
-
+  const checkedAt = new Date();
+  const retentionFloor = checkedAt.getTime() - 365 * 24 * 60 * 60 * 1000;
+  const fromTime = Math.max(Math.min(requestedFrom, checkedAt.getTime()), retentionFloor);
+  const from = new Date(fromTime).toISOString();
+  const limitedByRetention = requestedFrom < retentionFloor;
   if (database) {
     try {
-      await database.query(
-        `INSERT INTO visitor_events (id, visitor_id, source, path, country, region) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [randomUUID(), visitorId, source, path, location.country, location.region],
+      const result = await database.query<{
+        offer_id: string;
+        clicks: string;
+        conversions: string;
+      }>(
+        `SELECT offer_id,
+           COUNT(*) FILTER (WHERE event_type = 'click')::text AS clicks,
+           COUNT(*) FILTER (WHERE event_type = 'conversion')::text AS conversions
+         FROM offer_analytics_events
+         WHERE occurred_at >= $1 AND occurred_at <= $2
+         GROUP BY offer_id`,
+        [from, checkedAt.toISOString()],
       );
+      const offers = Object.fromEntries(result.rows.map((row) => [
+        row.offer_id,
+        { clicks: Number(row.clicks), conversions: Number(row.conversions) },
+      ]));
+      const totals = Object.values(offers).reduce(
+        (sum, activity) => ({
+          clicks: sum.clicks + activity.clicks,
+          conversions: sum.conversions + activity.conversions,
+        }),
+        { clicks: 0, conversions: 0 },
+      );
+      return res.json({
+        from,
+        to: checkedAt.toISOString(),
+        totals,
+        offers,
+        limitedByRetention,
+      });
     } catch (error) {
-      console.error('Could not persist visitor event:', error);
-      return res.status(500).json({ error: 'Could not record page view.' });
+      console.error('Could not load clicks since the last check:', error);
+      return res.status(500).json({ error: 'Could not load clicks since the last check.' });
     }
   }
-  return res.json({ success: true });
+  return res.json({
+    ...buildOfferActivitySinceReport(offerAnalyticsEvents, from, checkedAt),
+    limitedByRetention,
+  });
+});
+
+app.post('/api/analytics/pageview', (_req, res) => {
+  return res.status(410).json({ error: 'Visitor page-view tracking is disabled.' });
 });
 
 app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
@@ -3409,7 +3463,7 @@ async function startServer() {
   });
 }
 
-export { app, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout };
+export { app, applyCoinsBackTerms, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveOfferVerificationUpdate };
 
 if (env.NODE_ENV !== 'test') {
   initializeOfferStore()

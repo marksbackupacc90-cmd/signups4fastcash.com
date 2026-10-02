@@ -54,7 +54,7 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
               <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Non-Custodial: $0 User Fees
+                We do not handle or hold your reward
               </span>
             </div>
           </div>

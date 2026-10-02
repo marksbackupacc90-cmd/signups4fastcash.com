@@ -82,6 +82,14 @@ export interface OfferActivityReport {
   offers: Record<string, OfferActivity>;
 }
 
+export interface OfferActivitySinceReport {
+  from: string;
+  to: string;
+  totals: OfferActivity;
+  offers: Record<string, OfferActivity>;
+  limitedByRetention?: boolean;
+}
+
 export interface CashBotScanResult {
   id: string;
   scannedAt: string;
@@ -139,7 +147,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   mainHeadline: 'Compare rewards before you sign up.',
   subHeadline: 'Review signup bonuses, cashback offers, and referral rewards with requirements, payout timing, and important terms shown upfront.',
   brandName: 'Signups4FastCash.com',
-  brandBadge: 'Verified terms shown',
+  brandBadge: 'Check current offer terms',
   footerBlurb: 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.',
   supportEmail: 'support@signups4fastcash.com',
   footerDisclaimer: 'Please do not send passwords, bank details, or government ID by email. Merchant terms and payouts can change at any time.',
