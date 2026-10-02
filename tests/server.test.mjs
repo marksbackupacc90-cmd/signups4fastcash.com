@@ -71,17 +71,28 @@ test('new bank offer candidates are not exposed in the public offer catalog', as
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
 });
 
-test('new referral offer candidates are not exposed in the public offer catalog', async () => {
+test('hidden referral offer candidates are not exposed in the public offer catalog', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const candidateIds = [
     'candidate-ero-app-referral',
-    'candidate-measure-protocol-msr-referral',
     'candidate-fetch-referral-a7qrrp',
     'candidate-triumph-rips-referral-jsxfnvt',
   ];
   const publicIds = response.body.offers.map((offer) => offer.id);
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
+});
+
+test('Measure Protocol offer is published with the reported YouTube and Netflix reward', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'candidate-measure-protocol-msr-referral');
+  assert.ok(offer);
+  assert.equal(offer.status, 'live');
+  assert.equal(offer.referralCode, '7Osjyx6m');
+  assert.match(offer.incentiveAmount, /\$10/);
+  assert.match(offer.honestTruth.summary, /YouTube and Netflix/);
+  assert.match(offer.honestTruth.theCatch, /not independently confirmed/);
 });
 
 test('the old Era subscription offer is removed from the public catalog', async () => {
@@ -115,6 +126,31 @@ test('Verb public offer reflects reported rewards and discloses data-sharing con
   assert.match(offer.honestTruth.summary, /\$10 for each referral after that person links a bank/);
   assert.match(offer.honestTruth.hiddenFeesWarning, /purchase activity/);
   assert.match(offer.honestTruth.theCatch, /not independently confirmed/);
+});
+
+test('Revolut public offer reflects the reported requirements and conditional referrer split', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-revolut');
+  assert.ok(offer);
+  assert.match(offer.depositRequired, /3 qualifying \$10 purchases/);
+  assert.match(offer.depositRequired, /physical card/);
+  assert.match(offer.incentiveAmount, /Possible \$50 share/);
+  assert.match(offer.honestTruth.summary, /does not receive a Revolut bonus directly/);
+  assert.match(offer.honestTruth.theCatch, /not a Revolut payment or guaranteed signup bonus/);
+  assert.match(offer.speedrunHints[3].instruction, /support@signups4fastcash\.com/);
+});
+
+test('Coinbase public offer reflects the reported $20 reward and crypto-trade condition', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-coinbase');
+  assert.ok(offer);
+  assert.match(offer.incentiveAmount, /\$20 reward/);
+  assert.match(offer.depositRequired, /\$15/);
+  assert.equal(offer.verificationStatus, 'unverified');
+  assert.match(offer.honestTruth.hiddenFeesWarning, /lose value/);
+  assert.match(offer.honestTruth.theCatch, /not been independently confirmed/);
 });
 
 test('newer Kalshi catalog terms replace stale saved terms while preserving offer status and counts', () => {
@@ -171,6 +207,91 @@ test('newer Verb catalog details replace stale saved terms while preserving visi
   assert.equal(merged.status, 'hidden');
   assert.equal(merged.clicksCount, 8);
   assert.equal(merged.conversionsCount, 2);
+});
+
+test('newer Revolut catalog terms replace stale saved terms while preserving visibility and counts', () => {
+  const catalogOffer = {
+    id: 'offer-revolut',
+    title: 'Updated Revolut referral terms',
+    referralUrl: 'https://revolut.com/referral/current',
+    updatedAt: '2026-10-02T16:05:00.000Z',
+    status: 'live',
+    clicksCount: 0,
+    conversionsCount: 0,
+  };
+  const savedOffer = {
+    id: 'offer-revolut',
+    title: 'Old Revolut reward',
+    updatedAt: '2026-09-12T00:00:00Z',
+    status: 'hidden',
+    clicksCount: 5,
+    conversionsCount: 1,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.status, 'hidden');
+  assert.equal(merged.clicksCount, 5);
+  assert.equal(merged.conversionsCount, 1);
+});
+
+test('newer Coinbase catalog terms replace stale saved terms while preserving visibility and counts', () => {
+  const catalogOffer = {
+    id: 'offer-coinbase',
+    title: 'Reported $20 reward',
+    referralUrl: 'https://coinbase.com/join/MW4MCPR',
+    verifiedAt: undefined,
+    verificationStatus: 'unverified',
+    updatedAt: '2026-10-02T16:10:00.000Z',
+    status: 'live',
+    clicksCount: 0,
+    conversionsCount: 0,
+  };
+  const savedOffer = {
+    id: 'offer-coinbase',
+    title: 'Old $25 reward',
+    referralUrl: 'https://coinbase.com/join/old',
+    verifiedAt: '2026-09-16T00:00:00Z',
+    verificationStatus: 'reviewed',
+    updatedAt: '2026-09-12T00:00:00Z',
+    status: 'hidden',
+    clicksCount: 7,
+    conversionsCount: 2,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.verifiedAt, undefined);
+  assert.equal(merged.verificationStatus, 'unverified');
+  assert.equal(merged.status, 'hidden');
+  assert.equal(merged.clicksCount, 7);
+  assert.equal(merged.conversionsCount, 2);
+});
+
+test('newer Measure Protocol terms update stale saved terms and publish the offer', () => {
+  const catalogOffer = {
+    id: 'candidate-measure-protocol-msr-referral',
+    title: 'Reported instant $10 reward for linking YouTube and Netflix',
+    referralUrl: 'https://contributor.measureprotocol.com/i/7Osjyx6m',
+    updatedAt: '2026-10-02T16:15:00.000Z',
+    status: 'live',
+    clicksCount: 0,
+    conversionsCount: 0,
+  };
+  const savedOffer = {
+    id: 'candidate-measure-protocol-msr-referral',
+    title: 'Old doubled welcome bonus',
+    referralUrl: 'https://contributor.measureprotocol.com/i/old',
+    updatedAt: '2026-10-02T00:00:00.000Z',
+    status: 'hidden',
+    clicksCount: 2,
+    conversionsCount: 0,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.status, 'live');
+  assert.equal(merged.clicksCount, 2);
 });
 
 test('newer Ero referral details replace stale saved terms without changing its saved visibility', () => {

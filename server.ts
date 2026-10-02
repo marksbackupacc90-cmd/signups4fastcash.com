@@ -163,7 +163,7 @@ function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?
 function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) {
   const existingUpdatedAt = Date.parse(existingOffer?.updatedAt || '');
   const catalogUpdatedAt = Date.parse(catalogOffer.updatedAt);
-  const refreshCatalogTerms = ['offer-kalshi', 'candidate-ero-app-referral', 'offer-verb'].includes(catalogOffer.id)
+  const refreshCatalogTerms = ['offer-kalshi', 'candidate-ero-app-referral', 'candidate-measure-protocol-msr-referral', 'offer-verb', 'offer-revolut', 'offer-coinbase'].includes(catalogOffer.id)
     && Number.isFinite(catalogUpdatedAt)
     && (!Number.isFinite(existingUpdatedAt) || catalogUpdatedAt > existingUpdatedAt);
 
@@ -179,10 +179,12 @@ function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) 
       depositRequired: catalogOffer.depositRequired,
       availability: catalogOffer.availability,
       referralUrl: catalogOffer.referralUrl,
+      verifiedAt: catalogOffer.verifiedAt,
       verificationStatus: catalogOffer.verificationStatus,
       honestTruth: catalogOffer.honestTruth,
       speedrunHints: catalogOffer.speedrunHints,
       updatedAt: catalogOffer.updatedAt,
+      ...(catalogOffer.id === 'candidate-measure-protocol-msr-referral' ? { status: catalogOffer.status } : {}),
     } : {}),
     clicksCount: Number.isFinite(Number(existingOffer?.clicksCount)) ? Number(existingOffer?.clicksCount) : 0,
     conversionsCount: Number.isFinite(Number(existingOffer?.conversionsCount)) ? Number(existingOffer?.conversionsCount) : 0,
