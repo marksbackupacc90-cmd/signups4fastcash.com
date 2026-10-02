@@ -59,6 +59,23 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.doesNotMatch(response.body, /\?offer=/);
 });
 
+test('legacy and .html SEO URLs redirect before static files can serve duplicate pages', async () => {
+  const redirects = [
+    ['/cashback-offers.html', '/cashback-offers'],
+    ['/best-cashback-offers.html', '/cashback-offers'],
+    ['/banking-fintech-signup-bonuses.html', '/banking-signup-offers'],
+  ];
+  for (const [path, canonicalPath] of redirects) {
+    const response = await requestText(path, { redirect: 'manual' });
+    assert.equal(response.status, 301, `${path} should redirect`);
+    assert.equal(response.headers.get('location'), canonicalPath);
+  }
+
+  const canonicalPage = await requestText('/cashback-offers');
+  assert.equal(canonicalPage.status, 200);
+  assert.match(canonicalPage.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/cashback-offers"/);
+});
+
 test('new bank offer candidates are not exposed in the public offer catalog', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);

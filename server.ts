@@ -299,8 +299,6 @@ ${urls.map((url) => `  <url>
   res.type('application/xml').send(sitemap);
 });
 
-app.use(express.static(path.join(process.cwd(), 'public')));
-
 const seoPageRoutes: Record<string, string> = {
   '/cashback-offers': 'cashback-offers.html',
   '/signup-bonus-sites': 'signup-bonus-sites.html',
@@ -345,6 +343,8 @@ Object.entries(legacySeoRedirects).forEach(([route, target]) => {
     res.redirect(301, target);
   });
 });
+
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 function getSessionToken(req: express.Request) {
   const cookie = req.headers.cookie?.split(';').find((part) => part.trim().startsWith('sfc_session='));
