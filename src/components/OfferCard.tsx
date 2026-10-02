@@ -14,12 +14,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
   const isRecentlyVerified = Number.isFinite(verificationDate) && verificationDate >= Date.now() - 30 * 24 * 60 * 60 * 1000;
   const claimUrl = offer.referralUrl || offer.officialMerchantUrl;
 
-  const handleClaim = () => {
-    onClaimClick(offer.id);
-    const openedWindow = window.open(claimUrl, '_blank', 'noopener,noreferrer');
-    if (!openedWindow) window.location.assign(claimUrl);
-  };
-
   return (
     <div
       id={`offer-card-${offer.id}`}
@@ -58,9 +52,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           <span className="truncate">{offer.company}</span>
           <span className="shrink-0">{offer.payoutSpeed}</span>
         </div>
-        <button type="button" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); handleClaim(); }} id={`claim-offer-btn-${offer.id}`} aria-label={`Claim the ${offer.company} offer`} className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]">
+        <a href={claimUrl} target="_blank" rel="noopener noreferrer" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onClaimClick(offer.id); }} id={`claim-offer-btn-${offer.id}`} aria-label={`Claim the ${offer.company} offer`} className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]">
           <span>Claim offer</span><ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
-        </button>
+        </a>
         <div className="mt-2 text-center text-[9px] text-zinc-500"><span className="text-emerald-400">Direct partner link</span> • payout by {offer.company}</div>
       </div>
     </div>

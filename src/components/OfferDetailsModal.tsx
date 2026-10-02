@@ -44,12 +44,6 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
     }
   };
 
-  const claim = () => {
-    onClaimClick(offer.id);
-    const openedWindow = window.open(claimUrl, '_blank', 'noopener,noreferrer');
-    if (!openedWindow) window.location.assign(claimUrl);
-  };
-
   const reportCompletion = async () => {
     setCompletionStatus('submitting');
     try {
@@ -151,9 +145,9 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
         </div>
 
         <div className="border-t border-white/[0.08] bg-[#0d1724] p-4">
-          <button type="button" onClick={claim} className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#06131a] hover:bg-cyan-200">
+          <a href={claimUrl} target="_blank" rel="noopener noreferrer" onClick={() => onClaimClick(offer.id)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#06131a] hover:bg-cyan-200">
             Claim offer <ExternalLink className="h-4 w-4" />
-          </button>
+          </a>
           <p className="mt-2 text-center text-[10px] text-zinc-500">Confirm the latest terms on {offer.company}’s site.</p>
         </div>
       </div>
