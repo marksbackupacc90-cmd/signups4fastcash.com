@@ -195,10 +195,10 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
             <button type="button" onClick={() => setCreating((current) => !current)} className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-[#061016] hover:bg-emerald-300">
               {creating ? 'Close creator' : '+ Create new offer'}
             </button>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | 'live' | 'hidden')} className="rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400">
-              <option value="all">All statuses</option>
-              <option value="live">Live only</option>
-              <option value="hidden">Hidden only</option>
+            <select aria-label="Filter offers by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | 'live' | 'hidden')} className="admin-offer-status-filter rounded-lg border border-white/10 bg-[#090d12] px-3 py-2 text-xs text-white outline-none focus:border-emerald-400">
+              <option value="all" className="bg-[#090d12] text-white">All statuses</option>
+              <option value="live" className="bg-[#090d12] text-white">Live only</option>
+              <option value="hidden" className="bg-[#090d12] text-white">Hidden only</option>
             </select>
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
@@ -305,7 +305,8 @@ export const AdminOffersPage: React.FC<AdminOffersPageProps> = ({
                     <button
                       type="button"
                       onClick={() => onUpdateLiveOffer(offer.id, { status: offer.status === 'live' ? 'hidden' : 'live' })}
-                      className={`rounded-lg px-3 py-2 text-xs font-bold ${offer.status === 'live' ? 'border border-emerald-300/40 bg-emerald-300/15 text-emerald-200' : 'border border-zinc-400/30 bg-zinc-400/10 text-zinc-300'}`}
+                      aria-label={offer.status === 'live' ? `Hide ${offer.company} offer` : `Make ${offer.company} offer live`}
+                      className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200 ${offer.status === 'live' ? 'border-[#6ee7b7] bg-[#a7f3d0] text-[#06211a] hover:bg-[#6ee7b7]' : 'border-[#94a3b8] bg-[#334155] text-white hover:bg-[#475569]'}`}
                     >
                       {offer.status === 'live' ? 'Live · Hide' : 'Hidden · Take live'}
                     </button>

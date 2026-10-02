@@ -224,6 +224,15 @@ summary:focus-visible {
   outline-offset: 2px;
 }
 
+.admin-offer-status-filter {
+  color-scheme: dark;
+}
+
+.admin-offer-status-filter option {
+  background-color: #090d12;
+  color: #f8fafc;
+}
+
 .offer-card {
   content-visibility: auto;
   contain-intrinsic-size: 17rem;

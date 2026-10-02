@@ -53,6 +53,7 @@ export const REFERRAL_OFFER_CANDIDATES: Offer[] = [
     officialMerchantUrl: 'https://www.measureprotocol.com',
     referralCode: '7Osjyx6m',
     referralUrl: 'https://contributor.measureprotocol.com/i/7Osjyx6m',
+    logoUrl: '/company-logos/measure-protocol.png',
     verificationStatus: 'terms-vary',
     honestTruth: {
       summary: 'The supplied referral invitation says the welcome bonus is doubled. Earnings are through data sharing and surveys; no fixed bonus amount was provided.',
@@ -89,6 +90,7 @@ export const REFERRAL_OFFER_CANDIDATES: Offer[] = [
     officialMerchantUrl: 'https://fetch.com',
     referralCode: 'A7QRRP',
     referralUrl: 'https://referral.fetch.com/vvv3/referralqr?code=A7QRRP',
+    logoUrl: '/company-logos/fetch.png',
     verificationStatus: 'terms-vary',
     honestTruth: {
       summary: 'The supplied Fetch invitation says both people get a bonus when a new member joins with code A7QRRP and completes any point-earning action. The bonus amount was not specified.',
@@ -125,6 +127,7 @@ export const REFERRAL_OFFER_CANDIDATES: Offer[] = [
     officialMerchantUrl: 'https://rips.onelink.me',
     referralCode: 'JSXFNVT',
     referralUrl: 'https://rips.onelink.me/Wj0m/wi7qf68q?deep_link_sub1=LpZ3IrggokhwdYuwhxskPUseGgi2',
+    logoUrl: '/company-logos/triumph-rips.jpg',
     verificationStatus: 'terms-vary',
     honestTruth: {
       summary: 'The supplied invitation says to enter code JSXFNVT to get one free card pack. This is an in-app reward, not cash.',
