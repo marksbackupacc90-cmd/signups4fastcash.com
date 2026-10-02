@@ -103,6 +103,20 @@ test('Kalshi public offer reflects the supplied referral URL and reward conditio
   assert.doesNotMatch(offer.honestTruth.summary, /10% off fees/);
 });
 
+test('Verb public offer reflects reported rewards and discloses data-sharing conditions', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-verb');
+  assert.ok(offer);
+  assert.equal(offer.referralCode, 'G284G5GH');
+  assert.match(offer.incentiveAmount, /\$3 signup bonus/);
+  assert.match(offer.incentiveAmount, /\$30\/month tracker/);
+  assert.match(offer.honestTruth.summary, /\$5 each for Instagram data, TikTok data, and linking email/);
+  assert.match(offer.honestTruth.summary, /\$10 for each referral after that person links a bank/);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /purchase activity/);
+  assert.match(offer.honestTruth.theCatch, /not independently confirmed/);
+});
+
 test('newer Kalshi catalog terms replace stale saved terms while preserving offer status and counts', () => {
   const catalogOffer = {
     id: 'offer-kalshi',
@@ -131,6 +145,58 @@ test('newer Kalshi catalog terms replace stale saved terms while preserving offe
 
   const newerSaved = { ...savedOffer, title: 'Admin-edited title', updatedAt: '2026-10-03T00:00:00.000Z' };
   assert.equal(mergeCatalogOffer(catalogOffer, newerSaved).title, 'Admin-edited title');
+});
+
+test('newer Verb catalog details replace stale saved terms while preserving visibility and counts', () => {
+  const catalogOffer = {
+    id: 'offer-verb',
+    title: 'Updated Verb data rewards',
+    referralUrl: 'https://verb-data.com/signup?ref=G284G5GH',
+    updatedAt: '2026-10-02T16:00:00.000Z',
+    status: 'live',
+    clicksCount: 0,
+    conversionsCount: 0,
+  };
+  const savedOffer = {
+    id: 'offer-verb',
+    title: 'Old Verb data rewards',
+    updatedAt: '2026-09-16T22:14:44Z',
+    status: 'hidden',
+    clicksCount: 8,
+    conversionsCount: 2,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.status, 'hidden');
+  assert.equal(merged.clicksCount, 8);
+  assert.equal(merged.conversionsCount, 2);
+});
+
+test('newer Ero referral details replace stale saved terms without changing its saved visibility', () => {
+  const catalogOffer = {
+    id: 'candidate-ero-app-referral',
+    title: 'Get 50% more from Ero activities in your first 24 hours',
+    referralUrl: 'https://ero.app/r/v7tfsepe5d?link=bgp4v6nfbrt6',
+    updatedAt: '2026-10-02T15:52:00.000Z',
+    status: 'hidden',
+    clicksCount: 0,
+    conversionsCount: 0,
+  };
+  const savedOffer = {
+    id: 'candidate-ero-app-referral',
+    title: 'Old Ero reward',
+    updatedAt: '2026-10-02T00:00:00.000Z',
+    status: 'live',
+    clicksCount: 4,
+    conversionsCount: 1,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.status, 'live');
+  assert.equal(merged.clicksCount, 4);
+  assert.equal(merged.conversionsCount, 1);
 });
 
 test('newsletter email layout uses the website theme and Glory typography', () => {

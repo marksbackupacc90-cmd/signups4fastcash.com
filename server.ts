@@ -163,14 +163,14 @@ function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?
 function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) {
   const existingUpdatedAt = Date.parse(existingOffer?.updatedAt || '');
   const catalogUpdatedAt = Date.parse(catalogOffer.updatedAt);
-  const refreshKalshiTerms = catalogOffer.id === 'offer-kalshi'
+  const refreshCatalogTerms = ['offer-kalshi', 'candidate-ero-app-referral', 'offer-verb'].includes(catalogOffer.id)
     && Number.isFinite(catalogUpdatedAt)
     && (!Number.isFinite(existingUpdatedAt) || catalogUpdatedAt > existingUpdatedAt);
 
   return {
     ...catalogOffer,
     ...(existingOffer || {}),
-    ...(refreshKalshiTerms ? {
+    ...(refreshCatalogTerms ? {
       title: catalogOffer.title,
       incentiveAmount: catalogOffer.incentiveAmount,
       incentiveValue: catalogOffer.incentiveValue,
