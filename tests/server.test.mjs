@@ -88,6 +88,19 @@ test('new bank offer candidates are not exposed in the public offer catalog', as
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
 });
 
+test('removed offers do not remain in the hidden offers catalog', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  for (const offer of [
+    { id: 'offer-era-referral', company: 'Era' },
+    { id: 'candidate-pnc-virtual-wallet-400', company: 'PNC Bank' },
+    { id: 'candidate-wells-fargo-everyday-checking-325', company: 'Wells Fargo' },
+  ]) {
+    assert.equal(isTemporarilyHiddenOffer(offer), true, `${offer.company} should be removed from the offer catalog`);
+    assert.equal(response.body.offers.some((candidate) => candidate.id === offer.id), false);
+  }
+});
+
 test('hidden referral offer candidates are not exposed in the public offer catalog', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
@@ -444,6 +457,20 @@ test('visitor page-view analytics are disabled', async () => {
   });
   assert.equal(response.status, 410);
   assert.equal(response.body.error, 'Visitor page-view tracking is disabled.');
+});
+
+test('subscriber count endpoint never returns private subscriber records', async () => {
+  const response = await request('/api/newsletter/subscribers', {
+    headers: { 'x-admin-token': 'not-a-valid-token' },
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(Object.keys(response.body).sort(), ['count']);
+});
+
+test('subscriber email list requires owner admin access', async () => {
+  const response = await request('/api/admin/newsletter/subscribers');
+  assert.equal(response.status, 403);
+  assert.equal(response.body.error, 'Owner admin access is required.');
 });
 
 test('offer analytics rejects malformed telemetry payloads', async () => {

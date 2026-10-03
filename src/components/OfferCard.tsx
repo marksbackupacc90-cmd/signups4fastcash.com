@@ -27,16 +27,16 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           onMoreInfo(offer);
         }
       }}
-      className="offer-card group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[1.7rem] transition-transform duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+      className="offer-card retro-window group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#171a22]/95 shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
     >
       <div className="relative flex h-32 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)] sm:h-36">
         <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
         <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
         <div className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-300 group-hover:scale-[1.04]">
-          <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="lg" className="rounded-[1.6rem] bg-white/[0.08] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.35)] ring-1 ring-white/15 backdrop-blur-md" />
+          <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="lg" className="rounded-[1.6rem] bg-white/[0.08] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.35)] backdrop-blur-md" />
         </div>
       </div>
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
+      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#1b1e27_0%,#171a22_100%)] p-3 sm:p-4">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1 text-left">
             <h2 className="truncate text-[0.95rem] font-black leading-tight tracking-[-0.01em] text-white transition-colors group-hover:text-[#2dd4ee]">{offer.title}</h2>

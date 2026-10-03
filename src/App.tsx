@@ -121,6 +121,9 @@ export default function App() {
   });
 
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+  const [subscriberLoadError, setSubscriberLoadError] = useState<string | null>(null);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [subscriberRefreshKey, setSubscriberRefreshKey] = useState(0);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [blastLogs, setBlastLogs] = useState<EmailBlastLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -408,17 +411,36 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isAdminUnlocked) return;
+    if (!isAdminUnlocked || !isOwnerAdmin) {
+      setSubscribers([]);
+      setSubscriberLoadError(null);
+      setSubscribersLoading(false);
+      return;
+    }
+    const controller = new AbortController();
     const token = localStorage.getItem('signups4fastcash_admin_token');
-    fetch('/api/newsletter/subscribers', {
+    setSubscribersLoading(true);
+    setSubscriberLoadError(null);
+    fetch('/api/admin/newsletter/subscribers', {
       headers: token ? { 'x-admin-token': token } : {},
+      signal: controller.signal,
     })
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('Failed to load subscribers'))))
+      .then(async (response) => {
+        const data = await response.json().catch(() => null) as { subscribers?: NewsletterSubscriber[]; error?: string } | null;
+        if (!response.ok || !data) throw new Error(data?.error || 'Could not load subscribers.');
+        return data;
+      })
       .then((data: { subscribers?: NewsletterSubscriber[] }) => setSubscribers(data.subscribers || []))
-      .catch(() => {
-        // Keep the current list available if the admin endpoint is temporarily unavailable.
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        console.error('Could not load the owner newsletter subscriber list:', error);
+        setSubscriberLoadError(error instanceof Error ? error.message : 'Could not load subscribers.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSubscribersLoading(false);
       });
-  }, [isAdminUnlocked]);
+    return () => controller.abort();
+  }, [isAdminUnlocked, isOwnerAdmin, subscriberRefreshKey]);
 
   useEffect(() => {
     if (activeTab !== 'admin') return;
@@ -508,54 +530,59 @@ export default function App() {
 
   const handleClaimClick = async (offerId: string) => {
     const adminToken = localStorage.getItem('signups4fastcash_admin_token');
-    if (adminToken) return;
-
-    const savedEntries = readMyOfferEntries();
-    const existing = savedEntries.find((entry) => entry.offerId === offerId);
-    if (!existing) {
-      const nextEntries = [...savedEntries, { offerId, status: 'active' as const, updatedAt: new Date().toISOString() }];
-      localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(nextEntries));
-      setMyOfferIds(nextEntries.map((entry) => entry.offerId));
-      if (authUser) {
-        void fetch(`/api/account/offer-entries/${offerId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'active' }),
-        });
+    if (!adminToken) {
+      const savedEntries = readMyOfferEntries();
+      const existing = savedEntries.find((entry) => entry.offerId === offerId);
+      if (!existing) {
+        const nextEntries = [...savedEntries, { offerId, status: 'active' as const, updatedAt: new Date().toISOString() }];
+        localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(nextEntries));
+        setMyOfferIds(nextEntries.map((entry) => entry.offerId));
+        if (authUser) {
+          void fetch(`/api/account/offer-entries/${offerId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'active' }),
+          });
+        }
+        showToast('Saved to My Offers so you can resume it later.');
       }
-      showToast('Saved to My Offers so you can resume it later.');
-    }
 
-    setLiveOffers((prev) =>
-      prev.map((o) => (o.id === offerId ? { ...o, clicksCount: o.clicksCount + 1 } : o))
-    );
+      setLiveOffers((prev) =>
+        prev.map((o) => (o.id === offerId ? { ...o, clicksCount: o.clicksCount + 1 } : o))
+      );
+    }
 
     try {
       const response = await fetch('/api/analytics/track', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { 'x-admin-token': adminToken } : {}),
+        },
         body: JSON.stringify({ offerId, type: 'click' }),
+        keepalive: true,
       });
-      if (response.ok) {
-        const data = await response.json() as {
-          offer?: { id: string; clicksCount: number; conversionsCount: number };
-        };
-        if (data.offer?.id === offerId) {
-          setLiveOffers((prev) =>
-            prev.map((offer) =>
-              offer.id === offerId
-                ? {
-                    ...offer,
-                    clicksCount: data.offer?.clicksCount ?? offer.clicksCount,
-                    conversionsCount: data.offer?.conversionsCount ?? offer.conversionsCount,
-                  }
-                : offer
-            )
-          );
-        }
+      const data = await response.json().catch(() => null) as {
+        offer?: { id: string; clicksCount: number; conversionsCount: number };
+        error?: string;
+      } | null;
+      if (!response.ok || !data) throw new Error(data?.error || 'Could not record the referral click.');
+      if (data.offer?.id === offerId) {
+        setLiveOffers((prev) =>
+          prev.map((offer) =>
+            offer.id === offerId
+              ? {
+                  ...offer,
+                  clicksCount: data.offer?.clicksCount ?? offer.clicksCount,
+                  conversionsCount: data.offer?.conversionsCount ?? offer.conversionsCount,
+                }
+              : offer
+          )
+        );
       }
-    } catch {
-      // telemetry fallback
+    } catch (error) {
+      console.error('Could not record referral click:', error);
+      showToast('We could not record that click. Please try again.');
     }
   };
 
@@ -1215,6 +1242,10 @@ export default function App() {
                 pendingOffers={pendingOffers}
                 liveOffers={liveOffers}
                 subscribers={subscribers}
+                subscriberCount={subscriberCount}
+                subscriberLoadError={subscriberLoadError}
+                subscribersLoading={subscribersLoading}
+                onRefreshSubscribers={() => setSubscriberRefreshKey((key) => key + 1)}
                 onApproveOffer={handleApproveOffer}
                 onRejectOffer={handleRejectOffer}
                 onUpdateLiveOffer={handleUpdateLiveOffer}

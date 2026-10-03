@@ -155,12 +155,19 @@ const SURVEY_POINTS_PER_DOLLAR = 100;
 const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
 const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const delegatedAdminUsernames = new Set<string>();
+const permanentlyRemovedOfferIds = new Set([
+  'offer-era-referral',
+  'candidate-pnc-virtual-wallet-400',
+  'candidate-wells-fargo-everyday-checking-325',
+]);
 const temporarilyHiddenOfferIds = new Set(['offer-acebet']);
 const temporarilyHiddenOfferTerms = ['triumph', 'polymarket', 'acebet', 'debbie'];
 
 function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?: string }) {
   const searchable = `${offer.company || ''} ${offer.title || ''}`.toLowerCase();
-  return temporarilyHiddenOfferIds.has(offer.id || '') || temporarilyHiddenOfferTerms.some((term) => searchable.includes(term));
+  return permanentlyRemovedOfferIds.has(offer.id || '')
+    || temporarilyHiddenOfferIds.has(offer.id || '')
+    || temporarilyHiddenOfferTerms.some((term) => searchable.includes(term));
 }
 
 function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) {
@@ -1132,13 +1139,14 @@ async function initializeOfferStore() {
   );
 
   if (existing.rowCount === 0) {
-    for (const offer of PUBLIC_OFFERS) {
+    const catalogOffers = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
+    for (const offer of catalogOffers) {
       await database.query(
         `INSERT INTO offers (id, status, offer, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
         [offer.id, offer.status, offer, offer.updatedAt],
       );
     }
-    liveOffersStore = PUBLIC_OFFERS;
+    liveOffersStore = catalogOffers;
   } else {
     const catalogMap = new Map(PUBLIC_OFFERS.map((offer) => [offer.id, offer]));
     const existingOffers = existing.rows.map((row) => applyCoinsBackTerms({
@@ -1414,7 +1422,12 @@ app.get('/api/cpx/postback', async (req, res) => {
 });
 
 app.get('/api/offers', (req, res) => {
-  res.json({ offers: liveOffersStore.filter((offer) => offer.status === 'live' && isVerificationCurrent(offer)) });
+  res.json({
+    offers: liveOffersStore.filter((offer) =>
+      offer.status === 'live'
+      && isVerificationCurrent(offer)
+      && !isTemporarilyHiddenOffer(offer)),
+  });
 });
 
 app.get('/api/admin/offers', requireAdmin, (_req, res) => {
@@ -2848,7 +2861,10 @@ app.post('/api/analytics/track', (req, res) => {
         conversionsCount: offer.conversionsCount,
       },
     }))
-    .catch(() => res.status(500).json({ error: 'Could not record analytics' }));
+    .catch((error) => {
+      console.error('Could not persist offer analytics:', error);
+      return res.status(500).json({ error: 'Could not record analytics' });
+    });
 });
 
 app.get('/api/admin/analytics/offers', requireAdmin, async (req, res) => {
@@ -3417,27 +3433,44 @@ app.get('/api/newsletter/unsubscribe', async (req, res) => {
 // API: Newsletter subscriber count
 app.get('/api/newsletter/subscribers', async (req, res) => {
   if (!database) {
-    return res.json({ count: subscribersStore.filter((subscriber) => subscriber.verified).length });
+    return res.json({ count: subscribersStore.filter((subscriber) => subscriber.verified && !subscriber.unsubscribedAt).length });
   }
   try {
     const count = await database.query<{ count: string }>(
       'SELECT COUNT(*)::text AS count FROM newsletter_subscribers WHERE verified = TRUE AND unsubscribed_at IS NULL',
     );
-    const response: { count: number; subscribers?: typeof subscribersStore } = { count: Number(count.rows[0]?.count || 0) };
-    if (hasValidAdminToken(req.header('x-admin-token'))) {
-      const subscribers = await database.query<{ id: string; email: string; subscribed_at: Date; frequency: string; verified: boolean }>(
-        'SELECT id, email, subscribed_at, frequency, verified FROM newsletter_subscribers WHERE unsubscribed_at IS NULL ORDER BY subscribed_at DESC',
-      );
-      response.subscribers = subscribers.rows.map((subscriber) => ({
+    return res.json({ count: Number(count.rows[0]?.count || 0) });
+  } catch {
+    return res.status(500).json({ error: 'Could not load subscribers' });
+  }
+});
+
+app.get('/api/admin/newsletter/subscribers', requireOwnerAdmin, async (_req, res) => {
+  if (!database) {
+    return res.json({
+      subscribers: subscribersStore
+        .filter((subscriber) => subscriber.verified && !subscriber.unsubscribedAt)
+        .map(({ id, email, subscribedAt, frequency, verified }) => ({ id, email, subscribedAt, frequency, verified })),
+    });
+  }
+  try {
+    const result = await database.query<{ id: string; email: string; subscribed_at: Date; frequency: string; verified: boolean }>(
+      `SELECT id, email, subscribed_at, frequency, verified
+       FROM newsletter_subscribers
+       WHERE verified = TRUE AND unsubscribed_at IS NULL
+       ORDER BY subscribed_at DESC`,
+    );
+    return res.json({
+      subscribers: result.rows.map((subscriber) => ({
         id: subscriber.id,
         email: subscriber.email,
         subscribedAt: new Date(subscriber.subscribed_at).toISOString(),
         frequency: subscriber.frequency,
         verified: subscriber.verified,
-      }));
-    }
-    return res.json(response);
-  } catch {
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load owner newsletter subscriber list:', error);
     return res.status(500).json({ error: 'Could not load subscribers' });
   }
 });

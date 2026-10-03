@@ -11,6 +11,10 @@ interface AdminDashboardProps {
   pendingOffers: Offer[];
   liveOffers: Offer[];
   subscribers: NewsletterSubscriber[];
+  subscriberCount?: number;
+  subscriberLoadError?: string | null;
+  subscribersLoading?: boolean;
+  onRefreshSubscribers?: () => void;
   onApproveOffer: (offerId: string, referralCode: string, referralUrl: string, blastEmail: boolean, updatedOffer?: Partial<Offer>) => void;
   onRejectOffer: (offerId: string) => void;
   onUpdateLiveOffer: (offerId: string, updates: Partial<Offer>) => void;
@@ -198,7 +202,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               ['Live offers', props.liveOffers.length, Store],
               ['New clicks since last check', activityReport?.totals.clicks.toLocaleString() ?? (activityLoading ? '…' : '—'), BarChart3],
               ['Conversion events since last check', activityReport?.totals.conversions.toLocaleString() ?? (activityLoading ? '…' : '—'), ShieldCheck],
-              ['Subscribers', props.subscribers.length, Mail],
+              ['Subscribers', props.subscriberCount ?? props.subscribers.length, Mail],
             ].map(([label, value, Icon]) => (
               <div key={String(label)} className="rounded-xl border border-white/[0.08] bg-[#0e121a] p-4">
                 <Icon className="h-4 w-4 text-cyan-300" />
@@ -391,8 +395,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
           {emailStatus && <div className={`mt-4 rounded-lg border p-3 text-xs ${emailStatus.startsWith('Email sent') ? 'border-emerald-300/20 bg-emerald-300/5 text-emerald-200' : 'border-rose-300/20 bg-rose-300/5 text-rose-200'}`}>{emailStatus}</div>}
           <div className="mt-5 rounded-lg border border-white/[0.08] bg-[#141824] p-4 text-xs text-zinc-400">
-            <strong className="text-white">{props.subscribers.length}</strong> subscriber records are loaded in this session.
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <strong className="text-white">{props.subscribers.length}</strong> confirmed active subscribers
+                <p className="mt-1 text-[11px]">Only the owner can view subscriber email addresses. Delegated admins do not have access.</p>
+              </div>
+              {props.isOwnerAdmin && (
+                <button
+                  type="button"
+                  onClick={props.onRefreshSubscribers}
+                  disabled={props.subscribersLoading}
+                  className="rounded-lg border border-white/15 px-3 py-2 font-semibold text-zinc-200 hover:bg-white/[0.06] disabled:opacity-50"
+                >
+                  {props.subscribersLoading ? 'Loading…' : 'Refresh list'}
+                </button>
+              )}
+            </div>
           </div>
+          {props.isOwnerAdmin && (
+            <section className="mt-4 overflow-hidden rounded-lg border border-white/[0.08]" aria-labelledby="subscriber-list-title">
+              <div className="flex items-center justify-between gap-3 bg-[#090d12] px-4 py-3">
+                <h3 id="subscriber-list-title" className="text-sm font-bold text-white">Confirmed email subscribers</h3>
+                <span className="text-xs text-zinc-400">{props.subscribers.length} active</span>
+              </div>
+              {props.subscriberLoadError ? (
+                <p className="p-4 text-sm text-rose-200" role="alert">{props.subscriberLoadError}</p>
+              ) : props.subscribersLoading ? (
+                <p className="p-4 text-sm text-zinc-300" role="status">Loading subscriber list…</p>
+              ) : props.subscribers.length === 0 ? (
+                <p className="p-4 text-sm text-zinc-400">No confirmed active subscribers yet.</p>
+              ) : (
+                <div className="max-h-80 overflow-auto">
+                  <table className="w-full min-w-[36rem] text-left text-xs">
+                    <thead className="sticky top-0 bg-[#141824] text-[10px] uppercase tracking-wider text-zinc-300">
+                      <tr>
+                        <th scope="col" className="px-4 py-2.5">Email</th>
+                        <th scope="col" className="px-4 py-2.5">Frequency</th>
+                        <th scope="col" className="px-4 py-2.5">Subscribed</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.06]">
+                      {props.subscribers.map((subscriber) => (
+                        <tr key={subscriber.id} className="text-zinc-200">
+                          <td className="max-w-72 break-all px-4 py-3">{subscriber.email}</td>
+                          <td className="px-4 py-3 capitalize">{subscriber.frequency}</td>
+                          <td className="px-4 py-3 text-zinc-300">{new Date(subscriber.subscribedAt).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
         </section>
       )}
     </div>
