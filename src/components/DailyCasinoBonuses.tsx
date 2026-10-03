@@ -90,7 +90,7 @@ export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers, 
     if (!matchingOffer) return bonus;
     return {
       ...bonus,
-      url: matchingOffer.referralUrl || matchingOffer.officialMerchantUrl,
+      url: `/go/${encodeURIComponent(matchingOffer.id)}`,
       referral: Boolean(matchingOffer.referralUrl),
       note: matchingOffer.referralUrl
         ? 'Referral link attached. Review the current promotion and eligibility before joining.'

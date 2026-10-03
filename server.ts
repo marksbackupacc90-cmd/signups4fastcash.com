@@ -658,6 +658,17 @@ type OfferAnalyticsEvent = {
   recordedAt: string;
 };
 const offerAnalyticsEvents: OfferAnalyticsEvent[] = [];
+type OfferRevenueEvent = {
+  id: string;
+  offerId: string;
+  company: string;
+  title: string;
+  type: 'conversion' | 'commission';
+  amount: number | null;
+  note: string;
+  recordedAt: string;
+};
+const offerRevenueEvents: OfferRevenueEvent[] = [];
 
 export function buildOfferActivityReport(events: OfferAnalyticsEvent[], periodDays: 7 | 30, checkedAt = new Date()) {
   const to = checkedAt.getTime();
@@ -970,6 +981,17 @@ async function initializeOfferStore() {
     )
   `);
   await database.query('CREATE INDEX IF NOT EXISTS offer_analytics_events_time_offer_idx ON offer_analytics_events (occurred_at, offer_id)');
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_revenue_events (
+      id TEXT PRIMARY KEY,
+      offer_id TEXT NOT NULL,
+      event_type TEXT NOT NULL CHECK (event_type IN ('conversion', 'commission')),
+      amount NUMERIC,
+      note TEXT NOT NULL DEFAULT '',
+      recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS offer_revenue_events_time_offer_idx ON offer_revenue_events (recorded_at, offer_id)');
   await database.query("DELETE FROM offer_analytics_events WHERE occurred_at < NOW() - INTERVAL '365 days'");
   await database.query(`
     CREATE TABLE IF NOT EXISTS analytics_report_checkpoints (
@@ -1428,6 +1450,24 @@ app.get('/api/offers', (req, res) => {
       && isVerificationCurrent(offer)
       && !isTemporarilyHiddenOffer(offer)),
   });
+});
+
+app.get('/go/:id', async (req, res) => {
+  const offer = liveOffersStore.find((candidate) =>
+    candidate.id === req.params.id
+    && candidate.status === 'live'
+    && isVerificationCurrent(candidate)
+    && !isTemporarilyHiddenOffer(candidate));
+  if (!offer) return res.status(404).send('This offer is unavailable.');
+  const destination = extractPublicUrl(String(offer.referralUrl || offer.officialMerchantUrl || ''));
+  if (!destination) return res.status(503).send('This offer link is temporarily unavailable.');
+  try {
+    await recordOfferAnalyticsEvent(offer, 'click');
+  } catch (error) {
+    console.error('Could not record outbound offer click:', error);
+    return res.status(503).send('We could not record this referral click. Please try again shortly.');
+  }
+  return res.redirect(302, destination);
 });
 
 app.get('/api/admin/offers', requireAdmin, (_req, res) => {
@@ -2803,6 +2843,56 @@ app.post('/api/analytics/impression', (_req, res) => {
   return res.status(410).json({ error: 'Offer impression tracking is disabled.' });
 });
 
+async function recordOfferAnalyticsEvent(offer: Offer, type: OfferAnalyticsEvent['type']) {
+  const event: OfferAnalyticsEvent = { offerId: offer.id, type, recordedAt: new Date().toISOString() };
+  if (database) {
+    const client = await database.connect();
+    const previousAnalytics = analyticsStore;
+    const previousOfferCount = type === 'click' ? offer.clicksCount : offer.conversionsCount;
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO offer_analytics_events (id, offer_id, event_type, occurred_at)
+         VALUES ($1, $2, $3, $4)`,
+        [randomUUID(), offer.id, type, event.recordedAt],
+      );
+      const column = type === 'click' ? 'total_clicks' : 'total_conversions';
+      const result = await client.query<{ total_clicks: number; total_conversions: number }>(
+        `UPDATE analytics_counters SET ${column} = ${column} + 1 WHERE id = 1
+         RETURNING total_clicks, total_conversions`,
+      );
+      if (!result.rows[0]) throw new Error('Analytics counter row is missing.');
+      analyticsStore = {
+        totalClicks: result.rows[0].total_clicks,
+        totalConversions: result.rows[0].total_conversions,
+      };
+      if (type === 'click') offer.clicksCount += 1;
+      else offer.conversionsCount += 1;
+      const savedOffer = await client.query(
+        `UPDATE offers SET status = $2, offer = $3::jsonb, updated_at = $4 WHERE id = $1`,
+        [offer.id, offer.status, offer, offer.updatedAt || new Date().toISOString()],
+      );
+      if (savedOffer.rowCount !== 1) throw new Error(`Offer ${offer.id} is missing from persistent storage.`);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      analyticsStore = previousAnalytics;
+      if (type === 'click') offer.clicksCount = previousOfferCount;
+      else offer.conversionsCount = previousOfferCount;
+      throw error;
+    } finally {
+      client.release();
+    }
+  } else {
+    offerAnalyticsEvents.push(event);
+    if (offerAnalyticsEvents.length > 50000) offerAnalyticsEvents.shift();
+    analyticsStore[type === 'click' ? 'totalClicks' : 'totalConversions'] += 1;
+    if (type === 'click') offer.clicksCount += 1;
+    else offer.conversionsCount += 1;
+  }
+  return event;
+}
+
 // API: Track click & conversion telemetry
 app.post('/api/analytics/track', (req, res) => {
   const adminToken = req.header('x-admin-token');
@@ -2819,39 +2909,7 @@ app.post('/api/analytics/track', (req, res) => {
   if (!offer) {
     return res.status(404).json({ error: 'Offer not found' });
   }
-  const event: OfferAnalyticsEvent = { offerId, type, recordedAt: new Date().toISOString() };
-  if (type === 'click') {
-    analyticsStore.totalClicks += 1;
-    offer.clicksCount += 1;
-  } else {
-    analyticsStore.totalConversions += 1;
-    offer.conversionsCount += 1;
-  }
-  const persist = async () => {
-    if (!database) {
-      offerAnalyticsEvents.push(event);
-      if (offerAnalyticsEvents.length > 50000) offerAnalyticsEvents.shift();
-      return;
-    }
-    await database.query(
-      `INSERT INTO offer_analytics_events (id, offer_id, event_type, occurred_at)
-       VALUES ($1, $2, $3, $4)`,
-      [randomUUID(), offerId, type, event.recordedAt],
-    );
-    const column = type === 'click' ? 'total_clicks' : 'total_conversions';
-    const result = await database.query<{ total_clicks: number; total_conversions: number }>(
-      `UPDATE analytics_counters SET ${column} = ${column} + 1 WHERE id = 1
-       RETURNING total_clicks, total_conversions`,
-    );
-    if (result.rows[0]) {
-      analyticsStore = {
-        totalClicks: result.rows[0].total_clicks,
-        totalConversions: result.rows[0].total_conversions,
-      };
-    }
-    await saveLiveOffers();
-  };
-  persist()
+  recordOfferAnalyticsEvent(offer, type)
     .then(() => res.json({
       success: true,
       stats: analyticsStore,
@@ -2969,6 +3027,93 @@ app.get('/api/admin/analytics/offers/since', requireAdmin, async (req, res) => {
     ...buildOfferActivitySinceReport(offerAnalyticsEvents, from, checkedAt),
     limitedByRetention,
   });
+});
+
+app.get('/api/admin/revenue', requireOwnerAdmin, async (_req, res) => {
+  if (database) {
+    try {
+      const result = await database.query<{
+        id: string;
+        offer_id: string;
+        event_type: 'conversion' | 'commission';
+        amount: string | null;
+        note: string;
+        recorded_at: Date | string;
+      }>(
+        `SELECT id, offer_id, event_type, amount::text, note, recorded_at
+         FROM offer_revenue_events
+         ORDER BY recorded_at DESC
+         LIMIT 200`,
+      );
+      return res.json({
+        events: result.rows.map((row) => {
+          const offer = liveOffersStore.find((candidate) => candidate.id === row.offer_id);
+          return {
+            id: row.id,
+            offerId: row.offer_id,
+            company: offer?.company || 'Removed offer',
+            title: offer?.title || row.offer_id,
+            type: row.event_type,
+            amount: row.amount === null ? null : Number(row.amount),
+            note: row.note,
+            recordedAt: new Date(row.recorded_at).toISOString(),
+          };
+        }),
+      });
+    } catch (error) {
+      console.error('Could not load confirmed offer revenue:', error);
+      return res.status(500).json({ error: 'Could not load the revenue ledger.' });
+    }
+  }
+  return res.json({ events: offerRevenueEvents.slice(-200).reverse() });
+});
+
+app.post('/api/admin/revenue', requireOwnerAdmin, async (req, res) => {
+  const { offerId, type } = req.body || {};
+  const amount = req.body?.amount;
+  const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+  if (typeof offerId !== 'string' || !liveOffersStore.some((offer) => offer.id === offerId)) {
+    return res.status(400).json({ error: 'Choose a valid offer.' });
+  }
+  if (type !== 'conversion' && type !== 'commission') {
+    return res.status(400).json({ error: 'Choose a confirmed conversion or received commission.' });
+  }
+  if (type === 'commission'
+    && (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount * 100))) {
+    return res.status(400).json({ error: 'Enter a received commission greater than $0 with no more than two decimal places.' });
+  }
+  if (type === 'conversion' && amount !== undefined && amount !== null) {
+    return res.status(400).json({ error: 'Only received commissions can include an amount.' });
+  }
+  if (note.length > 500) return res.status(400).json({ error: 'Notes must be 500 characters or fewer.' });
+
+  const offer = liveOffersStore.find((candidate) => candidate.id === offerId);
+  const event: OfferRevenueEvent = {
+    id: randomUUID(),
+    offerId,
+    company: offer.company,
+    title: offer.title,
+    type,
+    amount: type === 'commission' ? amount : null,
+    note,
+    recordedAt: new Date().toISOString(),
+  };
+  if (database) {
+    try {
+      await database.query(
+        `INSERT INTO offer_revenue_events (id, offer_id, event_type, amount, note, recorded_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [event.id, event.offerId, event.type, event.amount, event.note, event.recordedAt],
+      );
+    } catch (error) {
+      console.error('Could not record confirmed offer revenue:', error);
+      return res.status(500).json({ error: 'Could not save the revenue entry.' });
+    }
+  } else {
+    offerRevenueEvents.push(event);
+    if (offerRevenueEvents.length > 5000) offerRevenueEvents.shift();
+  }
+  return res.status(201).json({ event });
 });
 
 app.post('/api/analytics/pageview', (_req, res) => {

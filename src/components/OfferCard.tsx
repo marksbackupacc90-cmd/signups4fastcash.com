@@ -12,7 +12,7 @@ interface OfferCardProps {
 
 export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo }) => {
   const reviewBadge = getOfferReviewBadge(offer);
-  const claimUrl = offer.referralUrl || offer.officialMerchantUrl;
+  const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
 
   return (
     <div

@@ -483,7 +483,41 @@ test('offer analytics rejects malformed telemetry payloads', async () => {
   assert.equal(response.body.error, 'A valid offerId and event type are required');
 });
 
+test('first-party offer redirects record one click before redirecting', async () => {
+  const before = getOfferActivityReport(7).offers['offer-western-union-referral']?.clicks || 0;
+  const response = await requestText('/go/offer-western-union-referral', { redirect: 'manual' });
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get('location'), /^https:\/\/.+/);
+  const after = getOfferActivityReport(7).offers['offer-western-union-referral']?.clicks || 0;
+  assert.equal(after, before + 1);
+});
+
+test('first-party offer redirects reject unavailable offers without recording clicks', async () => {
+  const response = await requestText('/go/not-a-live-offer', { redirect: 'manual' });
+  assert.equal(response.status, 404);
+  assert.equal(response.body, 'This offer is unavailable.');
+});
+
+test('confirmed revenue ledger is owner-only for reads and writes', async () => {
+  const getResponse = await request('/api/admin/revenue');
+  assert.equal(getResponse.status, 403);
+  assert.equal(getResponse.body.error, 'Owner admin access is required.');
+  const postResponse = await request('/api/admin/revenue', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      offerId: 'offer-western-union-referral',
+      type: 'commission',
+      amount: 1,
+    }),
+  });
+  assert.equal(postResponse.status, 403);
+  assert.equal(postResponse.body.error, 'Owner admin access is required.');
+});
+
 test('valid offer click events appear in the shared rolling activity report', async () => {
+  const before = getOfferActivityReport(7).offers['offer-western-union-referral']?.clicks || 0;
+  const totalBefore = getOfferActivityReport(7).totals.clicks;
   const response = await request('/api/analytics/track', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -493,8 +527,8 @@ test('valid offer click events appear in the shared rolling activity report', as
   assert.equal(response.body.offer.id, 'offer-western-union-referral');
 
   const report = getOfferActivityReport(7);
-  assert.equal(report.offers['offer-western-union-referral'].clicks, 1);
-  assert.equal(report.totals.clicks, 1);
+  assert.equal(report.offers['offer-western-union-referral'].clicks, before + 1);
+  assert.equal(report.totals.clicks, totalBefore + 1);
 });
 
 test('offer activity reports aggregate 7-day and 30-day events by offer', () => {

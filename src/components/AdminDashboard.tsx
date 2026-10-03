@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BarChart3, CheckCircle2, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
-import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings } from '../types';
+import { AlertTriangle, BarChart3, CheckCircle2, DollarSign, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
+import { Offer, NewsletterSubscriber, EmailBlastLog, OfferRevenueEvent, SiteSettings } from '../types';
 import type { OfferActivity, OfferActivitySinceReport } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
 
@@ -60,6 +60,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activityReport, setActivityReport] = useState<OfferActivitySinceReport | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [revenueEvents, setRevenueEvents] = useState<OfferRevenueEvent[]>([]);
+  const [revenueLoading, setRevenueLoading] = useState(false);
+  const [revenueSaving, setRevenueSaving] = useState(false);
+  const [revenueError, setRevenueError] = useState<string | null>(null);
+  const [revenueType, setRevenueType] = useState<'conversion' | 'commission'>('conversion');
+  const [revenueOfferId, setRevenueOfferId] = useState(props.liveOffers[0]?.id || '');
+  const [revenueAmount, setRevenueAmount] = useState('');
+  const [revenueNote, setRevenueNote] = useState('');
   const [initialActivityCursor] = useState(readOfferActivityCursor);
   const activityCursorRef = useRef(initialActivityCursor);
   useEffect(() => {
@@ -95,6 +103,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     void loadActivityReport();
     return () => controller.abort();
   }, [activityRefreshKey]);
+  useEffect(() => {
+    if (!props.isOwnerAdmin) return;
+    const controller = new AbortController();
+    const loadRevenueEvents = async () => {
+      setRevenueLoading(true);
+      setRevenueError(null);
+      try {
+        const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+        const response = await fetch('/api/admin/revenue', {
+          headers: token ? { 'x-admin-token': token } : {},
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => null) as { events?: OfferRevenueEvent[]; error?: string } | null;
+        if (!response.ok || !data) throw new Error(data?.error || 'Could not load the revenue ledger.');
+        setRevenueEvents(data.events || []);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('Could not load the owner revenue ledger:', error);
+        setRevenueError(error instanceof Error ? error.message : 'Could not load the revenue ledger.');
+      } finally {
+        if (!controller.signal.aborted) setRevenueLoading(false);
+      }
+    };
+    void loadRevenueEvents();
+    return () => controller.abort();
+  }, [props.isOwnerAdmin]);
   const activityByOffer = activityReport?.offers || {};
   const offersNeedingReview = useMemo(() => {
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -162,6 +196,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const data = await response?.json().catch(() => null) as { delivered?: number; error?: string } | null;
     setEmailStatus(response?.ok ? `Email sent to ${data?.delivered || 0} verified subscribers.` : (data?.error || 'Email could not be sent.'));
     setEmailSending(false);
+  };
+  const saveRevenueEvent = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRevenueSaving(true);
+    setRevenueError(null);
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+      const response = await fetch('/api/admin/revenue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({
+          offerId: revenueOfferId,
+          type: revenueType,
+          ...(revenueType === 'commission' ? { amount: Number(revenueAmount) } : {}),
+          note: revenueNote,
+        }),
+      });
+      const data = await response.json().catch(() => null) as { event?: OfferRevenueEvent; error?: string } | null;
+      const savedEvent = data?.event;
+      if (!response.ok || !savedEvent) throw new Error(data?.error || 'Could not save this revenue entry.');
+      setRevenueEvents((current) => [savedEvent, ...current].slice(0, 200));
+      setRevenueAmount('');
+      setRevenueNote('');
+    } catch (error) {
+      console.error('Could not save an owner revenue entry:', error);
+      setRevenueError(error instanceof Error ? error.message : 'Could not save this revenue entry.');
+    } finally {
+      setRevenueSaving(false);
+    }
   };
 
   return (
@@ -287,6 +350,112 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </>
             )}
           </section>
+          {props.isOwnerAdmin && (
+            <section className="rounded-xl border border-emerald-300/15 bg-[#0e121a] p-5" aria-labelledby="revenue-ledger-title">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <DollarSign className="h-4 w-4 text-emerald-300" />
+                <h2 id="revenue-ledger-title">Confirmed conversions and commissions</h2>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                Owner-only records. Add a conversion only after you confirm it with the provider; record a commission only after you actually receive payment.
+              </p>
+              <form onSubmit={(event) => void saveRevenueEvent(event)} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
+                <label className="text-xs font-semibold text-zinc-300">
+                  Offer
+                  <select
+                    value={revenueOfferId}
+                    onChange={(event) => setRevenueOfferId(event.target.value)}
+                    required
+                    className="mt-1 block w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2.5 text-sm text-white"
+                  >
+                    <option value="">Choose an offer</option>
+                    {props.liveOffers.map((offer) => <option key={offer.id} value={offer.id}>{offer.company} — {offer.title}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-zinc-300">
+                  Record
+                  <select
+                    value={revenueType}
+                    onChange={(event) => setRevenueType(event.target.value as 'conversion' | 'commission')}
+                    className="mt-1 block w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2.5 text-sm text-white"
+                  >
+                    <option value="conversion">Confirmed conversion</option>
+                    <option value="commission">Commission received</option>
+                  </select>
+                </label>
+                {revenueType === 'commission' && (
+                  <label className="text-xs font-semibold text-zinc-300">
+                    Amount received (USD)
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      value={revenueAmount}
+                      onChange={(event) => setRevenueAmount(event.target.value)}
+                      className="mt-1 block w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2.5 text-sm text-white"
+                    />
+                  </label>
+                )}
+                <button
+                  type="submit"
+                  disabled={revenueSaving || !revenueOfferId}
+                  className="self-end rounded-lg bg-emerald-300 px-4 py-2.5 text-xs font-bold text-[#061016] hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {revenueSaving ? 'Saving…' : 'Add record'}
+                </button>
+                <label className="text-xs font-semibold text-zinc-300 sm:col-span-2 lg:col-span-4">
+                  Note (optional)
+                  <input
+                    type="text"
+                    maxLength={500}
+                    value={revenueNote}
+                    onChange={(event) => setRevenueNote(event.target.value)}
+                    placeholder="For example, provider report or payment date"
+                    className="mt-1 block w-full rounded-lg border border-white/10 bg-[#090d12] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500"
+                  />
+                </label>
+              </form>
+              {revenueError && <p className="mt-3 rounded-lg border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-200" role="alert">{revenueError}</p>}
+              <div className="mt-4 overflow-hidden rounded-lg border border-white/[0.08]">
+                {revenueLoading ? (
+                  <p className="p-4 text-xs text-zinc-400" role="status">Loading revenue records…</p>
+                ) : revenueEvents.length === 0 ? (
+                  <p className="p-4 text-xs text-zinc-400">No confirmed conversions or commissions recorded yet.</p>
+                ) : (
+                  <div className="max-h-72 overflow-auto">
+                    <table className="w-full min-w-[38rem] text-left text-xs">
+                      <thead className="sticky top-0 bg-[#090d12] text-[10px] uppercase tracking-wider text-zinc-400">
+                        <tr>
+                          <th scope="col" className="px-3 py-2">Offer</th>
+                          <th scope="col" className="px-3 py-2">Record</th>
+                          <th scope="col" className="px-3 py-2">Amount</th>
+                          <th scope="col" className="px-3 py-2">Date / note</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.06]">
+                        {revenueEvents.map((entry) => (
+                          <tr key={entry.id} className="text-zinc-200">
+                            <td className="px-3 py-2.5">
+                              <div className="font-semibold">{entry.company}</div>
+                              <div className="max-w-64 truncate text-[10px] text-zinc-500">{entry.title}</div>
+                            </td>
+                            <td className="px-3 py-2.5">{entry.type === 'conversion' ? 'Owner-confirmed conversion' : 'Commission received'}</td>
+                            <td className="px-3 py-2.5">{entry.amount === null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(entry.amount)}</td>
+                            <td className="px-3 py-2.5">
+                              <div>{new Date(entry.recordedAt).toLocaleString()}</div>
+                              {entry.note && <div className="max-w-64 truncate text-[10px] text-zinc-500">{entry.note}</div>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-[10px] text-zinc-500">Showing up to 200 most recent records. These entries are separate from unverified visitor conversion reports.</p>
+            </section>
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             <button type="button" onClick={() => setView('email')} className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-5 text-left transition-colors hover:bg-cyan-300/10">
               <Mail className="h-5 w-5 text-cyan-300" />

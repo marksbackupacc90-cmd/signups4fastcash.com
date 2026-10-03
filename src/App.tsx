@@ -528,7 +528,7 @@ export default function App() {
     }
   };
 
-  const handleClaimClick = async (offerId: string) => {
+  const handleClaimClick = (offerId: string) => {
     const adminToken = localStorage.getItem('signups4fastcash_admin_token');
     if (!adminToken) {
       const savedEntries = readMyOfferEntries();
@@ -546,43 +546,6 @@ export default function App() {
         }
         showToast('Saved to My Offers so you can resume it later.');
       }
-
-      setLiveOffers((prev) =>
-        prev.map((o) => (o.id === offerId ? { ...o, clicksCount: o.clicksCount + 1 } : o))
-      );
-    }
-
-    try {
-      const response = await fetch('/api/analytics/track', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminToken ? { 'x-admin-token': adminToken } : {}),
-        },
-        body: JSON.stringify({ offerId, type: 'click' }),
-        keepalive: true,
-      });
-      const data = await response.json().catch(() => null) as {
-        offer?: { id: string; clicksCount: number; conversionsCount: number };
-        error?: string;
-      } | null;
-      if (!response.ok || !data) throw new Error(data?.error || 'Could not record the referral click.');
-      if (data.offer?.id === offerId) {
-        setLiveOffers((prev) =>
-          prev.map((offer) =>
-            offer.id === offerId
-              ? {
-                  ...offer,
-                  clicksCount: data.offer?.clicksCount ?? offer.clicksCount,
-                  conversionsCount: data.offer?.conversionsCount ?? offer.conversionsCount,
-                }
-              : offer
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Could not record referral click:', error);
-      showToast('We could not record that click. Please try again.');
     }
   };
 
@@ -798,7 +761,7 @@ export default function App() {
 
   const handleResumeOffer = (offer: Offer) => {
     void handleClaimClick(offer.id);
-    window.open(offer.referralUrl || offer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
+    window.open(`/go/${encodeURIComponent(offer.id)}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleMyOfferStatusChange = async (offerId: string, status: MyOfferStatus) => {
@@ -1098,7 +1061,7 @@ export default function App() {
                     return;
                   }
                   void handleClaimClick(sofiOffer.id);
-                  window.open(sofiOffer.referralUrl || sofiOffer.officialMerchantUrl, '_blank', 'noopener,noreferrer');
+                  window.open(`/go/${encodeURIComponent(sofiOffer.id)}`, '_blank', 'noopener,noreferrer');
                 }}
               />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">

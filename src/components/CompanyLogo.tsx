@@ -54,7 +54,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const simpleIconSlug = simpleIconSlugMap[logoSlug];
 
   const localLogoMap: Record<string, string> = {
-    sofi: '/company-logos/sofi-logo.png',
+    sofi: '/company-logos/sofi-logo.jpg',
     onepay: '/company-logos/onepay-logo.png',
     chime: '/company-logos/chime-logo.jpg',
     capitalone: '/company-logos/capital-one.png',
@@ -62,7 +62,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     robinhood: '/company-logos/robinhood.png',
     revolut: '/company-logos/revolut-logo.jpg',
     topcashback: '/company-logos/topcashback.jpg',
-    kraken: '/company-logos/kraken.png',
+    kraken: '/company-logos/kraken-logo.jpg',
     paypal: '/company-logos/paypal-logo.png',
     freecash: '/company-logos/freecash.jpg',
     heycash: '/company-logos/heycash-logo.png',
@@ -80,7 +80,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     userinterviews: '/company-logos/user-interviews-logo.png',
     myprize: '/company-logos/myprize-logo.jpg',
     topsurveys: '/company-logos/topsurveys-logo.jpg',
-    spinquest: '/company-logos/spinquest-logo.png',
+    spinquest: '/company-logos/spinquest-logo.jpg',
     brandedsurveys: '/company-logos/branded-surveys.png',
     ibotta: '/company-logos/ibotta-logo.png',
   };

@@ -90,6 +90,17 @@ export interface OfferActivitySinceReport {
   limitedByRetention?: boolean;
 }
 
+export interface OfferRevenueEvent {
+  id: string;
+  offerId: string;
+  company: string;
+  title: string;
+  type: 'conversion' | 'commission';
+  amount: number | null;
+  note: string;
+  recordedAt: string;
+}
+
 export interface CashBotScanResult {
   id: string;
   scannedAt: string;

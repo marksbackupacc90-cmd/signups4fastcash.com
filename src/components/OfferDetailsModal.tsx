@@ -32,7 +32,7 @@ const Disclosure: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
 export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onClose, onClaimClick }) => {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [completionStatus, setCompletionStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
-  const claimUrl = offer.referralUrl || offer.officialMerchantUrl;
+  const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const reviewBadge = getOfferReviewBadge(offer);
 
   const copyCode = async () => {
