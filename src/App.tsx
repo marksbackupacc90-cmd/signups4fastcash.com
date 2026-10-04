@@ -18,6 +18,7 @@ import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { HowItWorks } from './components/HowItWorks';
 import { CashBlueprint } from './components/CashBlueprint';
+import { CashoutSpotlight } from './components/CashoutSpotlight';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 
 interface AuthUser {
@@ -1070,6 +1071,7 @@ export default function App() {
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
+              <CashoutSpotlight offers={filteredOffers} onViewOffer={setSelectedOffer} />
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold uppercase tracking-wider text-[#f1e6cf]" aria-live="polite">

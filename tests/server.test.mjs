@@ -105,7 +105,6 @@ test('hidden referral offer candidates are not exposed in the public offer catal
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const candidateIds = [
-    'candidate-ero-app-referral',
     'candidate-fetch-referral-a7qrrp',
     'candidate-triumph-rips-referral-jsxfnvt',
   ];
@@ -195,8 +194,10 @@ test('Measure Protocol offer is published with the reported YouTube and Netflix 
   assert.equal(offer.status, 'live');
   assert.equal(offer.referralCode, '7Osjyx6m');
   assert.match(offer.incentiveAmount, /\$10/);
+  assert.match(offer.payoutSpeed, /free instant PayPal/i);
+  assert.match(offer.payoutSpeed, /\$10 minimum/i);
   assert.match(offer.honestTruth.summary, /YouTube and Netflix/);
-  assert.match(offer.honestTruth.theCatch, /not independently confirmed/);
+  assert.match(offer.honestTruth.theCatch, /site-owner reported and may vary/i);
 });
 
 test('the old Era subscription offer is removed from the public catalog', async () => {
@@ -398,13 +399,14 @@ test('newer Measure Protocol terms update stale saved terms and publish the offe
   assert.equal(merged.clicksCount, 2);
 });
 
-test('newer Ero referral details replace stale saved terms without changing its saved visibility', () => {
+test('newer Ero referral details replace stale terms and publish the featured offer', () => {
   const catalogOffer = {
     id: 'candidate-ero-app-referral',
-    title: 'Get 50% more from Ero activities in your first 24 hours',
+    title: 'Ero: 50% boost on eligible activity for 24 hours',
     referralUrl: 'https://ero.app/r/v7tfsepe5d?link=bgp4v6nfbrt6',
-    updatedAt: '2026-10-02T15:52:00.000Z',
-    status: 'hidden',
+    updatedAt: '2026-10-04T15:25:00.000Z',
+    status: 'live',
+    featured: true,
     clicksCount: 0,
     conversionsCount: 0,
   };
@@ -420,8 +422,22 @@ test('newer Ero referral details replace stale saved terms without changing its 
   assert.equal(merged.title, catalogOffer.title);
   assert.equal(merged.referralUrl, catalogOffer.referralUrl);
   assert.equal(merged.status, 'live');
+  assert.equal(merged.featured, true);
   assert.equal(merged.clicksCount, 4);
   assert.equal(merged.conversionsCount, 1);
+});
+
+test('Ero cashout details are featured and distinguish the activity boost from cash', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'candidate-ero-app-referral');
+  assert.ok(offer);
+  assert.equal(offer.status, 'live');
+  assert.equal(offer.featured, true);
+  assert.match(offer.payoutSpeed, /instant debit-card withdrawal/i);
+  assert.match(offer.payoutSpeed, /fee applies/i);
+  assert.match(offer.honestTruth.summary, /not a fixed signup payment/i);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /selfie verification/i);
 });
 
 test('newsletter email layout uses the website theme and Glory typography', () => {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, ChevronDown, Copy, ExternalLink, X } from 'lucide-react';
 import { Offer } from '../types';
 import { getIdVerificationDescription, getOfferReviewBadge, getOfferReviewDescription } from '../offerTransparency';
+import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 
 interface OfferDetailsModalProps {
   offer: Offer;
@@ -34,6 +35,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const [completionStatus, setCompletionStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const reviewBadge = getOfferReviewBadge(offer);
+  const cashoutSpotlight = getCashoutSpotlightInfo(offer.id);
 
   const copyCode = async () => {
     if (!offer.referralCode) return;
@@ -85,6 +87,20 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
             <p className={`text-xs font-semibold ${reviewBadge.className}`}>{reviewBadge.label}</p>
             <p className="mt-1 text-xs leading-relaxed text-zinc-300">{getOfferReviewDescription(offer)}</p>
           </div>
+          {cashoutSpotlight && (
+            <section className="mb-3 rounded-xl border border-violet-200/20 bg-violet-200/[0.06] p-3" aria-label="Cashout details reported by the site owner">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-violet-100">Cashout in Real Life</h3>
+                <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] font-semibold text-emerald-200">{cashoutSpotlight.payout}</span>
+              </div>
+              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <div><dt className="text-zinc-500">Verification</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.verification}</dd></div>
+                <div><dt className="text-zinc-500">Minimum</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.minimum}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-zinc-500">Fee</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.fee}</dd></div>
+              </dl>
+              <p className="mt-2 border-t border-white/[0.07] pt-2 text-[10px] leading-relaxed text-amber-100/80">{cashoutSpotlight.caveat}</p>
+            </section>
+          )}
           <p className="text-sm leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>
           <div className="mt-4 rounded-xl border border-cyan-200/15 bg-cyan-200/[0.05] p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/70">Advertised reward</p>
@@ -136,7 +152,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
               <p className="mt-3 text-xs text-zinc-400">{offer.honestTruth.hiddenFeesWarning}</p>
               <dl className="mt-3 grid gap-2 border-t border-white/[0.08] pt-3 text-xs sm:grid-cols-2">
                 <div><dt className="text-zinc-500">Minimum hold</dt><dd className="mt-0.5">{offer.honestTruth.minimumHoldTime}</dd></div>
-                <div><dt className="text-zinc-500">ID verification</dt><dd className="mt-0.5">{getIdVerificationDescription(offer.honestTruth.idVerificationRequired)}</dd></div>
+                <div><dt className="text-zinc-500">{cashoutSpotlight ? 'Identity check' : 'ID verification'}</dt><dd className="mt-0.5">{cashoutSpotlight?.verification || getIdVerificationDescription(offer.honestTruth.idVerificationRequired)}</dd></div>
               </dl>
             </Disclosure>
 

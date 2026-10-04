@@ -195,7 +195,9 @@ function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) 
       honestTruth: catalogOffer.honestTruth,
       speedrunHints: catalogOffer.speedrunHints,
       updatedAt: catalogOffer.updatedAt,
-      ...(catalogOffer.id === 'candidate-measure-protocol-msr-referral' ? { status: catalogOffer.status } : {}),
+      ...(catalogOffer.id === 'candidate-ero-app-referral' || catalogOffer.id === 'candidate-measure-protocol-msr-referral'
+        ? { status: catalogOffer.status, featured: catalogOffer.featured }
+        : {}),
     } : {}),
     clicksCount: Number.isFinite(Number(existingOffer?.clicksCount)) ? Number(existingOffer?.clicksCount) : 0,
     conversionsCount: Number.isFinite(Number(existingOffer?.conversionsCount)) ? Number(existingOffer?.conversionsCount) : 0,

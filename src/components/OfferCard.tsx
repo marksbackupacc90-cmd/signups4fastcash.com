@@ -2,6 +2,7 @@ import React from 'react';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 import { Offer } from '../types';
 import { getOfferReviewBadge } from '../offerTransparency';
+import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 import { CompanyLogo } from './CompanyLogo';
 
 interface OfferCardProps {
@@ -12,6 +13,7 @@ interface OfferCardProps {
 
 export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo }) => {
   const reviewBadge = getOfferReviewBadge(offer);
+  const spotlight = getCashoutSpotlightInfo(offer.id);
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
 
   return (
@@ -27,9 +29,18 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           onMoreInfo(offer);
         }
       }}
-      className="offer-card retro-window group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#171a22]/95 shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+      className={`offer-card retro-window group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border bg-[#171a22]/95 shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${
+        spotlight
+          ? 'border-violet-300/40 shadow-[0_18px_50px_rgba(0,0,0,0.25),0_0_28px_rgba(167,139,250,0.12)] hover:border-violet-200/60'
+          : 'border-white/[0.1] hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)]'
+      }`}
     >
       <div className="relative flex h-32 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)] sm:h-36">
+        {spotlight && (
+          <span className="absolute left-2.5 top-2.5 z-20 rounded-full border border-violet-100/25 bg-[#211936]/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-violet-100 shadow-lg">
+            Cashout spotlight
+          </span>
+        )}
         <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
         <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
         <div className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-300 group-hover:scale-[1.04]">
@@ -46,6 +57,12 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
         <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-mono text-zinc-400">
           <span className={`inline-flex items-center gap-1 ${reviewBadge.className}`}><ShieldCheck className="h-3 w-3" /> {reviewBadge.label}</span>
         </div>
+        {spotlight && (
+          <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-violet-100">
+            {spotlight.payoutLabel}
+            <span className="mt-0.5 block text-[9px] font-normal text-zinc-400">{spotlight.verification}</span>
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-[9px] text-zinc-500">
           <span className="truncate">{offer.company}</span>
           <span className="max-w-[58%] truncate text-right">{offer.payoutSpeed}</span>
