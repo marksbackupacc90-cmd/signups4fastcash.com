@@ -24,7 +24,7 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
             <CircleDollarSign className="h-3.5 w-3.5" /> Cashout in Real Life
           </div>
           <h2 id="cashout-spotlight-title" className="mt-2 text-xl font-black text-white sm:text-2xl">
-            Same selfie-first setup. Different ways to cash out.
+            Current top instant cashout offers
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
             A quick, side-by-side walkthrough of what to check before you start and before you withdraw.
@@ -64,7 +64,7 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
                   <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-white">
                     <Clock3 className="h-3.5 w-3.5 text-emerald-300" /> {spotlight.payout}
                   </div>
-                  <div className="mt-1 text-[10px] text-zinc-300">{spotlight.fee}</div>
+                  {spotlight.fee && <div className="mt-1 text-[10px] text-zinc-300">{spotlight.fee}</div>}
                 </div>
               </div>
 

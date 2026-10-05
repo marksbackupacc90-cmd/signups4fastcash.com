@@ -96,7 +96,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
               <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                 <div><dt className="text-zinc-500">Verification</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.verification}</dd></div>
                 <div><dt className="text-zinc-500">Minimum</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.minimum}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-zinc-500">Fee</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.fee}</dd></div>
+                {cashoutSpotlight.fee && <div className="sm:col-span-2"><dt className="text-zinc-500">Fee</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.fee}</dd></div>}
               </dl>
               <p className="mt-2 border-t border-white/[0.07] pt-2 text-[10px] leading-relaxed text-amber-100/80">{cashoutSpotlight.caveat}</p>
             </section>

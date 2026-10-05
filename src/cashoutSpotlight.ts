@@ -13,22 +13,22 @@ const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
   'candidate-ero-app-referral': {
     badge: 'Cashout in Real Life',
     payout: 'Instant debit-card withdrawal',
-    payoutLabel: 'Instant debit card · fee applies',
-    verification: 'Selfie check; no government-ID upload reported',
+    payoutLabel: 'Instant debit-card cashout',
+    verification: 'No ID required',
     minimum: 'Check the current in-app minimum',
-    fee: 'A debit-card withdrawal fee applies',
+    fee: '',
     steps: [
       'Join with the referral and check that the 50% activity boost appears in your account.',
       'Complete eligible activities you choose. The boost applies to qualifying activity; it is not a guaranteed signup payment.',
-      'Complete the selfie check, then review the exact debit-card fee and net amount before confirming withdrawal.',
+      'Review the current cashout options and confirm the net amount shown in the app before withdrawing.',
     ],
-    caveat: 'Cashout and selfie details are owner-reported; check current Ero terms, eligible activity, minimums, and fees in the app.',
+    caveat: 'Cashout and ID details are owner-reported; check current Ero terms, eligible activity, and minimums in the app.',
   },
   'candidate-measure-protocol-msr-referral': {
     badge: 'Cashout in Real Life',
     payout: 'Instant PayPal withdrawal',
     payoutLabel: 'Free instant PayPal · $10 minimum',
-    verification: 'Selfie check; no government-ID upload reported',
+    verification: 'No ID required',
     minimum: '$10 minimum balance',
     fee: 'No PayPal cashout fee reported',
     steps: [

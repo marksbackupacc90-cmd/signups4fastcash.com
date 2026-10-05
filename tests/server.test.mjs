@@ -435,9 +435,18 @@ test('Ero cashout details are featured and distinguish the activity boost from c
   assert.equal(offer.status, 'live');
   assert.equal(offer.featured, true);
   assert.match(offer.payoutSpeed, /instant debit-card withdrawal/i);
-  assert.match(offer.payoutSpeed, /fee applies/i);
+  assert.doesNotMatch(offer.payoutSpeed, /fee|selfie/i);
   assert.match(offer.honestTruth.summary, /not a fixed signup payment/i);
-  assert.match(offer.honestTruth.hiddenFeesWarning, /selfie verification/i);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /no ID required/i);
+  const eroCopy = [
+    offer.payoutSpeed,
+    offer.honestTruth.summary,
+    offer.honestTruth.theCatch,
+    offer.honestTruth.minimumHoldTime,
+    offer.honestTruth.hiddenFeesWarning,
+    ...offer.speedrunHints.flatMap((hint) => [hint.instruction, hint.proTip]),
+  ].join(' ');
+  assert.doesNotMatch(eroCopy, /selfie|fee/i);
 });
 
 test('newsletter email layout uses the website theme and Glory typography', () => {
