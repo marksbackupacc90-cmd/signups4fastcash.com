@@ -143,7 +143,7 @@ test('public offers disclose complete requirements without unsupported trust or 
     });
     assert.ok(!offer.verificationStatus || ['unverified', 'reviewed', 'terms-vary'].includes(offer.verificationStatus), `${offer.company} should have a recognized review status`);
     if (offer.verificationStatus === 'unverified') {
-      assert.match(`${offer.honestTruth.summary} ${offer.honestTruth.theCatch}`, /report|suppl|not independently|not been independently/i, `${offer.company} should identify unverified details as reported`);
+      assert.match(`${offer.honestTruth.summary} ${offer.honestTruth.theCatch}`, /report|suppl|not independently|not been independently|not been confirmed/i, `${offer.company} should identify unverified details as reported`);
     }
   }
 });
@@ -151,6 +151,12 @@ test('public offers disclose complete requirements without unsupported trust or 
 test('unsupported Acebet and Debbie promos are kept out of public listings', () => {
   assert.equal(isTemporarilyHiddenOffer({ id: 'custom-acebet', company: 'Acebet' }), true);
   assert.equal(isTemporarilyHiddenOffer({ id: 'custom-debbie', company: 'Debbie' }), true);
+  assert.equal(isTemporarilyHiddenOffer({
+    id: 'candidate-debbie-referral',
+    company: 'Debbie',
+    title: 'Debbie: Check current referral rewards',
+    verificationStatus: 'unverified',
+  }), false);
   assert.equal(isTemporarilyHiddenOffer({ id: 'offer-ibotta', company: 'Ibotta' }), false);
 });
 
@@ -211,6 +217,18 @@ test('Joko offer clearly separates the $5 referral and $5 qualifying Plaid bank-
   assert.match(offer.honestTruth.summary, /through Plaid for another \$5/i);
   assert.match(offer.honestTruth.summary, /account.*most of your purchases/i);
   assert.match(offer.speedrunHints[1].instruction, /qualifying bank account through Plaid/i);
+});
+
+test('Debbie referral card is available without unsupported reward or payout claims', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'candidate-debbie-referral');
+  assert.ok(offer);
+  assert.equal(offer.verificationStatus, 'unverified');
+  assert.equal(offer.incentiveValue, 0);
+  assert.equal(offer.referralUrl, 'https://www.joindebbie.com/referral?name=Mark&ref_id=2FMKVWHWZ');
+  assert.match(offer.honestTruth.summary, /current reward amount.*have not been confirmed/i);
+  assert.doesNotMatch(`${offer.incentiveAmount} ${offer.honestTruth.summary}`, /\$\d/);
 });
 
 test('the old Era subscription offer is removed from the public catalog', async () => {

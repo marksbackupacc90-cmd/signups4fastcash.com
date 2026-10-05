@@ -163,11 +163,13 @@ const permanentlyRemovedOfferIds = new Set([
 const temporarilyHiddenOfferIds = new Set(['offer-acebet']);
 const temporarilyHiddenOfferTerms = ['triumph', 'polymarket', 'acebet', 'debbie'];
 
-function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?: string }) {
+function isTemporarilyHiddenOffer(offer: { id?: string; company?: string; title?: string; verificationStatus?: string }) {
   const searchable = `${offer.company || ''} ${offer.title || ''}`.toLowerCase();
+  const isExplicitlyUnverifiedDebbieListing = offer.id === 'candidate-debbie-referral'
+    && offer.verificationStatus === 'unverified';
   return permanentlyRemovedOfferIds.has(offer.id || '')
     || temporarilyHiddenOfferIds.has(offer.id || '')
-    || temporarilyHiddenOfferTerms.some((term) => searchable.includes(term));
+    || (!isExplicitlyUnverifiedDebbieListing && temporarilyHiddenOfferTerms.some((term) => searchable.includes(term)));
 }
 
 function mergeCatalogOffer(catalogOffer: Offer, existingOffer?: Partial<Offer>) {
