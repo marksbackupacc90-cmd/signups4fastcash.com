@@ -186,7 +186,7 @@ test('offer content edits invalidate old reviews until details are checked again
   assert.equal(markedReviewed.verificationStatus, 'reviewed');
 });
 
-test('Measure Protocol offer is published with the reported YouTube and Netflix reward', async () => {
+test('Measure Protocol offer describes its broad range of eligible account connections', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const offer = response.body.offers.find((candidate) => candidate.id === 'candidate-measure-protocol-msr-referral');
@@ -196,7 +196,8 @@ test('Measure Protocol offer is published with the reported YouTube and Netflix 
   assert.match(offer.incentiveAmount, /\$10/);
   assert.match(offer.payoutSpeed, /free instant PayPal/i);
   assert.match(offer.payoutSpeed, /\$10 minimum/i);
-  assert.match(offer.honestTruth.summary, /YouTube and Netflix/);
+  assert.match(offer.honestTruth.summary, /Google, ChatGPT, Facebook, Instagram, YouTube, Netflix, and others/i);
+  assert.match(offer.depositRequired, /accounts or services supported by MSR/i);
   assert.match(offer.honestTruth.theCatch, /site-owner reported and may vary/i);
 });
 
@@ -376,9 +377,9 @@ test('newer Coinbase catalog terms replace stale saved terms while preserving vi
 test('newer Measure Protocol terms update stale saved terms and publish the offer', () => {
   const catalogOffer = {
     id: 'candidate-measure-protocol-msr-referral',
-    title: 'Reported instant $10 reward for linking YouTube and Netflix',
+    title: 'Reported instant $10 reward for linking eligible MSR accounts',
     referralUrl: 'https://contributor.measureprotocol.com/i/7Osjyx6m',
-    updatedAt: '2026-10-02T16:15:00.000Z',
+    updatedAt: '2026-10-05T04:12:00.000Z',
     status: 'live',
     clicksCount: 0,
     conversionsCount: 0,

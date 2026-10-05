@@ -33,7 +33,7 @@ const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
     fee: 'No PayPal cashout fee reported',
     steps: [
       'Join with the referral and confirm the current reward terms in Measure Protocol.',
-      'Review the requested permissions before connecting YouTube or Netflix; linking accounts may share account or viewing data.',
+      'Review requested permissions before connecting any accounts or services supported by MSR. Available options may include Google, ChatGPT, Facebook, Instagram, YouTube, Netflix, and others; linking may share account or activity data.',
       'Complete the selfie check, reach the $10 minimum, and choose PayPal. The owner reports free, instant withdrawal.',
     ],
     caveat: 'Reward and cashout details are owner-reported and may vary. Check current eligibility, permissions, minimum balance, and redemption terms in the app.',
