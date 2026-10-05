@@ -37,7 +37,7 @@ export const REFERRAL_OFFER_CANDIDATES: Offer[] = [
     clicksCount: 0,
     conversionsCount: 0,
     createdAt: '2026-10-02T00:00:00.000Z',
-    updatedAt: '2026-10-04T15:25:00.000Z',
+    updatedAt: '2026-10-05T04:05:00.000Z',
   },
   {
     id: 'candidate-measure-protocol-msr-referral',
