@@ -3149,6 +3149,27 @@ app.post('/api/admin/revenue', requireOwnerAdmin, async (req, res) => {
   return res.status(201).json({ event });
 });
 
+app.delete('/api/admin/revenue/:id', requireOwnerAdmin, async (req, res) => {
+  const eventId = req.params.id;
+  if (database) {
+    try {
+      const result = await database.query(
+        'DELETE FROM offer_revenue_events WHERE id = $1',
+        [eventId],
+      );
+      if (result.rowCount !== 1) return res.status(404).json({ error: 'Revenue record not found.' });
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Could not delete confirmed offer revenue:', error);
+      return res.status(500).json({ error: 'Could not delete the revenue record.' });
+    }
+  }
+  const eventIndex = offerRevenueEvents.findIndex((event) => event.id === eventId);
+  if (eventIndex < 0) return res.status(404).json({ error: 'Revenue record not found.' });
+  offerRevenueEvents.splice(eventIndex, 1);
+  return res.json({ success: true });
+});
+
 app.post('/api/analytics/pageview', async (_req, res) => {
   try {
     await recordAggregatePageView();

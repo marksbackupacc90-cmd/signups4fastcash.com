@@ -73,6 +73,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [revenueEvents, setRevenueEvents] = useState<OfferRevenueEvent[]>([]);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [revenueSaving, setRevenueSaving] = useState(false);
+  const [deletingRevenueId, setDeletingRevenueId] = useState<string | null>(null);
   const [revenueError, setRevenueError] = useState<string | null>(null);
   const [revenueType, setRevenueType] = useState<'conversion' | 'commission'>('conversion');
   const [revenueOfferId, setRevenueOfferId] = useState(props.liveOffers[0]?.id || '');
@@ -260,6 +261,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setRevenueError(error instanceof Error ? error.message : 'Could not save this revenue entry.');
     } finally {
       setRevenueSaving(false);
+    }
+  };
+  const deleteRevenueEvent = async (entry: OfferRevenueEvent) => {
+    if (!window.confirm(`Delete this ${entry.type === 'conversion' ? 'confirmed conversion' : 'commission'} record for ${entry.company}? This cannot be undone.`)) return;
+    setDeletingRevenueId(entry.id);
+    setRevenueError(null);
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+      const response = await fetch(`/api/admin/revenue/${encodeURIComponent(entry.id)}`, {
+        method: 'DELETE',
+        headers: token ? { 'x-admin-token': token } : {},
+      });
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Could not delete this revenue record.');
+      setRevenueEvents((current) => current.filter((event) => event.id !== entry.id));
+    } catch (error) {
+      console.error('Could not delete an owner revenue entry:', error);
+      setRevenueError(error instanceof Error ? error.message : 'Could not delete this revenue record.');
+    } finally {
+      setDeletingRevenueId(null);
     }
   };
 
@@ -502,13 +523,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p className="p-4 text-xs text-zinc-400">No confirmed conversions or commissions recorded yet.</p>
                 ) : (
                   <div className="max-h-72 overflow-auto">
-                    <table className="w-full min-w-[38rem] text-left text-xs">
+                    <table className="w-full min-w-[42rem] text-left text-xs">
                       <thead className="sticky top-0 bg-[#090d12] text-[10px] uppercase tracking-wider text-zinc-400">
                         <tr>
                           <th scope="col" className="px-3 py-2">Offer</th>
                           <th scope="col" className="px-3 py-2">Record</th>
                           <th scope="col" className="px-3 py-2">Amount</th>
                           <th scope="col" className="px-3 py-2">Date / note</th>
+                          <th scope="col" className="px-3 py-2">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.06]">
@@ -523,6 +545,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <td className="px-3 py-2.5">
                               <div>{new Date(entry.recordedAt).toLocaleString()}</div>
                               {entry.note && <div className="max-w-64 truncate text-[10px] text-zinc-500">{entry.note}</div>}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <button
+                                type="button"
+                                onClick={() => void deleteRevenueEvent(entry)}
+                                disabled={deletingRevenueId !== null}
+                                aria-label={`Delete ${entry.type === 'conversion' ? 'conversion' : 'commission'} record for ${entry.company}`}
+                                className="rounded-md border border-rose-300/20 px-2.5 py-1.5 text-[10px] font-semibold text-rose-200 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {deletingRevenueId === entry.id ? 'Deleting…' : 'Delete'}
+                              </button>
                             </td>
                           </tr>
                         ))}

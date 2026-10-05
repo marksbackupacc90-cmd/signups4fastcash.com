@@ -201,6 +201,18 @@ test('Measure Protocol offer describes its broad range of eligible account conne
   assert.match(offer.honestTruth.theCatch, /site-owner reported and may vary/i);
 });
 
+test('Joko offer clearly separates the $5 referral and $5 qualifying Plaid bank-link rewards', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-joko');
+  assert.ok(offer);
+  assert.match(offer.title, /\$5 signup \+ \$5 bank link/i);
+  assert.match(offer.incentiveAmount, /\$5.*referral link.*\$5.*qualifying bank account/i);
+  assert.match(offer.honestTruth.summary, /through Plaid for another \$5/i);
+  assert.match(offer.honestTruth.summary, /account.*most of your purchases/i);
+  assert.match(offer.speedrunHints[1].instruction, /qualifying bank account through Plaid/i);
+});
+
 test('the old Era subscription offer is removed from the public catalog', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
@@ -540,6 +552,9 @@ test('confirmed revenue ledger is owner-only for reads and writes', async () => 
   const getResponse = await request('/api/admin/revenue');
   assert.equal(getResponse.status, 403);
   assert.equal(getResponse.body.error, 'Owner admin access is required.');
+  const deleteResponse = await request('/api/admin/revenue/test-event-id', { method: 'DELETE' });
+  assert.equal(deleteResponse.status, 403);
+  assert.equal(deleteResponse.body.error, 'Owner admin access is required.');
   const postResponse = await request('/api/admin/revenue', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
