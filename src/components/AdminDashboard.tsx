@@ -30,6 +30,12 @@ interface AdminDashboardProps {
 
 const OFFER_ACTIVITY_CURSOR_KEY = 'signups4fastcash_offer_activity_last_checked';
 
+interface AggregateAnalyticsTotals {
+  totalClicks: number;
+  totalPageViews: number;
+  pageViewsSince: string;
+}
+
 function readOfferActivityCursor() {
   try {
     const saved = localStorage.getItem(OFFER_ACTIVITY_CURSOR_KEY);
@@ -57,9 +63,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [aggregateRefreshKey, setAggregateRefreshKey] = useState(0);
   const [activityReport, setActivityReport] = useState<OfferActivitySinceReport | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [aggregateTotals, setAggregateTotals] = useState<AggregateAnalyticsTotals | null>(null);
+  const [aggregateTotalsLoading, setAggregateTotalsLoading] = useState(false);
+  const [aggregateTotalsError, setAggregateTotalsError] = useState<string | null>(null);
   const [revenueEvents, setRevenueEvents] = useState<OfferRevenueEvent[]>([]);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [revenueSaving, setRevenueSaving] = useState(false);
@@ -103,6 +113,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     void loadActivityReport();
     return () => controller.abort();
   }, [activityRefreshKey]);
+  useEffect(() => {
+    if (!props.isOwnerAdmin) return;
+    const controller = new AbortController();
+    const loadAggregateTotals = async () => {
+      setAggregateTotalsLoading(true);
+      setAggregateTotalsError(null);
+      try {
+        const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+        const response = await fetch('/api/admin/analytics/totals', {
+          headers: token ? { 'x-admin-token': token } : {},
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => null) as (AggregateAnalyticsTotals & { error?: string }) | null;
+        if (!response.ok || !data) throw new Error(data?.error || 'Could not load aggregate analytics totals.');
+        setAggregateTotals(data);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('Could not load aggregate analytics totals:', error);
+        setAggregateTotalsError(error instanceof Error ? error.message : 'Could not load aggregate analytics totals.');
+      } finally {
+        if (!controller.signal.aborted) setAggregateTotalsLoading(false);
+      }
+    };
+    void loadAggregateTotals();
+    return () => controller.abort();
+  }, [props.isOwnerAdmin, aggregateRefreshKey]);
   useEffect(() => {
     if (!props.isOwnerAdmin) return;
     const controller = new AbortController();
@@ -350,6 +386,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </>
             )}
           </section>
+          {props.isOwnerAdmin && (
+            <section className="rounded-xl border border-cyan-300/15 bg-[#0e121a] p-5" aria-labelledby="aggregate-analytics-title">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm font-bold text-white">
+                  <BarChart3 className="h-4 w-4 text-cyan-300" />
+                  <h2 id="aggregate-analytics-title">Site totals</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAggregateRefreshKey((key) => key + 1)}
+                  disabled={aggregateTotalsLoading}
+                  className="self-start rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/[0.06] disabled:opacity-50 sm:self-auto"
+                >
+                  {aggregateTotalsLoading ? 'Refreshing…' : 'Refresh totals'}
+                </button>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                Owner-only aggregate counters. Clicks are tracked referral-link clicks, not unique people. Page views have been counted without visitor IDs, paths, or locations since the date shown.
+              </p>
+              {aggregateTotalsLoading ? (
+                <p className="mt-4 text-xs text-zinc-400" role="status">Loading site totals…</p>
+              ) : aggregateTotalsError ? (
+                <p className="mt-4 rounded-lg border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-200" role="alert">{aggregateTotalsError}</p>
+              ) : aggregateTotals ? (
+                <>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-white/[0.07] bg-[#090d12] p-4">
+                      <div className="text-2xl font-black text-cyan-200">{aggregateTotals.totalClicks.toLocaleString()}</div>
+                      <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">All-time tracked referral clicks</div>
+                    </div>
+                    <div className="rounded-lg border border-white/[0.07] bg-[#090d12] p-4">
+                      <div className="text-2xl font-black text-emerald-200">{aggregateTotals.totalPageViews.toLocaleString()}</div>
+                      <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Total aggregate page views</div>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[10px] leading-relaxed text-zinc-500">
+                    Page-view history before {new Date(aggregateTotals.pageViewsSince).toLocaleDateString()} may be incomplete because page-view tracking was previously disabled. The owner-only analytics reset clears both totals.
+                  </p>
+                </>
+              ) : null}
+            </section>
+          )}
           {props.isOwnerAdmin && (
             <section className="rounded-xl border border-emerald-300/15 bg-[#0e121a] p-5" aria-labelledby="revenue-ledger-title">
               <div className="flex items-center gap-2 text-sm font-bold text-white">

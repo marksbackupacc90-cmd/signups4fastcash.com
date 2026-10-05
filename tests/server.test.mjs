@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, getAggregatePageViewCount, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -465,14 +465,21 @@ test('editing a hidden offer link does not publish the offer', () => {
   assert.equal(resolveUpdatedOfferStatus('live', undefined), 'live');
 });
 
-test('visitor page-view analytics are disabled', async () => {
-  const response = await request('/api/analytics/pageview', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ visitorId: 'test-visitor', path: '/', source: 'test' }),
-  });
-  assert.equal(response.status, 410);
-  assert.equal(response.body.error, 'Visitor page-view tracking is disabled.');
+test('page-view endpoint records anonymous aggregate loads without returning the count', async () => {
+  const before = getAggregatePageViewCount();
+  const first = await request('/api/analytics/pageview', { method: 'POST' });
+  const second = await request('/api/analytics/pageview', { method: 'POST' });
+  assert.equal(first.status, 204);
+  assert.equal(first.body, null);
+  assert.equal(second.status, 204);
+  assert.equal(second.body, null);
+  assert.equal(getAggregatePageViewCount(), before + 2);
+});
+
+test('aggregate analytics totals are restricted to the owner admin', async () => {
+  const response = await request('/api/admin/analytics/totals');
+  assert.equal(response.status, 403);
+  assert.equal(response.body.error, 'Owner admin access is required.');
 });
 
 test('subscriber count endpoint never returns private subscriber records', async () => {
@@ -501,11 +508,16 @@ test('offer analytics rejects malformed telemetry payloads', async () => {
 
 test('first-party offer redirects record one click before redirecting', async () => {
   const before = getOfferActivityReport(7).offers['offer-western-union-referral']?.clicks || 0;
+  const publicBefore = await request('/api/offers');
+  const publicCountBefore = publicBefore.body.offers.find((offer) => offer.id === 'offer-western-union-referral').clicksCount;
   const response = await requestText('/go/offer-western-union-referral', { redirect: 'manual' });
   assert.equal(response.status, 302);
   assert.match(response.headers.get('location'), /^https:\/\/.+/);
   const after = getOfferActivityReport(7).offers['offer-western-union-referral']?.clicks || 0;
+  const publicAfter = await request('/api/offers');
+  const publicCountAfter = publicAfter.body.offers.find((offer) => offer.id === 'offer-western-union-referral').clicksCount;
   assert.equal(after, before + 1);
+  assert.equal(publicCountAfter, publicCountBefore + 1);
 });
 
 test('first-party offer redirects reject unavailable offers without recording clicks', async () => {

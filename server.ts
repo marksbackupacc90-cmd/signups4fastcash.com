@@ -389,7 +389,12 @@ const legacySeoRedirects: Record<string, string> = {
 };
 
 Object.entries(seoPageRoutes).forEach(([route, fileName]) => {
-  app.get(route, (_req, res) => {
+  app.get(route, async (_req, res) => {
+    try {
+      await recordAggregatePageView();
+    } catch (error) {
+      console.error('Could not record aggregate page view for an SEO page:', error);
+    }
     res.sendFile(path.join(process.cwd(), 'public', fileName));
   });
   app.get(`${route}.html`, (_req, res) => {
@@ -654,6 +659,26 @@ let analyticsStore = {
   totalClicks: 0,
   totalConversions: 0,
 };
+let aggregatePageViewCount = 0;
+let aggregatePageViewsSince = new Date().toISOString();
+
+async function recordAggregatePageView() {
+  if (!database) {
+    aggregatePageViewCount += 1;
+    return;
+  }
+  const result = await database.query<{ total_page_views: number }>(
+    `UPDATE analytics_counters SET total_page_views = total_page_views + 1
+     WHERE id = 1 RETURNING total_page_views`,
+  );
+  if (!result.rows[0]) throw new Error('Aggregate page-view counter row is missing.');
+  aggregatePageViewCount = result.rows[0].total_page_views;
+}
+
+export function getAggregatePageViewCount() {
+  return aggregatePageViewCount;
+}
+
 type OfferAnalyticsEvent = {
   offerId: string;
   type: 'click' | 'conversion';
@@ -971,9 +996,13 @@ async function initializeOfferStore() {
     CREATE TABLE IF NOT EXISTS analytics_counters (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       total_clicks INTEGER NOT NULL DEFAULT 0,
-      total_conversions INTEGER NOT NULL DEFAULT 0
+      total_conversions INTEGER NOT NULL DEFAULT 0,
+      total_page_views INTEGER NOT NULL DEFAULT 0,
+      page_views_since TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query('ALTER TABLE analytics_counters ADD COLUMN IF NOT EXISTS total_page_views INTEGER NOT NULL DEFAULT 0');
+  await database.query('ALTER TABLE analytics_counters ADD COLUMN IF NOT EXISTS page_views_since TIMESTAMPTZ NOT NULL DEFAULT NOW()');
   await database.query(`
     CREATE TABLE IF NOT EXISTS offer_analytics_events (
       id TEXT PRIMARY KEY,
@@ -1103,8 +1132,8 @@ async function initializeOfferStore() {
     database.query<{ id: string; email: string; subscribed_at: Date; frequency: string; verified: boolean }>(
       'SELECT id, email, subscribed_at, frequency, verified FROM newsletter_subscribers WHERE unsubscribed_at IS NULL ORDER BY subscribed_at DESC',
     ),
-    database.query<{ total_clicks: number; total_conversions: number }>(
-      'SELECT total_clicks, total_conversions FROM analytics_counters WHERE id = 1',
+    database.query<{ total_clicks: number; total_conversions: number; total_page_views: number; page_views_since: Date }>(
+      'SELECT total_clicks, total_conversions, total_page_views, page_views_since FROM analytics_counters WHERE id = 1',
     ),
   ]);
   const visitorRows = await database.query<{ visitor_id: string; source: string; total: string }>(
@@ -1147,6 +1176,8 @@ async function initializeOfferStore() {
       totalClicks: analytics.rows[0].total_clicks,
       totalConversions: analytics.rows[0].total_conversions,
     };
+    aggregatePageViewCount = analytics.rows[0].total_page_views;
+    aggregatePageViewsSince = new Date(analytics.rows[0].page_views_since).toISOString();
   }
 
   await database.query(`
@@ -3118,8 +3149,45 @@ app.post('/api/admin/revenue', requireOwnerAdmin, async (req, res) => {
   return res.status(201).json({ event });
 });
 
-app.post('/api/analytics/pageview', (_req, res) => {
-  return res.status(410).json({ error: 'Visitor page-view tracking is disabled.' });
+app.post('/api/analytics/pageview', async (_req, res) => {
+  try {
+    await recordAggregatePageView();
+  } catch (error) {
+    console.error('Could not record aggregate page view:', error);
+    return res.status(500).json({ error: 'Could not record page view.' });
+  }
+  return res.status(204).end();
+});
+
+app.get('/api/admin/analytics/totals', requireOwnerAdmin, async (_req, res) => {
+  if (database) {
+    try {
+      const result = await database.query<{
+        total_clicks: number;
+        total_page_views: number;
+        page_views_since: Date;
+      }>(
+        'SELECT total_clicks, total_page_views, page_views_since FROM analytics_counters WHERE id = 1',
+      );
+      const totals = result.rows[0];
+      if (!totals) throw new Error('Analytics counter row is missing.');
+      aggregatePageViewCount = totals.total_page_views;
+      aggregatePageViewsSince = new Date(totals.page_views_since).toISOString();
+      return res.json({
+        totalClicks: totals.total_clicks,
+        totalPageViews: totals.total_page_views,
+        pageViewsSince: aggregatePageViewsSince,
+      });
+    } catch (error) {
+      console.error('Could not load aggregate analytics totals:', error);
+      return res.status(500).json({ error: 'Could not load analytics totals.' });
+    }
+  }
+  return res.json({
+    totalClicks: analyticsStore.totalClicks,
+    totalPageViews: aggregatePageViewCount,
+    pageViewsSince: aggregatePageViewsSince,
+  });
 });
 
 app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
@@ -3371,6 +3439,8 @@ app.post('/api/admin/analytics/report', requireAdmin, async (_req, res) => {
 
 app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
   analyticsStore = { totalClicks: 0, totalConversions: 0 };
+  aggregatePageViewCount = 0;
+  aggregatePageViewsSince = new Date().toISOString();
   analyticsReportCheckpoint = null;
   offerImpressionsStore.length = 0;
   offerAnalyticsEvents.length = 0;
@@ -3389,7 +3459,9 @@ app.post('/api/admin/analytics/reset', requireOwnerAdmin, async (_req, res) => {
   if (database) {
     try {
       await database.query('BEGIN');
-      await database.query('UPDATE analytics_counters SET total_clicks = 0, total_conversions = 0 WHERE id = 1');
+      await database.query(
+        'UPDATE analytics_counters SET total_clicks = 0, total_conversions = 0, total_page_views = 0, page_views_since = NOW() WHERE id = 1',
+      );
       await database.query('DELETE FROM offer_analytics_events');
       await database.query('DELETE FROM visitor_events');
       await database.query('DELETE FROM offer_impressions');

@@ -25,6 +25,12 @@ export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
         <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
           {settings.trustSubtext || 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.'}
         </p>
+        <div className="mt-4 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.04] p-4">
+          <h3 className="text-sm font-bold text-emerald-100">Our standard: keep it 100% honest</h3>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+            I instruct the AI assistant I use to stay truthful: no made-up rewards, fake click counts, or payout guarantees. Click totals count tracked link clicks, not unique people. If a detail is uncertain, we say so—and the provider&apos;s current terms always come first.
+          </p>
+        </div>
       </div>
 
       <div className="space-y-2">

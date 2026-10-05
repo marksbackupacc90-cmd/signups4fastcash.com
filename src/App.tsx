@@ -133,6 +133,7 @@ export default function App() {
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
+  const pageViewRecordedRef = useRef(false);
   const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0, moved: false });
   const carouselHoverDirectionRef = useRef<-1 | 0 | 1>(0);
   const carouselHoverFrameRef = useRef<number | null>(null);
@@ -400,6 +401,48 @@ export default function App() {
       .catch(() => {
         // Keep the local catalog available when the API is offline.
       });
+  }, []);
+
+  useEffect(() => {
+    if (pageViewRecordedRef.current) return;
+    pageViewRecordedRef.current = true;
+    fetch('/api/analytics/pageview', { method: 'POST', keepalive: true })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Page-view counter returned HTTP ${response.status}.`);
+      })
+      .catch((error) => console.error('Could not record aggregate page view:', error));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshOffers = async () => {
+      try {
+        const response = await fetch('/api/offers');
+        if (!response.ok) throw new Error(`Offer refresh returned HTTP ${response.status}.`);
+        const data = await response.json() as { offers: Offer[] };
+        if (active) {
+          const refreshedCounts = new Map(data.offers.map((offer) => [offer.id, offer.clicksCount]));
+          setLiveOffers((current) => current.map((offer) => {
+            const clicksCount = refreshedCounts.get(offer.id);
+            return clicksCount === undefined ? offer : { ...offer, clicksCount };
+          }));
+        }
+      } catch (error) {
+        console.error('Could not refresh public offer counts:', error);
+      }
+    };
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') void refreshOffers();
+    };
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshOffers();
+    }, 60_000);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   useEffect(() => {

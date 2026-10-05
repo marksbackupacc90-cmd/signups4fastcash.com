@@ -85,8 +85,12 @@ when checking a newly deployed catalog.
 
 ## Offer activity reporting and visitor privacy
 
-Visitor page views, visitor IDs, approximate locations, and offer impressions are
-not collected. The legacy page-view and impression endpoints return HTTP 410.
+Page loads are counted in a single aggregate counter. The counter does not store
+visitor IDs, page paths, sources, or locations, and no consent popup is used.
+Offer impressions remain disabled; the legacy impression endpoint returns HTTP
+410. The public offer cards show tracked referral-link clicks, not unique people.
+Aggregate page-view counting starts when this version is deployed; earlier
+page-view totals may be incomplete because collection was previously disabled.
 The optional `VISITOR_ANALYTICS_RETENTION_DAYS` setting remains only to expire
 historical visitor events already stored before collection was disabled.
 
@@ -97,6 +101,11 @@ stored in PostgreSQL and older events are pruned during startup. Click records
 contain the offer ID and event time, not a visitor ID or location. Conversion
 totals increase only when an integration records a conversion; a referral click
 alone does not confirm a merchant signup or payout.
+
+The owner-only Admin overview also shows aggregate click and page-view totals.
+The click counter is resettable using the existing owner-only analytics reset;
+page views are counted from this deployment forward and are also cleared by
+that reset.
 
 ## Monitoring and recovery
 
