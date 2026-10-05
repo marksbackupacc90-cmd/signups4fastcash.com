@@ -11,7 +11,7 @@ export interface CashoutSpotlightInfo {
 
 const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
   'candidate-ero-app-referral': {
-    badge: 'Cashout in Real Life',
+    badge: 'The Daily Duo',
     payout: 'Instant debit-card withdrawal',
     payoutLabel: 'Instant debit-card cashout',
     verification: 'No ID required',
@@ -25,7 +25,7 @@ const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
     caveat: 'Cashout and ID details are owner-reported; check current Ero terms, eligible activity, and minimums in the app.',
   },
   'candidate-measure-protocol-msr-referral': {
-    badge: 'Cashout in Real Life',
+    badge: 'The Daily Duo',
     payout: 'Instant PayPal withdrawal',
     payoutLabel: 'Free instant PayPal · $10 minimum',
     verification: 'No ID required',

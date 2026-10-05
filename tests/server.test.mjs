@@ -231,6 +231,13 @@ test('Debbie referral card is available without unsupported reward or payout cla
   assert.doesNotMatch(`${offer.incentiveAmount} ${offer.honestTruth.summary}`, /\$\d/);
 });
 
+test('SoFi remains available in the public offers catalog without the featured money path', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  assert.ok(response.body.offers.some((offer) => offer.id === 'offer-sofi-banking'));
+  assert.ok(response.body.offers.some((offer) => offer.id === 'candidate-debbie-referral'));
+});
+
 test('the old Era subscription offer is removed from the public catalog', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);

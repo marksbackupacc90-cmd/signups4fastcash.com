@@ -17,7 +17,6 @@ import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { HowItWorks } from './components/HowItWorks';
-import { CashBlueprint } from './components/CashBlueprint';
 import { CashoutSpotlight } from './components/CashoutSpotlight';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 
@@ -1097,17 +1096,6 @@ export default function App() {
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">
               <HowItWorks />
-              <CashBlueprint
-                onOpenSofi={() => {
-                  const sofiOffer = liveOffers.find((offer) => offer.id === 'offer-sofi-banking');
-                  if (!sofiOffer) {
-                    showToast('The SoFi offer is temporarily unavailable.');
-                    return;
-                  }
-                  void handleClaimClick(sofiOffer.id);
-                  window.open(`/go/${encodeURIComponent(sofiOffer.id)}`, '_blank', 'noopener,noreferrer');
-                }}
-              />
               <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
                 <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
                 Some links below are referral or affiliate links. If you use one, the merchant may compensate

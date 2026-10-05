@@ -21,7 +21,7 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/20 bg-violet-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-100">
-            <CircleDollarSign className="h-3.5 w-3.5" /> Cashout in Real Life
+            <CircleDollarSign className="h-3.5 w-3.5" /> The Daily Duo
           </div>
           <h2 id="cashout-spotlight-title" className="mt-2 text-xl font-black text-white sm:text-2xl">
             Current top instant cashout offers

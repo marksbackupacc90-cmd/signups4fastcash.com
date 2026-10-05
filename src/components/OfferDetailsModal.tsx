@@ -90,7 +90,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
           {cashoutSpotlight && (
             <section className="mb-3 rounded-xl border border-violet-200/20 bg-violet-200/[0.06] p-3" aria-label="Cashout details reported by the site owner">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-violet-100">Cashout in Real Life</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-violet-100">The Daily Duo</h3>
                 <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] font-semibold text-emerald-200">{cashoutSpotlight.payout}</span>
               </div>
               <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
