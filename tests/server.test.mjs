@@ -319,6 +319,33 @@ test('newer Kalshi catalog terms replace stale saved terms while preserving offe
   assert.equal(mergeCatalogOffer(catalogOffer, newerSaved).title, 'Admin-edited title');
 });
 
+test('newer Joko terms replace stale saved offer copy while preserving referral counts', () => {
+  const catalogOffer = {
+    id: 'offer-joko',
+    title: 'Get up to $10 with Joko: $5 signup + $5 bank link',
+    incentiveAmount: '$5 for joining through the referral link + $5 for linking a qualifying bank account',
+    updatedAt: '2026-10-05T04:15:00.000Z',
+    honestTruth: {
+      summary: 'Use the referral link for $5, then connect a qualifying bank through Plaid for another $5.',
+    },
+  };
+  const savedOffer = {
+    id: 'offer-joko',
+    title: 'Get a $5 reward after signup',
+    incentiveAmount: '$5 Reward',
+    updatedAt: '2026-09-12T00:00:00.000Z',
+    status: 'live',
+    clicksCount: 8,
+    conversionsCount: 2,
+  };
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.incentiveAmount, catalogOffer.incentiveAmount);
+  assert.equal(merged.honestTruth.summary, catalogOffer.honestTruth.summary);
+  assert.equal(merged.clicksCount, 8);
+  assert.equal(merged.conversionsCount, 2);
+});
+
 test('newer Verb catalog details replace stale saved terms while preserving visibility and counts', () => {
   const catalogOffer = {
     id: 'offer-verb',
