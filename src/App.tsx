@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
@@ -59,8 +59,34 @@ function shuffleOfferIds(offers: Offer[]) {
     .map((offer) => offer.id);
 }
 
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9]{12}$/;
+const REFERRAL_CODE_STORAGE_KEY = 'signups4fastcash_referral_code';
+
+function captureReferralCode() {
+  const params = new URLSearchParams(window.location.search);
+  const queryReferralCode = params.get('ref')?.trim().toUpperCase();
+  try {
+    if (queryReferralCode) {
+      if (!REFERRAL_CODE_PATTERN.test(queryReferralCode)) {
+        sessionStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
+        return null;
+      }
+      sessionStorage.setItem(REFERRAL_CODE_STORAGE_KEY, queryReferralCode);
+      return queryReferralCode;
+    }
+
+    const savedReferralCode = sessionStorage.getItem(REFERRAL_CODE_STORAGE_KEY);
+    return savedReferralCode && REFERRAL_CODE_PATTERN.test(savedReferralCode) ? savedReferralCode : null;
+  } catch (error) {
+    console.warn('Could not persist the referral code for signup:', error);
+    return queryReferralCode && REFERRAL_CODE_PATTERN.test(queryReferralCode) ? queryReferralCode : null;
+  }
+}
+
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
+  const [referralCode, setReferralCode] = useState<string | null>(() => captureReferralCode());
+  const isRegistrationRoute = window.location.pathname.replace(/\/+$/, '') === '/register';
   const [activeTab, setActiveTab] = useState<'offers' | 'daily' | 'admin'>('offers');
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
@@ -158,7 +184,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [authOpenRequest, setAuthOpenRequest] = useState(0);
+  const [authOpenRequest, setAuthOpenRequest] = useState(() => isRegistrationRoute || Boolean(referralCode) ? 1 : 0);
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
@@ -166,6 +192,20 @@ export default function App() {
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const liveOfferIds = liveOffers.map((offer) => offer.id).join('|');
+  const handleAuthUserChange = useCallback((user: AuthUser | null) => {
+    setAuthUser(user);
+    if (user) {
+      setReferralCode(null);
+      try {
+        sessionStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
+      } catch (error) {
+        console.warn('Could not clear the saved referral code after authentication:', error);
+      }
+      if (window.location.pathname.replace(/\/+$/, '') === '/register') {
+        window.history.replaceState(null, '', '/');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -1266,7 +1306,14 @@ export default function App() {
         subscriberCount={subscriberCount}
       />
 
-      <AuthModal user={authUser} onUserChange={setAuthUser} openRequest={authOpenRequest} disabled={recordingMode} />
+      <AuthModal
+        user={authUser}
+        onUserChange={handleAuthUserChange}
+        openRequest={authOpenRequest}
+        mode={isRegistrationRoute || Boolean(referralCode) ? 'signup' : 'signin'}
+        referralCode={referralCode}
+        disabled={recordingMode}
+      />
       {accountOpen && authUser && (
         <AccountPanel user={authUser} onUserChange={setAuthUser} onClose={() => setAccountOpen(false)} />
       )}

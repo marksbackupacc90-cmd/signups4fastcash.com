@@ -16,11 +16,12 @@ interface AuthModalProps {
   onUserChange: (user: AuthUser | null) => void;
   openRequest?: number;
   mode?: 'signin' | 'signup';
+  referralCode?: string | null;
   disabled?: boolean;
   requiredAuth?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', disabled = false, requiredAuth = false }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', referralCode, disabled = false, requiredAuth = false }) => {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
@@ -41,7 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
   };
 
   useEffect(() => {
-    if (!disabled && (openRequest > 0 || (requiredAuth && !user))) setOpen(true);
+    if (!disabled && !user && (openRequest > 0 || requiredAuth)) setOpen(true);
   }, [disabled, openRequest, requiredAuth, user]);
 
   useEffect(() => {
@@ -63,9 +64,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
 
   const signIn = () => {
     setError('');
-    const referralCode = new URLSearchParams(window.location.search).get('ref')?.trim();
-    const authUrl = referralCode
-      ? `/api/auth/google?ref=${encodeURIComponent(referralCode)}`
+    const code = referralCode || new URLSearchParams(window.location.search).get('ref')?.trim();
+    const authUrl = code
+      ? `/api/auth/google?ref=${encodeURIComponent(code)}`
       : '/api/auth/google';
     const popup = window.open(authUrl, 'sfc-google-signin', 'width=520,height=650');
     if (!popup) setError('Please allow pop-ups to sign in with Google.');
