@@ -49,10 +49,12 @@ interface ReferralPayout {
     offerId: string;
     company: string;
     title: string;
-    status: 'active' | 'completed' | 'issue';
+    status: 'active' | 'completed' | 'issue' | 'clicked';
     updatedAt: string;
     reportedCompletedAt: string | null;
     currentlySaved: boolean;
+    clickCount: number;
+    lastClickedAt: string | null;
   }[];
 }
 
@@ -628,7 +630,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               ) : (
                                 <details className="max-w-72">
                                   <summary className="cursor-pointer text-cyan-100">
-                                    {entry.offerActivity.filter((item) => item.reportedCompletedAt).length} completion reports · {entry.offerActivity.filter((item) => item.status === 'active').length} in progress
+                                    {entry.offerActivity.reduce((count, item) => count + item.clickCount, 0)} tracked site clicks · {entry.offerActivity.filter((item) => item.reportedCompletedAt).length} completion reports
                                   </summary>
                                   <ul className="mt-2 space-y-1">
                                     {entry.offerActivity.map((item) => (
@@ -640,10 +642,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             ? 'member-reported complete'
                                             : item.status === 'issue'
                                               ? 'issue reported'
-                                              : item.reportedCompletedAt
-                                                ? 'reopened after completion report'
-                                                : 'in progress'})
+                                                : item.status === 'clicked'
+                                                  ? 'opened from this site'
+                                                  : item.reportedCompletedAt
+                                                  ? 'reopened after completion report'
+                                                  : 'in progress'})
                                         </span>
+                                        {item.clickCount > 0 && (
+                                            <div className="text-[10px] text-cyan-100/80">
+                                              {item.clickCount} tracked site {item.clickCount === 1 ? 'click' : 'clicks'}
+                                              {item.lastClickedAt ? ` · last ${new Date(item.lastClickedAt).toLocaleString()}` : ''}
+                                            </div>
+                                        )}
                                         {!item.currentlySaved && <span className="ml-1 text-zinc-500">(removed from My Offers)</span>}
                                         {item.reportedCompletedAt && (
                                           <div className="text-[10px] text-zinc-500">

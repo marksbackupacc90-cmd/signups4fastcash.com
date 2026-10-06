@@ -59,7 +59,9 @@ commission actually received and verified by the owner from offers opened
 through this site. Offer completion or estimated revenue alone does not
 qualify. The owner payout queue lists that account's saved offer activity;
 completion statuses are member-reported and must not be treated as proof of
-a provider conversion or payment.
+a provider conversion or payment. Outbound offer clicks can be attributed to a
+referred member only while they are signed in; provider-side completion and
+commission still require a partner postback or owner verification.
 
 Offer edits persist in PostgreSQL when `DATABASE_URL` is configured. Without it,
 the app uses in-memory storage and changes are lost on restart.

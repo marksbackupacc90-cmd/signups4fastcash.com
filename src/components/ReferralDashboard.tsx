@@ -7,6 +7,23 @@ interface ReferralSummary {
   referredAccounts: number;
   pendingBonusCents: number;
   completedCashCents: number;
+  referralProgress: ReferralProgressEntry[];
+}
+
+interface ReferralProgressEntry {
+  label: string;
+  status: 'pending' | 'completed' | 'void';
+  bonusCents: number;
+  verifiedNetRevenueCents: number;
+  trackedSiteClicks: number;
+  createdAt: string;
+  offers: {
+    offerId: string;
+    company: string;
+    title: string;
+    status: 'active' | 'completed' | 'issue';
+    reportedCompletedAt: string | null;
+  }[];
 }
 
 function formatMoney(cents: number) {
@@ -39,7 +56,8 @@ export const ReferralDashboard: React.FC = () => {
       if (
         typeof data.referralUrl !== 'string' ||
         typeof data.pendingBonusCents !== 'number' ||
-        typeof data.completedCashCents !== 'number'
+        typeof data.completedCashCents !== 'number' ||
+        !Array.isArray(data.referralProgress)
       ) {
         throw new Error('Referral details were returned in an unexpected format.');
       }
@@ -155,6 +173,79 @@ export const ReferralDashboard: React.FC = () => {
               <p className="mt-1 text-[11px] text-zinc-400">Approved referral rewards</p>
             </article>
           </div>
+
+          <section className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4" aria-labelledby="referral-progress-title">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 id="referral-progress-title" className="text-sm font-bold text-white">Referred member progress</h4>
+                <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
+                  Private account details are hidden. Site clicks are tracked when a referred member is signed in; offer completions are self-reported, not proof of earnings.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadReferralSummary()}
+                disabled={loading}
+                className="rounded-md border border-white/10 px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5 disabled:opacity-50"
+              >
+                {loading ? 'Refreshing…' : 'Refresh progress'}
+              </button>
+            </div>
+            {summary.referralProgress.length === 0 ? (
+              <p className="mt-4 rounded-lg border border-white/[0.06] bg-[#090d18]/60 p-3 text-xs text-zinc-400">
+                No one has signed up through your referral link yet.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {summary.referralProgress.map((member) => (
+                  <article key={member.label} className="rounded-lg border border-white/[0.07] bg-[#090d18]/60 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-bold text-white">{member.label}</p>
+                        <p className="mt-1 text-[10px] text-zinc-500">
+                          Joined {new Date(member.createdAt).toLocaleDateString()} · {member.trackedSiteClicks} tracked site {member.trackedSiteClicks === 1 ? 'click' : 'clicks'}
+                        </p>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
+                        member.status === 'completed'
+                          ? 'bg-emerald-300/10 text-emerald-200'
+                          : member.status === 'void'
+                            ? 'bg-zinc-300/10 text-zinc-400'
+                            : 'bg-amber-300/10 text-amber-200'
+                      }`}>
+                        {member.status === 'pending' ? 'Conditional' : member.status}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-zinc-300">
+                      <span>Potential reward: {formatMoney(member.bonusCents)}</span>
+                      <span>
+                        Verified net received: {formatMoney(member.verifiedNetRevenueCents)} / {formatMoney(1000)}
+                      </span>
+                    </div>
+                    {member.offers.length === 0 ? (
+                      <p className="mt-2 text-[11px] text-zinc-500">No offer activity reported yet.</p>
+                    ) : (
+                      <ul className="mt-2 space-y-1 border-t border-white/[0.06] pt-2">
+                        {member.offers.map((offer) => (
+                          <li key={offer.offerId} className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-[11px]">
+                            <span className="text-zinc-200">{offer.company} <span className="text-zinc-500">· {offer.title}</span></span>
+                            <span className={offer.reportedCompletedAt ? 'text-emerald-200' : offer.status === 'issue' ? 'text-rose-200' : 'text-zinc-400'}>
+                              {offer.reportedCompletedAt ? 'Member-reported complete' : offer.status === 'issue' ? 'Issue reported' : 'In progress'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {member.status === 'pending' && member.verifiedNetRevenueCents < 1000 && (
+                      <p className="mt-2 text-[10px] leading-relaxed text-amber-100/80">
+                        The $5 reward is not payable unless at least $10 in commission from this signup is actually received and verified by the site owner.
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
 
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4">
             <form onSubmit={saveCustomCode} className="mb-4">

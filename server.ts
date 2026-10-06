@@ -764,12 +764,93 @@ app.get('/api/referrals/me', async (req, res) => {
     );
     const referral = result.rows[0];
     if (!referral?.referral_code) return res.status(404).json({ error: 'Referral code not found for this account.' });
+    const progressResult = await database.query<{
+      id: string;
+      status: 'pending' | 'completed' | 'void';
+      bonus_cents: number;
+      verified_net_revenue_cents: number;
+      created_at: Date | string;
+      tracked_site_clicks: number;
+      offers: {
+        offerId: string;
+        company: string;
+        title: string;
+        status: 'active' | 'completed' | 'issue';
+        reportedCompletedAt: Date | string | null;
+      }[];
+    }>(
+      `SELECT referrals.id,
+              referrals.status,
+              (referrals.bonus_amount * 100)::int AS bonus_cents,
+              (referrals.verified_net_revenue * 100)::int AS verified_net_revenue_cents,
+              referrals.created_at,
+              (SELECT COUNT(*)::int
+               FROM referral_offer_clicks AS clicks
+               WHERE clicks.referral_id = referrals.id) AS tracked_site_clicks,
+              COALESCE(
+                (
+                  SELECT JSONB_AGG(
+                    JSONB_BUILD_OBJECT(
+                      'offerId', activity.offer_id,
+                      'company', COALESCE(offers.offer->>'company', 'Offer'),
+                      'title', COALESCE(offers.offer->>'title', activity.offer_id),
+                      'status', activity.status,
+                      'reportedCompletedAt', activity.reported_completed_at
+                    ) ORDER BY COALESCE(activity.reported_completed_at, activity.updated_at) DESC
+                  )
+                  FROM (
+                    SELECT entries.offer_id,
+                           entries.status,
+                           entries.updated_at,
+                           completion.reported_at AS reported_completed_at
+                    FROM user_offer_entries AS entries
+                    LEFT JOIN user_offer_completion_reports AS completion
+                      ON completion.user_id = entries.user_id AND completion.offer_id = entries.offer_id
+                    WHERE entries.user_id = referrals.referred_user_id
+                    UNION ALL
+                    SELECT completion.offer_id,
+                           'completed' AS status,
+                           completion.reported_at AS updated_at,
+                           completion.reported_at AS reported_completed_at
+                    FROM user_offer_completion_reports AS completion
+                    WHERE completion.user_id = referrals.referred_user_id
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM user_offer_entries AS entries
+                        WHERE entries.user_id = completion.user_id
+                          AND entries.offer_id = completion.offer_id
+                      )
+                  ) AS activity
+                  LEFT JOIN offers ON offers.id = activity.offer_id
+                ),
+                '[]'::jsonb
+              ) AS offers
+       FROM referrals
+       WHERE referrals.referrer_id = $1
+       ORDER BY referrals.created_at DESC
+       LIMIT 100`,
+      [user.id],
+    );
     return res.json({
       referralCode: referral.referral_code,
       referralUrl: `https://signups4fastcash.com/?ref=${encodeURIComponent(referral.referral_code)}`,
       referredAccounts: referral.referral_count,
       pendingBonusCents: referral.pending_cents,
       completedCashCents: referral.completed_cents,
+      referralProgress: progressResult.rows.map((entry, index) => ({
+        label: `Referral ${progressResult.rows.length - index}`,
+        status: entry.status,
+        bonusCents: entry.bonus_cents,
+        verifiedNetRevenueCents: entry.verified_net_revenue_cents,
+        trackedSiteClicks: entry.tracked_site_clicks,
+        createdAt: new Date(entry.created_at).toISOString(),
+        offers: entry.offers.map((offer) => ({
+          ...offer,
+          reportedCompletedAt: offer.reportedCompletedAt
+            ? new Date(offer.reportedCompletedAt).toISOString()
+            : null,
+        })),
+      })),
     });
   } catch (error) {
     console.error('Could not load referral account:', error);
@@ -1360,6 +1441,19 @@ async function initializeOfferStore() {
       bonus_amount NUMERIC(10,2) NOT NULL DEFAULT 5.00 CHECK (bonus_amount >= 0),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS referral_offer_clicks (
+      id UUID PRIMARY KEY,
+      referral_id UUID NOT NULL REFERENCES referrals(id) ON DELETE CASCADE,
+      referred_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS referral_offer_clicks_referral_offer_time_idx
+    ON referral_offer_clicks (referral_id, offer_id, clicked_at DESC)
   `);
   await database.query(`
     CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -1963,7 +2057,24 @@ app.get('/go/:id', async (req, res) => {
     await recordOfferAnalyticsEvent(offer, 'click');
   } catch (error) {
     console.error('Could not record outbound offer click:', error);
-    return res.status(503).send('We could not record this referral click. Please try again shortly.');
+    return res.status(503).send('We could not record this offer click. Please try again shortly.');
+  }
+  if (database) {
+    try {
+      const user = await getAuthenticatedUser(req);
+      if (user) {
+        await database.query(
+          `INSERT INTO referral_offer_clicks (id, referral_id, referred_user_id, offer_id)
+           SELECT $1, referrals.id, referrals.referred_user_id, $2
+           FROM referrals
+           WHERE referrals.referred_user_id = $3
+             AND referrals.status = 'pending'`,
+          [randomUUID(), offer.id, user.id],
+        );
+      }
+    } catch (error) {
+      console.error('Could not record referred-member offer attribution:', error);
+    }
   }
   return res.redirect(302, destination);
 });
@@ -3584,10 +3695,12 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
         offerId: string;
         company: string;
         title: string;
-        status: 'active' | 'completed' | 'issue';
+        status: 'active' | 'completed' | 'issue' | 'clicked';
         updatedAt: Date | string;
         reportedCompletedAt: Date | string | null;
         currentlySaved: boolean;
+        clickCount: number;
+        lastClickedAt: Date | string | null;
       }[];
     }>(
       `SELECT referrals.id,
@@ -3612,7 +3725,9 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
                     'status', tracked.status,
                     'updatedAt', tracked.updated_at,
                     'reportedCompletedAt', tracked.reported_completed_at,
-                    'currentlySaved', tracked.currently_saved
+                    'currentlySaved', tracked.currently_saved,
+                    'clickCount', COALESCE(click_activity.click_count, 0),
+                    'lastClickedAt', click_activity.last_clicked_at
                   ) ORDER BY COALESCE(tracked.reported_completed_at, tracked.updated_at) DESC
                 ),
                 '[]'::jsonb
@@ -3643,8 +3758,35 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
                WHERE entries.user_id = completion.user_id
                  AND entries.offer_id = completion.offer_id
              )
+           UNION ALL
+           SELECT referrals.referred_user_id,
+                  clicks.offer_id,
+                  'clicked' AS status,
+                  MAX(clicks.clicked_at) AS updated_at,
+                  NULL::timestamptz AS reported_completed_at,
+                  FALSE AS currently_saved
+           FROM referral_offer_clicks AS clicks
+           WHERE clicks.referral_id = referrals.id
+             AND NOT EXISTS (
+               SELECT 1
+               FROM user_offer_entries AS entries
+               WHERE entries.user_id = referrals.referred_user_id
+                 AND entries.offer_id = clicks.offer_id
+             )
+             AND NOT EXISTS (
+               SELECT 1
+               FROM user_offer_completion_reports AS completion
+               WHERE completion.user_id = referrals.referred_user_id
+                 AND completion.offer_id = clicks.offer_id
+             )
+           GROUP BY referrals.referred_user_id, clicks.offer_id
          ) AS tracked
          LEFT JOIN offers ON offers.id = tracked.offer_id
+         LEFT JOIN LATERAL (
+           SELECT COUNT(*)::int AS click_count, MAX(clicks.clicked_at) AS last_clicked_at
+           FROM referral_offer_clicks AS clicks
+           WHERE clicks.referral_id = referrals.id AND clicks.offer_id = tracked.offer_id
+         ) AS click_activity ON TRUE
        ) AS offer_activity ON TRUE
        ORDER BY CASE WHEN referrals.status = 'pending' THEN 0 ELSE 1 END,
                 referrals.created_at DESC
@@ -3666,6 +3808,10 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
           updatedAt: new Date(entry.updatedAt).toISOString(),
           reportedCompletedAt: entry.reportedCompletedAt
             ? new Date(entry.reportedCompletedAt).toISOString()
+            : null,
+          clickCount: Number(entry.clickCount),
+          lastClickedAt: entry.lastClickedAt
+            ? new Date(entry.lastClickedAt).toISOString()
             : null,
         })),
       })),
