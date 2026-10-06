@@ -1,7 +1,7 @@
 import React from 'react';
 import { ExternalLink, MousePointerClick, ShieldCheck } from 'lucide-react';
 import { Offer } from '../types';
-import { getOfferReviewBadge } from '../offerTransparency';
+import { getOfferReviewBadge, getOfferReviewDateLabel } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -13,6 +13,7 @@ interface OfferCardProps {
 
 export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo }) => {
   const reviewBadge = getOfferReviewBadge(offer);
+  const reviewDateLabel = getOfferReviewDateLabel(offer);
   const spotlight = getCashoutSpotlightInfo(offer.id);
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
 
@@ -56,6 +57,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-mono text-zinc-400">
           <span className={`inline-flex items-center gap-1 ${reviewBadge.className}`}><ShieldCheck className="h-3 w-3" /> {reviewBadge.label}</span>
+          {reviewDateLabel && <span aria-label={reviewDateLabel}>{reviewDateLabel}</span>}
         </div>
         {spotlight && (
           <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-violet-100">
@@ -78,7 +80,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
         <a href={claimUrl} target="_blank" rel="noopener noreferrer" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onClaimClick(offer.id); }} id={`claim-offer-btn-${offer.id}`} aria-label={`View the ${offer.company} offer`} className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]">
           <span>View offer</span><ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
         </a>
-        <div className="mt-2 text-center text-[9px] leading-relaxed text-zinc-500">Referral link · {offer.company} sets eligibility and reward terms</div>
+        <p className="mt-2 text-center text-[10px] leading-relaxed text-zinc-400">
+          This may be a referral link; we may earn a commission at no extra cost. {offer.company} sets eligibility and reward terms.
+        </p>
       </div>
     </div>
   );

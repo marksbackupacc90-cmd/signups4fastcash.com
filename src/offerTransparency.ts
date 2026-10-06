@@ -2,6 +2,13 @@ import { Offer } from './types';
 
 type OfferReviewFields = Pick<Offer, 'verificationStatus' | 'verifiedAt' | 'verificationExpiresAt'>;
 
+export function getOfferReviewDateLabel(offer: Pick<Offer, 'verifiedAt'>) {
+  if (!offer.verifiedAt) return null;
+  const checkedAt = Date.parse(offer.verifiedAt);
+  if (!Number.isFinite(checkedAt)) return null;
+  return `Last checked ${new Date(checkedAt).toLocaleDateString()}`;
+}
+
 export function getOfferReviewBadge(offer: OfferReviewFields) {
   if (offer.verificationStatus === 'unverified') {
     return { label: 'Unverified', className: 'text-amber-200' };

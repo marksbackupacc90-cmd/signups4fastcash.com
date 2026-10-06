@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, ChevronDown, Copy, ExternalLink, X } from 'lucide-react';
 import { Offer } from '../types';
-import { getIdVerificationDescription, getOfferReviewBadge, getOfferReviewDescription } from '../offerTransparency';
+import { getIdVerificationDescription, getOfferReviewBadge, getOfferReviewDateLabel, getOfferReviewDescription } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 
 interface OfferDetailsModalProps {
@@ -33,8 +33,12 @@ const Disclosure: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
 export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onClose, onClaimClick }) => {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [completionStatus, setCompletionStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
+  const [issueType, setIssueType] = useState('');
+  const [issueDescription, setIssueDescription] = useState('');
+  const [issueReportStatus, setIssueReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const reviewBadge = getOfferReviewBadge(offer);
+  const reviewDateLabel = getOfferReviewDateLabel(offer);
   const cashoutSpotlight = getCashoutSpotlightInfo(offer.id);
 
   const copyCode = async () => {
@@ -63,6 +67,22 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
     }
   };
 
+  const reportOfferIssue = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIssueReportStatus('submitting');
+    try {
+      const response = await fetch(`/api/offers/${encodeURIComponent(offer.id)}/issue-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issue: issueType, description: issueDescription }),
+      });
+      if (!response.ok) throw new Error('Could not submit offer issue report.');
+      setIssueReportStatus('submitted');
+    } catch {
+      setIssueReportStatus('error');
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
@@ -85,6 +105,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
         <div className="overflow-y-auto px-5 py-4">
           <div className="mb-3 rounded-lg border border-amber-200/15 bg-amber-200/[0.04] p-3">
             <p className={`text-xs font-semibold ${reviewBadge.className}`}>{reviewBadge.label}</p>
+            {reviewDateLabel && <p className="mt-1 text-[10px] text-zinc-400">{reviewDateLabel}</p>}
             <p className="mt-1 text-xs leading-relaxed text-zinc-300">{getOfferReviewDescription(offer)}</p>
           </div>
           {cashoutSpotlight && (
@@ -174,7 +195,60 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
           <a href={claimUrl} target="_blank" rel="noopener noreferrer" onClick={() => onClaimClick(offer.id)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#06131a] hover:bg-cyan-200">
             Continue to {offer.company} <ExternalLink className="h-4 w-4" />
           </a>
-          <p className="mt-2 text-center text-[10px] leading-relaxed text-zinc-400">This may be a referral link. {offer.company} controls eligibility, approval, reward value, and payment. Confirm the current terms before proceeding.</p>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-zinc-300">
+            This may be a referral link. We may earn a commission if you use it, at no extra cost to you. {offer.company} controls eligibility, approval, reward value, and payment; confirm its current terms before proceeding.
+          </p>
+          <details className="mt-3 rounded-lg border border-white/[0.08]">
+            <summary className="cursor-pointer px-3 py-2 text-center text-xs font-medium text-zinc-300 hover:text-white">
+              Found an expired link or incorrect terms?
+            </summary>
+            <form onSubmit={reportOfferIssue} className="space-y-3 border-t border-white/[0.08] p-3">
+              {issueReportStatus === 'submitted' ? (
+                <p role="status" className="text-xs text-emerald-200">Thanks for letting us know. Your report was sent for review.</p>
+              ) : (
+                <>
+                  <label className="block text-xs text-zinc-300">
+                    What went wrong?
+                    <select
+                      required
+                      value={issueType}
+                      onChange={(event) => setIssueType(event.target.value)}
+                      disabled={issueReportStatus === 'submitting'}
+                      className="mt-1 w-full rounded-md border border-white/10 bg-[#111d2b] px-3 py-2 text-sm text-white"
+                    >
+                      <option value="">Select an issue</option>
+                      <option value="expired">Offer appears expired</option>
+                      <option value="broken-link">Offer link is broken</option>
+                      <option value="terms-wrong">Requirements or terms are incorrect</option>
+                    </select>
+                  </label>
+                  <label className="block text-xs text-zinc-300">
+                    Details (optional)
+                    <textarea
+                      value={issueDescription}
+                      onChange={(event) => setIssueDescription(event.target.value)}
+                      maxLength={1000}
+                      rows={3}
+                      disabled={issueReportStatus === 'submitting'}
+                      placeholder="Tell us what you saw on the provider's page."
+                      className="mt-1 w-full resize-y rounded-md border border-white/10 bg-[#111d2b] px-3 py-2 text-sm text-white placeholder:text-zinc-500"
+                    />
+                    <span className="mt-1 block text-[10px] text-zinc-500">Do not include passwords or financial account details.</span>
+                  </label>
+                  {issueReportStatus === 'error' && (
+                    <p role="alert" className="text-xs text-rose-300">We couldn't send your report. Please try again.</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={issueReportStatus === 'submitting'}
+                    className="rounded-md border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-300/10 disabled:opacity-60"
+                  >
+                    {issueReportStatus === 'submitting' ? 'Sending...' : 'Send report'}
+                  </button>
+                </>
+              )}
+            </form>
+          </details>
         </div>
       </div>
     </div>
