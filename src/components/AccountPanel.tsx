@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ReferralDashboard } from './ReferralDashboard';
 
 interface AccountUser {
   id: string;
@@ -170,6 +171,7 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({ user, onUserChange, 
           {message && <p role="status" className="text-xs text-emerald-300">{message}</p>}
           {error && <p role="alert" className="text-xs text-rose-300">{error}</p>}
         </form>
+        <ReferralDashboard />
       </section>
     </div>
   );

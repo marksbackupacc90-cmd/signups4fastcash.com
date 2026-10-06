@@ -6,7 +6,10 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = '';
 process.env.RESEND_API_KEY = '';
 process.env.EMAIL_FROM = '';
-const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, getAggregatePageViewCount, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+process.env.GOOGLE_CLIENT_ID = 'test-google-client';
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-secret';
+process.env.REFERRAL_HASH_SECRET = 'test-referral-secret';
+const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, createGoogleOAuthState, getAggregatePageViewCount, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -48,6 +51,44 @@ test('responses preserve a caller request ID for support diagnostics', async () 
   });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('x-request-id'), 'test-request-123');
+});
+
+test('referral endpoints require an authenticated account', async () => {
+  const account = await request('/api/referrals/me');
+  assert.equal(account.status, 401);
+  assert.equal(account.body.error, 'Sign in with Google first.');
+
+  const claim = await request('/api/referrals/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ referralCode: 'ABCDEF123456' }),
+  });
+  assert.equal(claim.status, 401);
+  assert.equal(claim.body.error, 'Sign in with Google first.');
+});
+
+test('Google OAuth referral state is signed, nonce-bound, and expires', () => {
+  const issuedAt = Date.now();
+  const state = createGoogleOAuthState('test-nonce', 'ABCDEF123456', issuedAt);
+  assert.deepEqual(readGoogleOAuthState(state, 'test-nonce'), { referralCode: 'ABCDEF123456' });
+  assert.equal(readGoogleOAuthState(state, 'other-nonce'), null);
+  assert.equal(readGoogleOAuthState(`${state}tampered`, 'test-nonce'), null);
+
+  const expiredState = createGoogleOAuthState('test-nonce', 'ABCDEF123456', issuedAt - 11 * 60 * 1000);
+  assert.equal(readGoogleOAuthState(expiredState, 'test-nonce'), null);
+});
+
+test('Google signup carries a referral code in protected OAuth state', async () => {
+  const response = await requestText('/api/auth/google?ref=ABCDEF123456', { redirect: 'manual' });
+  assert.equal(response.status, 302);
+  const redirectUrl = new URL(response.headers.get('location'));
+  assert.equal(redirectUrl.searchParams.get('client_id'), 'test-google-client');
+  const state = redirectUrl.searchParams.get('state');
+  const cookie = response.headers.get('set-cookie');
+  const nonce = cookie?.match(/sfc_oauth_state=([a-f0-9]+)/)?.[1];
+  assert.ok(state);
+  assert.ok(nonce);
+  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: 'ABCDEF123456' });
 });
 
 test('sitemap contains only canonical indexable routes', async () => {

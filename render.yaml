@@ -6,7 +6,7 @@ services:
     region: oregon
     domains:
       - signups4fastcash.com
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
@@ -20,11 +20,21 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      - key: REFERRAL_HASH_SECRET
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: signups4fastcash-db
           property: connectionString
       - key: ADMIN_PASSCODE
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: NEWSLETTER_UNSUBSCRIBE_SECRET
+        generateValue: true
+      - key: NEWSLETTER_WEBHOOK_SECRET
         sync: false
       - key: CPX_APP_ID
         value: "36089"
@@ -34,3 +44,4 @@ services:
 databases:
   - name: signups4fastcash-db
     plan: free
+    region: oregon

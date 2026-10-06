@@ -63,7 +63,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
 
   const signIn = () => {
     setError('');
-    const popup = window.open('/api/auth/google', 'sfc-google-signin', 'width=520,height=650');
+    const referralCode = new URLSearchParams(window.location.search).get('ref')?.trim();
+    const authUrl = referralCode
+      ? `/api/auth/google?ref=${encodeURIComponent(referralCode)}`
+      : '/api/auth/google';
+    const popup = window.open(authUrl, 'sfc-google-signin', 'width=520,height=650');
     if (!popup) setError('Please allow pop-ups to sign in with Google.');
     else {
       setAuthPopup(popup);

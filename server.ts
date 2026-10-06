@@ -1,10 +1,11 @@
 import express from 'express';
 import path from 'path';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { isIP } from 'net';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import { SITE_OFFER_CATALOG as PUBLIC_OFFERS } from './src/data/offerCatalog';
 import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from './src/types';
 
@@ -15,6 +16,7 @@ const env = process.env as unknown as Record<string, string | undefined>;
 const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
+const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
 const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
@@ -443,6 +445,47 @@ function authUserResponse(user: { id: string; email: string; username: string | 
   return user ? { id: user.id, email: user.email, username: user.username, avatarUrl: user.avatarUrl || null, paypalEmail: user.paypalEmail || null, dateOfBirth: user.dateOfBirth || null, sex: user.sex || null, state: user.state || null } : null;
 }
 
+function hashReferralValue(value: string) {
+  if (!referralHashSecret) throw new Error('Referral hash secret is not configured.');
+  return createHmac('sha256', referralHashSecret).update(value).digest('hex');
+}
+
+function createGoogleOAuthState(nonce: string, referralCode: string | null, issuedAt = Date.now()) {
+  if (!googleClientSecret) throw new Error('Google OAuth is not configured.');
+  const payload = Buffer.from(JSON.stringify({ nonce, referralCode, issuedAt })).toString('base64url');
+  const signature = createHmac('sha256', googleClientSecret).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function readGoogleOAuthState(state: string, nonce: string) {
+  if (!googleClientSecret) return null;
+  const parts = state.split('.');
+  if (parts.length !== 2) return null;
+  const [payload, signature] = parts;
+  if (!payload || !signature) return null;
+  const expectedSignature = createHmac('sha256', googleClientSecret).update(payload).digest('base64url');
+  const suppliedBytes = Buffer.from(signature);
+  const expectedBytes = Buffer.from(expectedSignature);
+  if (suppliedBytes.length !== expectedBytes.length || !timingSafeEqual(suppliedBytes, expectedBytes)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
+      nonce?: string;
+      referralCode?: string | null;
+      issuedAt?: number;
+    };
+    if (
+      parsed.nonce !== nonce ||
+      !Number.isFinite(parsed.issuedAt) ||
+      Date.now() - Number(parsed.issuedAt) > 10 * 60 * 1000 ||
+      Number(parsed.issuedAt) - Date.now() > 30_000 ||
+      (parsed.referralCode !== null && parsed.referralCode !== undefined && !/^[A-Z0-9]{12}$/.test(parsed.referralCode))
+    ) return null;
+    return { referralCode: parsed.referralCode || null };
+  } catch {
+    return null;
+  }
+}
+
 app.get('/api/auth/me', async (req, res) => {
   res.json({ user: authUserResponse(await getAuthenticatedUser(req)) });
 });
@@ -451,6 +494,12 @@ app.get('/api/auth/google', (req, res) => {
   if (!googleClientId || !googleClientSecret) {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
+  const requestedReferralCode = typeof req.query.ref === 'string' ? req.query.ref.trim().toUpperCase() : '';
+  if (requestedReferralCode && !/^[A-Z0-9]{12}$/.test(requestedReferralCode)) {
+    return res.status(400).json({ error: 'The referral code is not valid.' });
+  }
+  const nonce = randomBytes(32).toString('hex');
+  const state = createGoogleOAuthState(nonce, requestedReferralCode || null);
   const redirectUri = `${getOAuthAppUrl(req)}/api/auth/google/callback`;
   const params = new URLSearchParams({
     client_id: googleClientId,
@@ -459,13 +508,29 @@ app.get('/api/auth/google', (req, res) => {
     scope: 'openid email profile',
     access_type: 'online',
     prompt: 'select_account',
+    state,
+  });
+  res.cookie('sfc_oauth_state', nonce, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 10 * 60 * 1000,
   });
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 });
 
 app.get('/api/auth/google/callback', async (req, res) => {
   const code = typeof req.query.code === 'string' ? req.query.code : '';
+  const oauthState = typeof req.query.state === 'string' ? req.query.state : '';
+  const stateCookie = req.headers.cookie?.split(';').map((part) => part.trim())
+    .find((part) => part.startsWith('sfc_oauth_state='))?.slice('sfc_oauth_state='.length) || '';
+  const verifiedOAuthState = readGoogleOAuthState(oauthState, stateCookie);
   const requestAppUrl = getOAuthAppUrl(req);
+  if (!verifiedOAuthState) {
+    res.clearCookie('sfc_oauth_state', { httpOnly: true, sameSite: 'lax', secure: env.NODE_ENV === 'production', path: '/' });
+    return res.status(400).send('Google sign-in could not be completed.');
+  }
   if (!googleClientId || !googleClientSecret || !code) {
     return res.status(400).send('Google sign-in could not be completed.');
   }
@@ -495,16 +560,103 @@ app.get('/api/auth/google/callback', async (req, res) => {
       return res.status(401).send('Google identity verification failed.');
     }
 
+    const signupIpHeader = req.header('cf-connecting-ip')?.trim() || '';
+    const signupIp = isIP(signupIpHeader) ? signupIpHeader : req.ip;
+    const signupIpHash = referralHashSecret && signupIp && isIP(signupIp)
+      ? hashReferralValue(`ip:${signupIp}`)
+      : null;
     const userId = randomUUID();
-    let user = database
-      ? (await database.query<{ id: string; google_sub: string; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null; account_status: 'active' | 'blocked' }>(
-        `INSERT INTO users (id, google_sub, email)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()
-         RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status`,
-        [userId, identity.sub, identity.email],
-      )).rows[0]
-      : undefined;
+    const accountReferralCode = randomBytes(6).toString('hex').toUpperCase();
+    type AuthAccountRow = {
+      id: string;
+      google_sub: string;
+      email: string;
+      username: string | null;
+      avatar_url: string | null;
+      paypal_email: string | null;
+      date_of_birth: string | null;
+      sex: string | null;
+      state: string | null;
+      account_status: 'active' | 'blocked';
+    };
+    let user: AuthAccountRow | undefined;
+    if (database) {
+      const client = await database.connect();
+      try {
+        await client.query('BEGIN');
+        const inserted = await client.query<AuthAccountRow>(
+          `INSERT INTO users (id, google_sub, email, referral_code, signup_ip_hash)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (google_sub) DO NOTHING
+           RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status`,
+          [userId, identity.sub, identity.email, accountReferralCode, signupIpHash],
+        );
+        user = inserted.rows[0];
+
+        if (user && verifiedOAuthState.referralCode && signupIpHash && referralHashSecret) {
+          const referrerResult = await client.query<{ id: string }>(
+            'SELECT id FROM users WHERE UPPER(referral_code) = $1 LIMIT 1',
+            [verifiedOAuthState.referralCode],
+          );
+          const referrer = referrerResult.rows[0];
+          if (referrer && referrer.id !== user.id) {
+            const emailHash = hashReferralValue(`email:${identity.email.trim().toLowerCase()}`);
+            const alreadyClaimed = await client.query<{ already_claimed: boolean }>(
+              `SELECT EXISTS (
+                 SELECT 1 FROM referrals
+                 WHERE signup_ip_hash = $1 OR referred_email_hash = $2
+               ) AS already_claimed`,
+              [signupIpHash, emailHash],
+            );
+            const duplicateAccountEmail = await client.query<{ already_registered: boolean }>(
+              `SELECT EXISTS (
+                 SELECT 1 FROM users
+                 WHERE LOWER(email) = LOWER($1) AND id <> $2
+               ) AS already_registered`,
+              [identity.email, user.id],
+            );
+            if (!alreadyClaimed.rows[0]?.already_claimed && !duplicateAccountEmail.rows[0]?.already_registered) {
+              await client.query('SAVEPOINT referral_claim');
+              try {
+                await client.query(
+                  'UPDATE users SET referred_by_user_id = $1 WHERE id = $2',
+                  [referrer.id, user.id],
+                );
+                await client.query(
+                  `INSERT INTO referrals
+                    (id, referrer_id, referred_user_id, referred_email_hash, signup_ip_hash, status, bonus_amount)
+                   VALUES ($1, $2, $3, $4, $5, 'pending', 5.00)`,
+                  [randomUUID(), referrer.id, user.id, emailHash, signupIpHash],
+                );
+                await client.query('RELEASE SAVEPOINT referral_claim');
+              } catch (error) {
+                await client.query('ROLLBACK TO SAVEPOINT referral_claim');
+                await client.query('RELEASE SAVEPOINT referral_claim');
+                if ((error as { code?: string }).code !== '23505') throw error;
+              }
+            }
+          }
+        }
+
+        if (!user) {
+          const existing = await client.query<AuthAccountRow>(
+            `UPDATE users
+             SET email = $1, updated_at = NOW()
+             WHERE google_sub = $2
+             RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status`,
+            [identity.email, identity.sub],
+          );
+          user = existing.rows[0];
+        }
+        if (!user) throw new Error('Could not create or load the Google account.');
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
     if (database && !user) return res.status(500).send('Could not create your account.');
     if (user?.account_status === 'blocked') return res.status(403).send('This account has been blocked. Please contact support.');
     const memoryUser = user
@@ -525,11 +677,162 @@ app.get('/api/auth/google/callback', async (req, res) => {
         [sessionToken, memoryUser.id],
       );
     }
-    res.setHeader('Set-Cookie', `sfc_session=${sessionToken}; Max-Age=${AUTH_SESSION_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax${env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+    res.cookie('sfc_session', sessionToken, {
+      maxAge: AUTH_SESSION_MAX_AGE_SECONDS * 1000,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
+      path: '/',
+    });
+    res.clearCookie('sfc_oauth_state', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
+      path: '/',
+    });
     res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>if(window.opener){window.opener.location.replace(${JSON.stringify(requestAppUrl)});window.opener.postMessage({type:'sfc-auth-complete'}, '*');}window.close();</script><p>Sign-in complete. You can close this window.</p>`);
   } catch (error) {
     console.error('Google sign-in failed:', error);
     res.status(500).send('Google sign-in could not be completed.');
+  }
+});
+
+app.get('/api/referrals/me', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  if (!database) return res.status(503).json({ error: 'Referral accounts require the database service.' });
+  try {
+    const result = await database.query<{
+      referral_code: string;
+      referral_count: number;
+      pending_cents: number;
+      completed_cents: number;
+    }>(
+      `SELECT users.referral_code,
+              COUNT(referrals.id)::int AS referral_count,
+              COALESCE(SUM((referrals.bonus_amount * 100)::int)
+                FILTER (WHERE referrals.status = 'pending'), 0)::int AS pending_cents,
+              COALESCE(SUM((referrals.bonus_amount * 100)::int)
+                FILTER (WHERE referrals.status = 'completed'), 0)::int AS completed_cents
+       FROM users
+       LEFT JOIN referrals ON referrals.referrer_id = users.id
+       WHERE users.id = $1
+       GROUP BY users.id, users.referral_code`,
+      [user.id],
+    );
+    const referral = result.rows[0];
+    if (!referral?.referral_code) return res.status(404).json({ error: 'Referral code not found for this account.' });
+    return res.json({
+      referralCode: referral.referral_code,
+      referralUrl: `https://signups4fastcash.com/?ref=${encodeURIComponent(referral.referral_code)}`,
+      referredAccounts: referral.referral_count,
+      pendingBonusCents: referral.pending_cents,
+      completedCashCents: referral.completed_cents,
+    });
+  } catch (error) {
+    console.error('Could not load referral account:', error);
+    return res.status(500).json({ error: 'Could not load referral details.' });
+  }
+});
+
+app.post('/api/referrals/claim', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  if (!database) return res.status(503).json({ error: 'Referral claims require the database service.' });
+  const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';
+  if (!/^[A-Z0-9]{12}$/.test(referralCode)) {
+    return res.status(400).json({ error: 'Enter a valid 12-character referral code.' });
+  }
+  if (!referralHashSecret) return res.status(503).json({ error: 'Referral fraud checks are not configured.' });
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not open referral transaction:', error);
+    return res.status(500).json({ error: 'Could not apply the referral code.' });
+  }
+  let transactionOpen = false;
+  const rejectClaim = async (status: number, message: string) => {
+    await client.query('ROLLBACK');
+    transactionOpen = false;
+    return res.status(status).json({ error: message });
+  };
+  try {
+    await client.query('BEGIN');
+    transactionOpen = true;
+    const accountResult = await client.query<{
+      id: string;
+      email: string;
+      referral_code: string | null;
+      referred_by_user_id: string | null;
+      signup_ip_hash: string | null;
+      created_at: Date;
+    }>(
+      `SELECT id, email, referral_code, referred_by_user_id, signup_ip_hash, created_at
+       FROM users WHERE id = $1 FOR UPDATE`,
+      [user.id],
+    );
+    const account = accountResult.rows[0];
+    if (!account) return await rejectClaim(404, 'Account not found.');
+    if (account.referred_by_user_id) return await rejectClaim(409, 'A referral has already been applied to this account.');
+    const createdAt = new Date(account.created_at).getTime();
+    if (!Number.isFinite(createdAt) || Date.now() - createdAt > 24 * 60 * 60 * 1000) {
+      return await rejectClaim(409, 'Referral codes must be applied within 24 hours of account creation.');
+    }
+    if (!account.referral_code) return await rejectClaim(409, 'Your account does not have a referral code yet.');
+    if (!account.signup_ip_hash) return await rejectClaim(409, 'Could not verify the signup IP address for this account.');
+
+    const referrerResult = await client.query<{ id: string }>(
+      'SELECT id FROM users WHERE UPPER(referral_code) = $1 LIMIT 1',
+      [referralCode],
+    );
+    const referrer = referrerResult.rows[0];
+    if (!referrer) return await rejectClaim(404, 'That referral code was not found.');
+    if (referrer.id === account.id) return await rejectClaim(400, 'You cannot use your own referral code.');
+
+    const duplicateEmail = await client.query(
+      'SELECT 1 FROM users WHERE LOWER(email) = LOWER($1) AND id <> $2 LIMIT 1',
+      [account.email, account.id],
+    );
+    if (duplicateEmail.rowCount) return await rejectClaim(409, 'This email address is already linked to another account.');
+
+    const emailHash = hashReferralValue(`email:${account.email.trim().toLowerCase()}`);
+    const duplicateClaim = await client.query(
+      'SELECT 1 FROM referrals WHERE signup_ip_hash = $1 OR referred_email_hash = $2 LIMIT 1',
+      [account.signup_ip_hash, emailHash],
+    );
+    if (duplicateClaim.rowCount) {
+      return await rejectClaim(409, 'A referral bonus has already been claimed from this IP address or email.');
+    }
+
+    await client.query(
+      'UPDATE users SET referred_by_user_id = $1, updated_at = NOW() WHERE id = $2',
+      [referrer.id, account.id],
+    );
+    await client.query(
+      `INSERT INTO referrals
+        (id, referrer_id, referred_user_id, referred_email_hash, signup_ip_hash, bonus_amount, status)
+       VALUES ($1, $2, $3, $4, $5, 5.00, 'pending')`,
+      [randomUUID(), referrer.id, account.id, emailHash, account.signup_ip_hash],
+    );
+    await client.query('COMMIT');
+    transactionOpen = false;
+    return res.status(201).json({
+      referralApplied: true,
+      referrerBonusCents: 500,
+      status: 'pending',
+      message: 'Referral recorded. The $5 referrer bonus is pending review and is not an automatic payout.',
+    });
+  } catch (error) {
+    if (transactionOpen) await client.query('ROLLBACK');
+    if ((error as { code?: string }).code === '23505') {
+      return res.status(409).json({ error: 'A referral bonus has already been claimed from this IP address or email.' });
+    }
+    console.error('Could not apply referral code:', error);
+    return res.status(500).json({ error: 'Could not apply the referral code.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -911,6 +1214,30 @@ async function initializeOfferStore() {
       last_login_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id TEXT REFERENCES users(id)`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_ip_hash TEXT`);
+  await database.query(`
+    UPDATE users
+    SET referral_code = UPPER(SUBSTRING(REPLACE(id, '-', '') FROM 1 FOR 12))
+    WHERE referral_code IS NULL
+  `);
+  await database.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_unique
+    ON users (referral_code) WHERE referral_code IS NOT NULL
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      id UUID PRIMARY KEY,
+      referrer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      referred_email_hash TEXT NOT NULL UNIQUE,
+      signup_ip_hash TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'void')),
+      bonus_amount NUMERIC(10,2) NOT NULL DEFAULT 5.00 CHECK (bonus_amount >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
   await database.query(`
@@ -3738,7 +4065,7 @@ async function startServer() {
   });
 }
 
-export { app, applyCoinsBackTerms, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, resolveOfferVerificationUpdate };
+export { app, applyCoinsBackTerms, createGoogleOAuthState, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, readGoogleOAuthState, resolveOfferVerificationUpdate };
 
 if (env.NODE_ENV !== 'test') {
   initializeOfferStore()
