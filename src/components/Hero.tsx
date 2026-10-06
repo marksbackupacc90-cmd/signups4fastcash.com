@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, BellRing, Download, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ArrowRight, BellRing, Download, Search, SlidersHorizontal, Sparkles, Users } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
 interface HeroProps {
@@ -16,6 +16,8 @@ interface HeroProps {
   totalOffersCount: number;
   onOpenFinder?: () => void;
   onOpenNewsletter?: () => void;
+  onOpenReferralProgram?: () => void;
+  hasAccount?: boolean;
   onInstallApp?: () => void;
 }
 
@@ -42,6 +44,8 @@ export const Hero: React.FC<HeroProps> = ({
   totalOffersCount,
   onOpenFinder,
   onOpenNewsletter,
+  onOpenReferralProgram,
+  hasAccount = false,
   onInstallApp,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
@@ -101,6 +105,32 @@ export const Hero: React.FC<HeroProps> = ({
           <span><strong className="text-emerald-400">Terms shown</strong> before you click</span>
           <span><strong className="text-white">$0</strong> payment handling</span>
         </div>
+
+        {onOpenReferralProgram && (
+          <div className="mt-5 flex flex-col gap-3 rounded-xl border border-amber-300/20 bg-gradient-to-r from-amber-300/[0.08] to-cyan-300/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 text-amber-100">
+                <Users className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Share your link for a potential $5 referral reward.</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+                  {hasAccount
+                    ? 'They must use offers opened from this site, and we must receive and verify at least $10 in net commission from that signup before the $5 reward can be approved.'
+                    : 'Create a free account to get your link. Referrals must use offers opened from this site and generate at least $10 in net commission we actually receive and verify.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenReferralProgram}
+              className="focus-ring inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-amber-200 px-4 py-2.5 text-xs font-bold text-[#17120a] transition-colors hover:bg-amber-100"
+            >
+              {hasAccount ? 'View my referral link' : 'Get my referral link'}
+              <ArrowRight className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         {onOpenNewsletter && (
           <div className="mt-5 flex flex-col gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">

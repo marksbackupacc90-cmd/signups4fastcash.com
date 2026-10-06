@@ -9,7 +9,7 @@ process.env.EMAIL_FROM = '';
 process.env.GOOGLE_CLIENT_ID = 'test-google-client';
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-secret';
 process.env.REFERRAL_HASH_SECRET = 'test-referral-secret';
-const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, createGoogleOAuthState, getAggregatePageViewCount, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, canApproveReferralPayout, createGoogleOAuthState, getAggregatePageViewCount, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -82,6 +82,13 @@ test('referral previews validate custom links without exposing account data', as
   const validButUnavailable = await request('/api/referrals/preview?code=MY-CUSTOM-LINK');
   assert.equal(validButUnavailable.status, 503);
   assert.match(validButUnavailable.body.error, /temporarily unavailable/i);
+});
+
+test('referral payouts require twice the reward in verified net commission', () => {
+  assert.equal(canApproveReferralPayout(9.99), false);
+  assert.equal(canApproveReferralPayout(10), true);
+  assert.equal(canApproveReferralPayout(Number.NaN), false);
+  assert.equal(canApproveReferralPayout(Number.POSITIVE_INFINITY), false);
 });
 
 test('Google OAuth referral state is signed, nonce-bound, and expires', () => {
@@ -690,6 +697,14 @@ test('referral payout queue and status updates require owner admin access', asyn
   });
   assert.equal(update.status, 403);
   assert.equal(update.body.error, 'Owner admin access is required.');
+
+  const revenue = await request('/api/admin/referrals/test-referral-id/revenue', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ verifiedNetRevenue: 100 }),
+  });
+  assert.equal(revenue.status, 403);
+  assert.equal(revenue.body.error, 'Owner admin access is required.');
 });
 
 test('valid offer click events appear in the shared rolling activity report', async () => {

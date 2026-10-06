@@ -53,7 +53,13 @@ Never commit `.env.local` or provider secrets.
 
 Signed-in members can customize their referral code from the account dashboard.
 Older referral links remain valid, and visitors with a valid link see the
-referrer's username before continuing to Google sign-up.
+referrer's username before continuing to Google sign-up. A $5 referral reward
+is not payable unless that referred signup generates at least $10 in net
+commission actually received and verified by the owner from offers opened
+through this site. Offer completion or estimated revenue alone does not
+qualify. The owner payout queue lists that account's saved offer activity;
+completion statuses are member-reported and must not be treated as proof of
+a provider conversion or payment.
 
 Offer edits persist in PostgreSQL when `DATABASE_URL` is configured. Without it,
 the app uses in-memory storage and changes are lost on restart.

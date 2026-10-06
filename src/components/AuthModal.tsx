@@ -179,7 +179,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
           {needsUsername ? 'Choose your username' : mode === 'signup' ? 'Create your account' : 'Sign in to your account'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Optional: continue with Google to sync and track your offers across devices. You can browse and use offers without signing in.
+          {mode === 'signup'
+            ? 'Create a free account with Google to get a personal referral link and track your offers. You can browse offers without signing in.'
+            : 'Optional: continue with Google to sync and track your offers across devices. You can browse and use offers without signing in.'}
         </p>
         {referralCode && referralPreview && (
           <div
@@ -199,9 +201,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
             )}
             <span>
               {referralPreview.status === 'loading' && 'Checking your referral link…'}
-              {referralPreview.status === 'verified' && <>You were invited by <strong>{referralPreview.referrerName}</strong>. This referral code will be checked when you sign up; any reward is subject to eligibility and review.</>}
+              {referralPreview.status === 'verified' && <>You were invited by <strong>{referralPreview.referrerName}</strong>. To qualify the $5 referrer reward, use offers opened from this site; at least $10 in net commission must be received and verified. Activity marked complete by a member alone does not qualify.</>}
               {referralPreview.status === 'invalid' && 'This referral link could not be verified. You can still create an account, but this code will not be attached.'}
-              {referralPreview.status === 'unavailable' && 'Your referral code is saved for signup, but we could not verify the inviter right now. Rewards are subject to eligibility and review.'}
+              {referralPreview.status === 'unavailable' && 'Your referral code is saved for signup, but we could not verify the inviter right now. A $5 reward requires eligible activity through this site and at least $10 in net commission that we actually receive and verify.'}
             </span>
           </div>
         )}

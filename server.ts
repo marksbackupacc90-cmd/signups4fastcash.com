@@ -18,6 +18,7 @@ const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
 const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
+const REFERRAL_MIN_NET_REVENUE = 10;
 const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
@@ -449,6 +450,10 @@ function authUserResponse(user: { id: string; email: string; username: string | 
 function hashReferralValue(value: string) {
   if (!referralHashSecret) throw new Error('Referral hash secret is not configured.');
   return createHmac('sha256', referralHashSecret).update(value).digest('hex');
+}
+
+export function canApproveReferralPayout(verifiedNetRevenue: number) {
+  return Number.isFinite(verifiedNetRevenue) && verifiedNetRevenue >= REFERRAL_MIN_NET_REVENUE;
 }
 
 function createGoogleOAuthState(nonce: string, referralCode: string | null, issuedAt = Date.now()) {
@@ -1231,6 +1236,11 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
+    ALTER TABLE referrals
+    ADD COLUMN IF NOT EXISTS verified_net_revenue NUMERIC(10,2) NOT NULL DEFAULT 0
+    CHECK (verified_net_revenue >= 0)
+  `);
+  await database.query(`
     CREATE TABLE IF NOT EXISTS newsletter_subscribers (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
@@ -1366,6 +1376,21 @@ async function initializeOfferStore() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (user_id, offer_id)
     )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS user_offer_completion_reports (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      reported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, offer_id)
+    )
+  `);
+  await database.query(`
+    INSERT INTO user_offer_completion_reports (user_id, offer_id, reported_at)
+    SELECT user_id, offer_id, updated_at
+    FROM user_offer_entries
+    WHERE status = 'completed'
+    ON CONFLICT (user_id, offer_id) DO NOTHING
   `);
   await database.query(`
     CREATE TABLE IF NOT EXISTS admin_access (
@@ -1947,6 +1972,48 @@ app.get('/api/admin/offers', requireAdmin, (_req, res) => {
   res.json({ offers: liveOffersStore });
 });
 
+async function saveUserOfferStatus(
+  userId: string,
+  offerId: string,
+  status: 'active' | 'completed' | 'issue',
+  updatedAt: string,
+) {
+  if (database) {
+    const client = await database.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO user_offer_entries (user_id, offer_id, status, updated_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id, offer_id)
+         DO UPDATE SET status = EXCLUDED.status, updated_at = EXCLUDED.updated_at`,
+        [userId, offerId, status, updatedAt],
+      );
+      if (status === 'completed') {
+        await client.query(
+          `INSERT INTO user_offer_completion_reports (user_id, offer_id, reported_at)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, offer_id)
+           DO UPDATE SET reported_at = EXCLUDED.reported_at`,
+          [userId, offerId, updatedAt],
+        );
+      }
+      await client.query('COMMIT');
+      return;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  const entries = userOfferEntriesStore.get(userId) || [];
+  const next = entries.filter((entry) => entry.offerId !== offerId);
+  next.push({ offerId, status, updatedAt });
+  userOfferEntriesStore.set(userId, next);
+}
+
 app.get('/api/account/offer-entries', requireAuthenticatedUser, async (_req, res) => {
   const user = res.locals.authenticatedUser as { id: string };
   if (database) {
@@ -1969,19 +2036,11 @@ app.put('/api/account/offer-entries/:offerId', requireAuthenticatedUser, async (
     return res.status(400).json({ error: 'Choose a valid offer status.' });
   }
   const updatedAt = new Date().toISOString();
-  if (database) {
-    await database.query(
-      `INSERT INTO user_offer_entries (user_id, offer_id, status, updated_at)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, offer_id)
-       DO UPDATE SET status = EXCLUDED.status, updated_at = EXCLUDED.updated_at`,
-      [user.id, offer.id, status, updatedAt],
-    );
-  } else {
-    const entries = userOfferEntriesStore.get(user.id) || [];
-    const next = entries.filter((entry) => entry.offerId !== offer.id);
-    next.push({ offerId: offer.id, status, updatedAt });
-    userOfferEntriesStore.set(user.id, next);
+  try {
+    await saveUserOfferStatus(user.id, offer.id, status, updatedAt);
+  } catch (error) {
+    console.error('Could not save account offer activity:', error);
+    return res.status(500).json({ error: 'Could not save this offer update to your account.' });
   }
   return res.json({ entry: { offerId: offer.id, status, updatedAt } });
 });
@@ -2000,7 +2059,7 @@ app.delete('/api/account/offer-entries/:offerId', requireAuthenticatedUser, asyn
   return res.json({ success: true });
 });
 
-app.post('/api/offers/:id/completion-report', (req, res) => {
+app.post('/api/offers/:id/completion-report', async (req, res) => {
   const offer = liveOffersStore.find((candidate) => candidate.id === req.params.id);
   if (!offer || !isVerificationCurrent(offer)) {
     return res.status(404).json({ error: 'Offer not found' });
@@ -2013,6 +2072,13 @@ app.post('/api/offers/:id/completion-report', (req, res) => {
     offerId: offer.id,
     reportedAt: new Date().toISOString(),
   };
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (user) await saveUserOfferStatus(user.id, offer.id, 'completed', report.reportedAt);
+  } catch (error) {
+    console.error('Could not save the account completion report:', error);
+    return res.status(500).json({ error: 'Could not save your completion report.' });
+  }
   completionReports.set(report.id, report);
   return res.status(201).json({
     success: true,
@@ -3512,7 +3578,17 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
       referred_email: string;
       status: 'pending' | 'completed' | 'void';
       bonus_amount: string;
+      verified_net_revenue: string;
       created_at: Date | string;
+      offer_activity: {
+        offerId: string;
+        company: string;
+        title: string;
+        status: 'active' | 'completed' | 'issue';
+        updatedAt: Date | string;
+        reportedCompletedAt: Date | string | null;
+        currentlySaved: boolean;
+      }[];
     }>(
       `SELECT referrals.id,
               referrer.username AS referrer_name,
@@ -3520,15 +3596,62 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
               referred.email AS referred_email,
               referrals.status,
               referrals.bonus_amount::text,
-              referrals.created_at
+              referrals.verified_net_revenue::text,
+              referrals.created_at,
+              offer_activity.offer_activity
        FROM referrals
        JOIN users AS referrer ON referrer.id = referrals.referrer_id
        JOIN users AS referred ON referred.id = referrals.referred_user_id
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(
+                JSONB_AGG(
+                  JSONB_BUILD_OBJECT(
+                    'offerId', tracked.offer_id,
+                    'company', COALESCE(offers.offer->>'company', 'Offer'),
+                    'title', COALESCE(offers.offer->>'title', tracked.offer_id),
+                    'status', tracked.status,
+                    'updatedAt', tracked.updated_at,
+                    'reportedCompletedAt', tracked.reported_completed_at,
+                    'currentlySaved', tracked.currently_saved
+                  ) ORDER BY COALESCE(tracked.reported_completed_at, tracked.updated_at) DESC
+                ),
+                '[]'::jsonb
+              ) AS offer_activity
+         FROM (
+           SELECT entries.user_id,
+                  entries.offer_id,
+                  entries.status,
+                  entries.updated_at,
+                  completion.reported_at AS reported_completed_at,
+                  TRUE AS currently_saved
+           FROM user_offer_entries AS entries
+           LEFT JOIN user_offer_completion_reports AS completion
+             ON completion.user_id = entries.user_id AND completion.offer_id = entries.offer_id
+           WHERE entries.user_id = referrals.referred_user_id
+           UNION ALL
+           SELECT completion.user_id,
+                  completion.offer_id,
+                  'completed' AS status,
+                  completion.reported_at AS updated_at,
+                  completion.reported_at AS reported_completed_at,
+                  FALSE AS currently_saved
+           FROM user_offer_completion_reports AS completion
+           WHERE completion.user_id = referrals.referred_user_id
+             AND NOT EXISTS (
+               SELECT 1
+               FROM user_offer_entries AS entries
+               WHERE entries.user_id = completion.user_id
+                 AND entries.offer_id = completion.offer_id
+             )
+         ) AS tracked
+         LEFT JOIN offers ON offers.id = tracked.offer_id
+       ) AS offer_activity ON TRUE
        ORDER BY CASE WHEN referrals.status = 'pending' THEN 0 ELSE 1 END,
                 referrals.created_at DESC
        LIMIT 500`,
     );
     return res.json({
+      minimumNetRevenue: REFERRAL_MIN_NET_REVENUE,
       referrals: result.rows.map((row) => ({
         id: row.id,
         referrerName: row.referrer_name || 'Member without a username',
@@ -3536,7 +3659,15 @@ app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
         referredEmail: row.referred_email,
         status: row.status,
         bonusAmount: Number(row.bonus_amount),
+        verifiedNetRevenue: Number(row.verified_net_revenue),
         createdAt: new Date(row.created_at).toISOString(),
+        offerActivity: row.offer_activity.map((entry) => ({
+          ...entry,
+          updatedAt: new Date(entry.updatedAt).toISOString(),
+          reportedCompletedAt: entry.reportedCompletedAt
+            ? new Date(entry.reportedCompletedAt).toISOString()
+            : null,
+        })),
       })),
     });
   } catch (error) {
@@ -3552,18 +3683,69 @@ app.put('/api/admin/referrals/:id/status', requireOwnerAdmin, async (req, res) =
     return res.status(400).json({ error: 'Choose completed or void as the referral status.' });
   }
   try {
+    if (status === 'completed') {
+      const eligibility = await database.query<{ verified_net_revenue: string; status: string }>(
+        'SELECT verified_net_revenue::text, status FROM referrals WHERE id = $1',
+        [req.params.id],
+      );
+      const referral = eligibility.rows[0];
+      if (!referral || referral.status !== 'pending') {
+        return res.status(404).json({ error: 'Pending referral payout not found.' });
+      }
+      if (!canApproveReferralPayout(Number(referral.verified_net_revenue))) {
+        return res.status(409).json({
+          error: `At least $${REFERRAL_MIN_NET_REVENUE.toFixed(2)} in verified net commission must be received for this signup before its $5.00 reward can be completed.`,
+        });
+      }
+    }
     const result = await database.query<{ id: string; status: 'completed' | 'void' }>(
       `UPDATE referrals
        SET status = $1
        WHERE id = $2 AND status = 'pending'
+         AND ($1 = 'void' OR verified_net_revenue >= $3)
        RETURNING id, status`,
-      [status, req.params.id],
+      [status, req.params.id, REFERRAL_MIN_NET_REVENUE],
     );
-    if (!result.rowCount) return res.status(404).json({ error: 'Pending referral payout not found.' });
+    if (!result.rowCount) return res.status(409).json({ error: 'This referral payout changed before it could be updated. Refresh the queue and try again.' });
     return res.json({ referral: result.rows[0] });
   } catch (error) {
     console.error('Could not update referral payout status:', error);
     return res.status(500).json({ error: 'Could not update referral payout status.' });
+  }
+});
+
+app.put('/api/admin/referrals/:id/revenue', requireOwnerAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Referral payout records require the database service.' });
+  const amount = req.body?.verifiedNetRevenue;
+  if (
+    typeof amount !== 'number' ||
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    amount > 99_999_999.99 ||
+    Math.abs(amount - Number(amount.toFixed(2))) > 1e-9
+  ) {
+    return res.status(400).json({ error: 'Enter verified net commission received to the nearest cent, between $0 and $99,999,999.99.' });
+  }
+  try {
+    const result = await database.query<{ id: string; verified_net_revenue: string; status: string }>(
+      `UPDATE referrals
+       SET verified_net_revenue = $1
+       WHERE id = $2 AND status = 'pending'
+       RETURNING id, verified_net_revenue::text, status`,
+      [amount.toFixed(2), req.params.id],
+    );
+    const referral = result.rows[0];
+    if (!referral) return res.status(404).json({ error: 'Pending referral record not found.' });
+    return res.json({
+      referral: {
+        id: referral.id,
+        status: referral.status,
+        verifiedNetRevenue: Number(referral.verified_net_revenue),
+      },
+    });
+  } catch (error) {
+    console.error('Could not record verified referral revenue:', error);
+    return res.status(500).json({ error: 'Could not record verified referral revenue.' });
   }
 });
 

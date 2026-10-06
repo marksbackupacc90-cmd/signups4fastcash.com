@@ -184,6 +184,9 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>(() =>
+    isRegistrationRoute || Boolean(referralCode) ? 'signup' : 'signin'
+  );
   const [authOpenRequest, setAuthOpenRequest] = useState(() => isRegistrationRoute || Boolean(referralCode) ? 1 : 0);
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
@@ -341,6 +344,7 @@ export default function App() {
   const handleDelegatedAdminAccess = async (openPanel = true): Promise<boolean> => {
     if (!authUser) {
       showToast('Sign in first to use delegated admin access.');
+      setAuthModalMode('signin');
       setAuthOpenRequest((request) => request + 1);
       return false;
     }
@@ -611,7 +615,7 @@ export default function App() {
     }
   };
 
-  const handleClaimClick = (offerId: string) => {
+  const handleClaimClick = async (offerId: string) => {
     const adminToken = localStorage.getItem('signups4fastcash_admin_token');
     if (!adminToken) {
       const savedEntries = readMyOfferEntries();
@@ -621,13 +625,22 @@ export default function App() {
         localStorage.setItem('signups4fastcash_my_offers', JSON.stringify(nextEntries));
         setMyOfferIds(nextEntries.map((entry) => entry.offerId));
         if (authUser) {
-          void fetch(`/api/account/offer-entries/${offerId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'active' }),
-          });
+          try {
+            const response = await fetch(`/api/account/offer-entries/${encodeURIComponent(offerId)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'active' }),
+            });
+            if (!response.ok) throw new Error('The account could not save this offer.');
+          } catch (error) {
+            console.error('Could not sync the saved offer to the account:', error);
+            showToast('Saved on this device, but referral progress could not sync to your account. Check your connection and sign in again.');
+            return;
+          }
         }
-        showToast('Saved to My Offers so you can resume it later.');
+        showToast(authUser
+          ? 'Saved to your account and My Offers.'
+          : 'Saved to My Offers on this device. Sign in to sync referral progress.');
       }
     }
   };
@@ -849,20 +862,39 @@ export default function App() {
 
   const handleMyOfferStatusChange = async (offerId: string, status: MyOfferStatus) => {
     setMyOfferIds(readMyOfferEntries().map((entry) => entry.offerId));
+    let syncError: string | null = null;
     if (authUser) {
-      await fetch(`/api/account/offer-entries/${offerId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      }).catch(() => {});
+      try {
+        const response = await fetch(`/api/account/offer-entries/${encodeURIComponent(offerId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => null) as { error?: string } | null;
+          throw new Error(data?.error || 'The account could not save this offer update.');
+        }
+      } catch (error) {
+        console.error('Could not sync offer activity to the account:', error);
+        syncError = error instanceof Error ? error.message : 'Offer activity could not sync to the account.';
+      }
     }
-    if (status !== 'completed') return;
+    if (status !== 'completed') {
+      if (syncError) showToast(`${syncError} Referral progress may not show this update.`);
+      return;
+    }
     const response = await fetch(`/api/offers/${offerId}/completion-report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ confirmed: true }),
     }).catch(() => null);
-    showToast(response?.ok ? 'Thanks — your completion was saved.' : 'Saved locally, but we could not send the confirmation.');
+    if (syncError) {
+      showToast(`${syncError} Your completion is only saved on this device, so it will not appear in referral progress.`);
+      return;
+    }
+    showToast(response?.ok
+      ? 'Thanks — your member-reported completion was saved. Provider payment is not verified.'
+      : 'Saved on this device, but we could not send the completion report.');
   };
 
   const handleMyOfferRemove = async (offerId: string) => {
@@ -1011,7 +1043,10 @@ export default function App() {
         username={authUser?.username}
         avatarUrl={authUser?.avatarUrl}
         userId={authUser?.id}
-        onSignIn={() => setAuthOpenRequest((request) => request + 1)}
+        onSignIn={() => {
+          setAuthModalMode('signin');
+          setAuthOpenRequest((request) => request + 1);
+        }}
         onShare={() => void handleShare()}
         shareCopied={shareCopied}
         onOpenFinder={() => setOfferFinderOpen(true)}
@@ -1108,6 +1143,7 @@ export default function App() {
           onClose={() => setMyOffersOpen(false)}
           onSignIn={() => {
             setMyOffersOpen(false);
+            setAuthModalMode('signin');
             setAuthOpenRequest((request) => request + 1);
           }}
           isSignedIn={Boolean(authUser)}
@@ -1132,6 +1168,15 @@ export default function App() {
               setOfferFilter={setOfferFilter}
               totalOffersCount={publicOffers.length}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
+              onOpenReferralProgram={() => {
+                if (authUser) {
+                  setAccountOpen(true);
+                  return;
+                }
+                setAuthModalMode('signup');
+                setAuthOpenRequest((request) => request + 1);
+              }}
+              hasAccount={Boolean(authUser)}
             />
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">
@@ -1310,7 +1355,7 @@ export default function App() {
         user={authUser}
         onUserChange={handleAuthUserChange}
         openRequest={authOpenRequest}
-        mode={isRegistrationRoute || Boolean(referralCode) ? 'signup' : 'signin'}
+        mode={isRegistrationRoute || Boolean(referralCode) ? 'signup' : authModalMode}
         referralCode={referralCode}
         disabled={recordingMode}
       />
@@ -1337,6 +1382,7 @@ export default function App() {
         }}
         onSelectAdmin={() => {
           if (!authUser) {
+            setAuthModalMode('signin');
             setAuthOpenRequest((request) => request + 1);
             return;
           }

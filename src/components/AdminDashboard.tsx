@@ -43,7 +43,17 @@ interface ReferralPayout {
   referredEmail: string;
   status: 'pending' | 'completed' | 'void';
   bonusAmount: number;
+  verifiedNetRevenue: number;
   createdAt: string;
+  offerActivity: {
+    offerId: string;
+    company: string;
+    title: string;
+    status: 'active' | 'completed' | 'issue';
+    updatedAt: string;
+    reportedCompletedAt: string | null;
+    currentlySaved: boolean;
+  }[];
 }
 
 function readOfferActivityCursor() {
@@ -93,6 +103,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [referralPayoutsLoading, setReferralPayoutsLoading] = useState(false);
   const [referralPayoutsError, setReferralPayoutsError] = useState<string | null>(null);
   const [updatingReferralId, setUpdatingReferralId] = useState<string | null>(null);
+  const [referralRevenueDrafts, setReferralRevenueDrafts] = useState<Record<string, string>>({});
+  const [minimumReferralNetRevenue, setMinimumReferralNetRevenue] = useState(10);
   const [initialActivityCursor] = useState(readOfferActivityCursor);
   const activityCursorRef = useRef(initialActivityCursor);
   useEffect(() => {
@@ -192,9 +204,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           headers: token ? { 'x-admin-token': token } : {},
           signal: controller.signal,
         });
-        const data = await response.json().catch(() => null) as { referrals?: ReferralPayout[]; error?: string } | null;
+        const data = await response.json().catch(() => null) as { referrals?: ReferralPayout[]; minimumNetRevenue?: number; error?: string } | null;
         if (!response.ok || !data) throw new Error(data?.error || 'Could not load referral payouts.');
         setReferralPayouts(data.referrals || []);
+        if (typeof data.minimumNetRevenue === 'number' && Number.isFinite(data.minimumNetRevenue)) {
+          setMinimumReferralNetRevenue(data.minimumNetRevenue);
+        }
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error('Could not load referral payout queue:', error);
@@ -293,6 +308,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } catch (error) {
       console.error('Could not update referral payout status:', error);
       setReferralPayoutsError(error instanceof Error ? error.message : 'Could not update this referral bonus.');
+    } finally {
+      setUpdatingReferralId(null);
+    }
+  };
+  const saveReferralRevenue = async (referral: ReferralPayout) => {
+    const draft = referralRevenueDrafts[referral.id] ?? String(referral.verifiedNetRevenue);
+    const verifiedNetRevenue = Number(draft);
+    if (!Number.isFinite(verifiedNetRevenue) || verifiedNetRevenue < 0) {
+      setReferralPayoutsError('Enter a valid non-negative amount of verified net commission received.');
+      return;
+    }
+    if (!window.confirm(`Confirm that $${verifiedNetRevenue.toFixed(2)} in net commission has actually been received and attributed to ${referral.referredEmail}?`)) return;
+    setUpdatingReferralId(referral.id);
+    setReferralPayoutsError(null);
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+      const response = await fetch(`/api/admin/referrals/${encodeURIComponent(referral.id)}/revenue`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({ verifiedNetRevenue }),
+      });
+      const data = await response.json().catch(() => null) as {
+        referral?: { id: string; status: string; verifiedNetRevenue: number };
+        error?: string;
+      } | null;
+      if (!response.ok || !data?.referral) throw new Error(data?.error || 'Could not save verified referral revenue.');
+      setReferralPayouts((current) => current.map((entry) => (
+        entry.id === data.referral?.id
+          ? { ...entry, verifiedNetRevenue: data.referral.verifiedNetRevenue }
+          : entry
+      )));
+    } catch (error) {
+      console.error('Could not record verified referral revenue:', error);
+      setReferralPayoutsError(error instanceof Error ? error.message : 'Could not save verified referral revenue.');
     } finally {
       setUpdatingReferralId(null);
     }
@@ -521,7 +570,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <h2 id="referral-payouts-title">Referral payout queue</h2>
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    Review pending $5 referral bonuses. Mark completed only after paying the referrer, or void ineligible records.
+                      A $5 reward can be paid only after at least {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(minimumReferralNetRevenue)} in net commission is actually received and attributed to that signup. Completing offers alone does not qualify.
                   </p>
                 </div>
                 <div className="rounded-lg border border-amber-300/15 bg-amber-300/5 px-3 py-2 text-right">
@@ -531,7 +580,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
                   </div>
                   <div className="text-[10px] uppercase tracking-wider text-zinc-400">
-                    {referralPayouts.filter((entry) => entry.status === 'pending').length} pending
+                    {referralPayouts.filter((entry) => entry.status === 'pending').length} conditional
                   </div>
                 </div>
               </div>
@@ -547,12 +596,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <p className="p-4 text-xs text-zinc-400">No referral payouts have been recorded yet.</p>
                 ) : (
                   <div className="max-h-96 overflow-auto">
-                    <table className="w-full min-w-[58rem] text-left text-xs">
+                    <table className="w-full min-w-[68rem] text-left text-xs">
                       <thead className="sticky top-0 bg-[#090d12] text-[10px] uppercase tracking-wider text-zinc-400">
                         <tr>
                           <th scope="col" className="px-3 py-2">Referrer</th>
                           <th scope="col" className="px-3 py-2">Referred account</th>
-                          <th scope="col" className="px-3 py-2">Bonus</th>
+                          <th scope="col" className="px-3 py-2">Potential reward</th>
+                          <th scope="col" className="px-3 py-2">Verified net received</th>
+                          <th scope="col" className="px-3 py-2">Tracked offer activity</th>
                           <th scope="col" className="px-3 py-2">Status</th>
                           <th scope="col" className="px-3 py-2">Created</th>
                           <th scope="col" className="px-3 py-2">Action</th>
@@ -568,6 +619,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <td className="px-3 py-2.5">{entry.referredEmail}</td>
                             <td className="px-3 py-2.5">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(entry.bonusAmount)}</td>
                             <td className="px-3 py-2.5">
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(entry.verifiedNetRevenue)}
+                              <div className="text-[10px] text-zinc-500">Target: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(minimumReferralNetRevenue)}</div>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              {entry.offerActivity.length === 0 ? (
+                                <span className="text-zinc-500">No saved offers</span>
+                              ) : (
+                                <details className="max-w-72">
+                                  <summary className="cursor-pointer text-cyan-100">
+                                    {entry.offerActivity.filter((item) => item.reportedCompletedAt).length} completion reports · {entry.offerActivity.filter((item) => item.status === 'active').length} in progress
+                                  </summary>
+                                  <ul className="mt-2 space-y-1">
+                                    {entry.offerActivity.map((item) => (
+                                      <li key={item.offerId} className="leading-relaxed">
+                                        <span className="font-semibold">{item.company}</span>
+                                        <span className="text-zinc-400"> — {item.title}</span>
+                                        <span className={`ml-1 ${item.status === 'completed' ? 'text-emerald-200' : item.status === 'issue' ? 'text-rose-200' : 'text-zinc-400'}`}>
+                                          ({item.status === 'completed'
+                                            ? 'member-reported complete'
+                                            : item.status === 'issue'
+                                              ? 'issue reported'
+                                              : item.reportedCompletedAt
+                                                ? 'reopened after completion report'
+                                                : 'in progress'})
+                                        </span>
+                                        {!item.currentlySaved && <span className="ml-1 text-zinc-500">(removed from My Offers)</span>}
+                                        {item.reportedCompletedAt && (
+                                          <div className="text-[10px] text-zinc-500">
+                                            Completion reported {new Date(item.reportedCompletedAt).toLocaleString()}
+                                          </div>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5">
                               <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
                                 entry.status === 'pending'
                                   ? 'bg-amber-300/10 text-amber-200'
@@ -581,23 +670,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <td className="px-3 py-2.5">{new Date(entry.createdAt).toLocaleString()}</td>
                             <td className="px-3 py-2.5">
                               {entry.status === 'pending' ? (
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => void updateReferralStatus(entry, 'completed')}
-                                    disabled={updatingReferralId !== null}
-                                    className="rounded-md border border-emerald-300/20 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {updatingReferralId === entry.id ? 'Saving…' : 'Mark paid'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void updateReferralStatus(entry, 'void')}
-                                    disabled={updatingReferralId !== null}
-                                    className="rounded-md border border-rose-300/20 px-2.5 py-1.5 text-[10px] font-semibold text-rose-200 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    Void
-                                  </button>
+                                <div className="min-w-60 space-y-2">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="99999999.99"
+                                      step="0.01"
+                                      aria-label={`Verified net commission received from ${entry.referredEmail}`}
+                                      value={referralRevenueDrafts[entry.id] ?? String(entry.verifiedNetRevenue)}
+                                      onChange={(event) => setReferralRevenueDrafts((current) => ({ ...current, [entry.id]: event.target.value }))}
+                                      className="w-32 rounded-md border border-white/10 bg-[#090d12] px-2 py-1.5 text-[10px] text-white"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => void saveReferralRevenue(entry)}
+                                      disabled={updatingReferralId !== null}
+                                      className="rounded-md border border-cyan-300/20 px-2 py-1.5 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-300/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      Save verified
+                                    </button>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void updateReferralStatus(entry, 'completed')}
+                                      disabled={updatingReferralId !== null || entry.verifiedNetRevenue < minimumReferralNetRevenue}
+                                      className="rounded-md border border-emerald-300/20 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {updatingReferralId === entry.id ? 'Saving…' : 'Mark paid'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => void updateReferralStatus(entry, 'void')}
+                                      disabled={updatingReferralId !== null}
+                                      className="rounded-md border border-rose-300/20 px-2.5 py-1.5 text-[10px] font-semibold text-rose-200 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      Void
+                                    </button>
+                                  </div>
                                 </div>
                               ) : '—'}
                             </td>
@@ -608,7 +719,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-zinc-500">Showing up to 500 most recent referrals. Completing a record updates the user’s completed-cash total; it does not send a payment.</p>
+              <p className="mt-2 text-[10px] text-zinc-500">Tracked offers and completion reports are member-reported, not proof of a provider conversion. Only record net commission already received from the provider and traceable to that referred account—not estimates or unverified conversions. Completing a record updates the user’s total; it does not send a payment.</p>
             </section>
           )}
           {props.isOwnerAdmin && (

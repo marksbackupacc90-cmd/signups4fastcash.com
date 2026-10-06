@@ -114,7 +114,7 @@ export const ReferralDashboard: React.FC = () => {
           <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Share and earn</p>
           <h3 id="referral-dashboard-title" className="mt-1 text-xl font-bold text-white">Your referral dashboard</h3>
           <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-            Share your personal link. Referral rewards remain pending until reviewed; eligible completed rewards appear as cash below.
+            Share your personal link. A $5 reward remains conditional until the referred signup uses offers opened from this site and generates at least $10 in net commission we actually receive and verify. Member-reported completion alone does not qualify.
           </p>
         </div>
       </div>
@@ -141,10 +141,10 @@ export const ReferralDashboard: React.FC = () => {
             <article className="rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.09] to-white/[0.02] p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-amber-100">
                 <WalletCards className="h-4 w-4 text-amber-200" aria-hidden="true" />
-                Pending Earnings
+                Conditional Rewards
               </div>
               <p className="mt-3 text-3xl font-extrabold tracking-tight text-white">{formatMoney(summary.pendingBonusCents)}</p>
-              <p className="mt-1 text-[11px] text-zinc-400">Awaiting review and approval</p>
+              <p className="mt-1 text-[11px] text-zinc-400">Not payable until the $10 verified net commission threshold is met</p>
             </article>
             <article className="rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.09] to-white/[0.02] p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-100">
