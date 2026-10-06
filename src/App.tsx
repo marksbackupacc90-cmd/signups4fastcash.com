@@ -59,7 +59,7 @@ function shuffleOfferIds(offers: Offer[]) {
     .map((offer) => offer.id);
 }
 
-const REFERRAL_CODE_PATTERN = /^[A-Z0-9]{12}$/;
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
 const REFERRAL_CODE_STORAGE_KEY = 'signups4fastcash_referral_code';
 
 function captureReferralCode() {

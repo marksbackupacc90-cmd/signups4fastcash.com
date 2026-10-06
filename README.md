@@ -39,6 +39,7 @@ Feature-specific:
 - `CPX_APP_ID` — CPX Research app ID (currently `36089`)
 - `CPX_SECURE_HASH` — private CPX signing secret
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — Google OAuth web client credentials
+- `REFERRAL_HASH_SECRET` — private HMAC key used to store referral fraud-check hashes
 
 Never commit `.env.local` or provider secrets.
 
@@ -47,7 +48,12 @@ Never commit `.env.local` or provider secrets.
 1. Open the site and enter the configured admin passcode in the offer search field.
 2. Review or create offers in the Admin Panel.
 3. Publish only offers with verified official and referral URLs.
-4. Re-lock the panel when finished.
+4. For owner accounts, use the referral payout queue to review pending bonuses. Mark a bonus completed only after paying it; this status change does not issue a payment.
+5. Re-lock the panel when finished.
+
+Signed-in members can customize their referral code from the account dashboard.
+Older referral links remain valid, and visitors with a valid link see the
+referrer's username before continuing to Google sign-up.
 
 Offer edits persist in PostgreSQL when `DATABASE_URL` is configured. Without it,
 the app uses in-memory storage and changes are lost on restart.

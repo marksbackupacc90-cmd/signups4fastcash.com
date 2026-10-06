@@ -18,9 +18,12 @@ function formatMoney(cents: number) {
 
 export const ReferralDashboard: React.FC = () => {
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
+  const [customCode, setCustomCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [savingCode, setSavingCode] = useState(false);
+  const [codeMessage, setCodeMessage] = useState('');
 
   const loadReferralSummary = async (signal?: AbortSignal) => {
     setLoading(true);
@@ -41,6 +44,7 @@ export const ReferralDashboard: React.FC = () => {
         throw new Error('Referral details were returned in an unexpected format.');
       }
       setSummary(data);
+      setCustomCode(data.referralCode);
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
       setError(loadError instanceof Error ? loadError.message : 'Could not load referral details.');
@@ -54,6 +58,39 @@ export const ReferralDashboard: React.FC = () => {
     void loadReferralSummary(controller.signal);
     return () => controller.abort();
   }, []);
+
+  const saveCustomCode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSavingCode(true);
+    setError('');
+    setCodeMessage('');
+    try {
+      const response = await fetch('/api/referrals/me/code', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ referralCode: customCode }),
+      });
+      const data = await response.json() as { referralCode?: string; referralUrl?: string; previousLinksRemainValid?: boolean; error?: string };
+      if (!response.ok || !data.referralCode || !data.referralUrl) {
+        throw new Error(data.error || 'Could not customize your referral link.');
+      }
+      const updatedCode = data.referralCode;
+      const updatedUrl = data.referralUrl;
+      setSummary((current) => current
+        ? { ...current, referralCode: updatedCode, referralUrl: updatedUrl }
+        : current);
+      setCustomCode(updatedCode);
+      setCopied(false);
+      setCodeMessage(data.previousLinksRemainValid
+        ? 'Your new link is ready. Links you shared before will keep working.'
+        : 'Your referral link was updated.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not customize your referral link.');
+    } finally {
+      setSavingCode(false);
+    }
+  };
 
   const copyReferralLink = async () => {
     if (!summary) return;
@@ -120,6 +157,35 @@ export const ReferralDashboard: React.FC = () => {
           </div>
 
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+            <form onSubmit={saveCustomCode} className="mb-4">
+              <label htmlFor="custom-referral-code" className="text-xs font-semibold text-zinc-300">Customize your referral code</label>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="custom-referral-code"
+                  value={customCode}
+                  onChange={(event) => setCustomCode(event.target.value.toUpperCase())}
+                  minLength={3}
+                  maxLength={24}
+                  pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,22}[A-Za-z0-9]"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  required
+                  aria-describedby="custom-referral-code-hint"
+                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-white/10 bg-[#090d18] px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-cyan-300"
+                />
+                <button
+                  type="submit"
+                  disabled={savingCode || customCode === summary.referralCode}
+                  className="min-h-11 rounded-lg border border-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingCode ? 'Saving…' : 'Save code'}
+                </button>
+              </div>
+              <p id="custom-referral-code-hint" className="mt-1 text-[11px] text-zinc-500">
+                3–24 letters, numbers, hyphens, or underscores. Previously shared links remain valid.
+              </p>
+              {codeMessage && <p role="status" className="mt-2 text-xs text-emerald-300">{codeMessage}</p>}
+            </form>
             <label htmlFor="personal-referral-link" className="text-xs font-semibold text-zinc-300">Your custom referral link</label>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
               <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#090d18] px-3 py-2.5">

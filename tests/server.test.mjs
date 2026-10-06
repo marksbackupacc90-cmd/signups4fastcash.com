@@ -65,6 +65,23 @@ test('referral endpoints require an authenticated account', async () => {
   });
   assert.equal(claim.status, 401);
   assert.equal(claim.body.error, 'Sign in with Google first.');
+
+  const updateCode = await request('/api/referrals/me/code', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ referralCode: 'MY-CUSTOM-LINK' }),
+  });
+  assert.equal(updateCode.status, 401);
+});
+
+test('referral previews validate custom links without exposing account data', async () => {
+  const malformed = await request('/api/referrals/preview?code=bad%20code');
+  assert.equal(malformed.status, 400);
+  assert.match(malformed.body.error, /valid referral code/i);
+
+  const validButUnavailable = await request('/api/referrals/preview?code=MY-CUSTOM-LINK');
+  assert.equal(validButUnavailable.status, 503);
+  assert.match(validButUnavailable.body.error, /temporarily unavailable/i);
 });
 
 test('Google OAuth referral state is signed, nonce-bound, and expires', () => {
@@ -79,7 +96,7 @@ test('Google OAuth referral state is signed, nonce-bound, and expires', () => {
 });
 
 test('Google signup carries a referral code in protected OAuth state', async () => {
-  const response = await requestText('/api/auth/google?ref=ABCDEF123456', { redirect: 'manual' });
+  const response = await requestText('/api/auth/google?ref=MARK-REF_1', { redirect: 'manual' });
   assert.equal(response.status, 302);
   const redirectUrl = new URL(response.headers.get('location'));
   assert.equal(redirectUrl.searchParams.get('client_id'), 'test-google-client');
@@ -88,7 +105,7 @@ test('Google signup carries a referral code in protected OAuth state', async () 
   const nonce = cookie?.match(/sfc_oauth_state=([a-f0-9]+)/)?.[1];
   assert.ok(state);
   assert.ok(nonce);
-  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: 'ABCDEF123456' });
+  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: 'MARK-REF_1' });
 });
 
 test('sitemap contains only canonical indexable routes', async () => {
@@ -659,6 +676,20 @@ test('confirmed revenue ledger is owner-only for reads and writes', async () => 
   });
   assert.equal(postResponse.status, 403);
   assert.equal(postResponse.body.error, 'Owner admin access is required.');
+});
+
+test('referral payout queue and status updates require owner admin access', async () => {
+  const list = await request('/api/admin/referrals');
+  assert.equal(list.status, 403);
+  assert.equal(list.body.error, 'Owner admin access is required.');
+
+  const update = await request('/api/admin/referrals/test-referral-id/status', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ status: 'completed' }),
+  });
+  assert.equal(update.status, 403);
+  assert.equal(update.body.error, 'Owner admin access is required.');
 });
 
 test('valid offer click events appear in the shared rolling activity report', async () => {

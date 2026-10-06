@@ -17,6 +17,7 @@ const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
 const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
 const googleClientId = env.GOOGLE_CLIENT_ID;
@@ -478,7 +479,7 @@ function readGoogleOAuthState(state: string, nonce: string) {
       !Number.isFinite(parsed.issuedAt) ||
       Date.now() - Number(parsed.issuedAt) > 10 * 60 * 1000 ||
       Number(parsed.issuedAt) - Date.now() > 30_000 ||
-      (parsed.referralCode !== null && parsed.referralCode !== undefined && !/^[A-Z0-9]{12}$/.test(parsed.referralCode))
+      (parsed.referralCode !== null && parsed.referralCode !== undefined && !REFERRAL_CODE_PATTERN.test(parsed.referralCode))
     ) return null;
     return { referralCode: parsed.referralCode || null };
   } catch {
@@ -495,7 +496,7 @@ app.get('/api/auth/google', (req, res) => {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
   const requestedReferralCode = typeof req.query.ref === 'string' ? req.query.ref.trim().toUpperCase() : '';
-  if (requestedReferralCode && !/^[A-Z0-9]{12}$/.test(requestedReferralCode)) {
+  if (requestedReferralCode && !REFERRAL_CODE_PATTERN.test(requestedReferralCode)) {
     return res.status(400).json({ error: 'The referral code is not valid.' });
   }
   const nonce = randomBytes(32).toString('hex');
@@ -593,9 +594,18 @@ app.get('/api/auth/google/callback', async (req, res) => {
         );
         user = inserted.rows[0];
 
+        if (user) {
+          await client.query(
+            `INSERT INTO referral_code_aliases (code, user_id)
+             VALUES ($1, $2)
+             ON CONFLICT (code) DO NOTHING`,
+            [accountReferralCode, user.id],
+          );
+        }
+
         if (user && verifiedOAuthState.referralCode && signupIpHash && referralHashSecret) {
           const referrerResult = await client.query<{ id: string }>(
-            'SELECT id FROM users WHERE UPPER(referral_code) = $1 LIMIT 1',
+            'SELECT user_id AS id FROM referral_code_aliases WHERE code = $1 LIMIT 1',
             [verifiedOAuthState.referralCode],
           );
           const referrer = referrerResult.rows[0];
@@ -697,6 +707,33 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 });
 
+app.get('/api/referrals/preview', async (req, res) => {
+  const referralCode = typeof req.query.code === 'string' ? req.query.code.trim().toUpperCase() : '';
+  if (!REFERRAL_CODE_PATTERN.test(referralCode)) {
+    return res.status(400).json({ error: 'Enter a valid referral code.' });
+  }
+  if (!database) return res.status(503).json({ error: 'Referral details are temporarily unavailable.' });
+  try {
+    const result = await database.query<{ username: string | null }>(
+      `SELECT users.username
+       FROM referral_code_aliases
+       JOIN users ON users.id = referral_code_aliases.user_id
+       WHERE referral_code_aliases.code = $1
+       LIMIT 1`,
+      [referralCode],
+    );
+    const referrer = result.rows[0];
+    if (!referrer) return res.status(404).json({ error: 'This referral link could not be verified.' });
+    return res.json({
+      valid: true,
+      referrerName: referrer.username || 'a Signups4FastCash member',
+    });
+  } catch (error) {
+    console.error('Could not verify referral link:', error);
+    return res.status(500).json({ error: 'Referral details are temporarily unavailable.' });
+  }
+});
+
 app.get('/api/referrals/me', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
@@ -735,13 +772,73 @@ app.get('/api/referrals/me', async (req, res) => {
   }
 });
 
+app.put('/api/referrals/me/code', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  if (!database) return res.status(503).json({ error: 'Referral links require the database service.' });
+  const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';
+  if (!REFERRAL_CODE_PATTERN.test(referralCode)) {
+    return res.status(400).json({ error: 'Use 3-24 letters, numbers, hyphens, or underscores. Start and end with a letter or number.' });
+  }
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not open referral-code transaction:', error);
+    return res.status(500).json({ error: 'Could not update your referral code.' });
+  }
+  try {
+    await client.query('BEGIN');
+    const account = await client.query<{ referral_code: string | null }>(
+      'SELECT referral_code FROM users WHERE id = $1 FOR UPDATE',
+      [user.id],
+    );
+    if (!account.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+
+    const savedCode = await client.query(
+      `INSERT INTO referral_code_aliases (code, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (code) DO UPDATE SET user_id = EXCLUDED.user_id
+       WHERE referral_code_aliases.user_id = EXCLUDED.user_id`,
+      [referralCode, user.id],
+    );
+    if (!savedCode.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'That referral code is already in use. Choose another.' });
+    }
+    await client.query(
+      'UPDATE users SET referral_code = $1, updated_at = NOW() WHERE id = $2',
+      [referralCode, user.id],
+    );
+    await client.query('COMMIT');
+    return res.json({
+      referralCode,
+      referralUrl: `https://signups4fastcash.com/?ref=${encodeURIComponent(referralCode)}`,
+      previousLinksRemainValid: true,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if ((error as { code?: string }).code === '23505') {
+      return res.status(409).json({ error: 'That referral code is already in use. Choose another.' });
+    }
+    console.error('Could not update referral code:', error);
+    return res.status(500).json({ error: 'Could not update your referral code.' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/referrals/claim', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
   if (!database) return res.status(503).json({ error: 'Referral claims require the database service.' });
   const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';
-  if (!/^[A-Z0-9]{12}$/.test(referralCode)) {
-    return res.status(400).json({ error: 'Enter a valid 12-character referral code.' });
+  if (!REFERRAL_CODE_PATTERN.test(referralCode)) {
+    return res.status(400).json({ error: 'Enter a valid referral code.' });
   }
   if (!referralHashSecret) return res.status(503).json({ error: 'Referral fraud checks are not configured.' });
 
@@ -784,7 +881,7 @@ app.post('/api/referrals/claim', async (req, res) => {
     if (!account.signup_ip_hash) return await rejectClaim(409, 'Could not verify the signup IP address for this account.');
 
     const referrerResult = await client.query<{ id: string }>(
-      'SELECT id FROM users WHERE UPPER(referral_code) = $1 LIMIT 1',
+      'SELECT user_id AS id FROM referral_code_aliases WHERE code = $1 LIMIT 1',
       [referralCode],
     );
     const referrer = referrerResult.rows[0];
@@ -1227,6 +1324,20 @@ async function initializeOfferStore() {
   await database.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_unique
     ON users (referral_code) WHERE referral_code IS NOT NULL
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS referral_code_aliases (
+      code TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CHECK (code = UPPER(code))
+    )
+  `);
+  await database.query(`
+    INSERT INTO referral_code_aliases (code, user_id)
+    SELECT referral_code, id FROM users
+    WHERE referral_code IS NOT NULL
+    ON CONFLICT (code) DO NOTHING
   `);
   await database.query(`
     CREATE TABLE IF NOT EXISTS referrals (
@@ -3389,6 +3500,71 @@ app.get('/api/admin/analytics/offers/since', requireAdmin, async (req, res) => {
     ...buildOfferActivitySinceReport(offerAnalyticsEvents, from, checkedAt),
     limitedByRetention,
   });
+});
+
+app.get('/api/admin/referrals', requireOwnerAdmin, async (_req, res) => {
+  if (!database) return res.status(503).json({ error: 'Referral payout records require the database service.' });
+  try {
+    const result = await database.query<{
+      id: string;
+      referrer_name: string | null;
+      referrer_email: string;
+      referred_email: string;
+      status: 'pending' | 'completed' | 'void';
+      bonus_amount: string;
+      created_at: Date | string;
+    }>(
+      `SELECT referrals.id,
+              referrer.username AS referrer_name,
+              referrer.email AS referrer_email,
+              referred.email AS referred_email,
+              referrals.status,
+              referrals.bonus_amount::text,
+              referrals.created_at
+       FROM referrals
+       JOIN users AS referrer ON referrer.id = referrals.referrer_id
+       JOIN users AS referred ON referred.id = referrals.referred_user_id
+       ORDER BY CASE WHEN referrals.status = 'pending' THEN 0 ELSE 1 END,
+                referrals.created_at DESC
+       LIMIT 500`,
+    );
+    return res.json({
+      referrals: result.rows.map((row) => ({
+        id: row.id,
+        referrerName: row.referrer_name || 'Member without a username',
+        referrerEmail: row.referrer_email,
+        referredEmail: row.referred_email,
+        status: row.status,
+        bonusAmount: Number(row.bonus_amount),
+        createdAt: new Date(row.created_at).toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load referral payout records:', error);
+    return res.status(500).json({ error: 'Could not load referral payout records.' });
+  }
+});
+
+app.put('/api/admin/referrals/:id/status', requireOwnerAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Referral payout records require the database service.' });
+  const status = req.body?.status;
+  if (status !== 'completed' && status !== 'void') {
+    return res.status(400).json({ error: 'Choose completed or void as the referral status.' });
+  }
+  try {
+    const result = await database.query<{ id: string; status: 'completed' | 'void' }>(
+      `UPDATE referrals
+       SET status = $1
+       WHERE id = $2 AND status = 'pending'
+       RETURNING id, status`,
+      [status, req.params.id],
+    );
+    if (!result.rowCount) return res.status(404).json({ error: 'Pending referral payout not found.' });
+    return res.json({ referral: result.rows[0] });
+  } catch (error) {
+    console.error('Could not update referral payout status:', error);
+    return res.status(500).json({ error: 'Could not update referral payout status.' });
+  }
 });
 
 app.get('/api/admin/revenue', requireOwnerAdmin, async (_req, res) => {
