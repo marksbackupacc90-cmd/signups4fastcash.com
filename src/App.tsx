@@ -59,33 +59,23 @@ function shuffleOfferIds(offers: Offer[]) {
     .map((offer) => offer.id);
 }
 
-const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
 const REFERRAL_CODE_STORAGE_KEY = 'signups4fastcash_referral_code';
 
-function captureReferralCode() {
-  const params = new URLSearchParams(window.location.search);
-  const queryReferralCode = params.get('ref')?.trim().toUpperCase();
+function clearPausedReferralAttribution() {
   try {
-    if (queryReferralCode) {
-      if (!REFERRAL_CODE_PATTERN.test(queryReferralCode)) {
-        sessionStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
-        return null;
-      }
-      sessionStorage.setItem(REFERRAL_CODE_STORAGE_KEY, queryReferralCode);
-      return queryReferralCode;
-    }
-
-    const savedReferralCode = sessionStorage.getItem(REFERRAL_CODE_STORAGE_KEY);
-    return savedReferralCode && REFERRAL_CODE_PATTERN.test(savedReferralCode) ? savedReferralCode : null;
+    sessionStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
   } catch (error) {
-    console.warn('Could not persist the referral code for signup:', error);
-    return queryReferralCode && REFERRAL_CODE_PATTERN.test(queryReferralCode) ? queryReferralCode : null;
+    console.warn('Could not clear the paused referral code:', error);
+  }
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('ref')) {
+    url.searchParams.delete('ref');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }
 }
 
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
-  const [referralCode, setReferralCode] = useState<string | null>(() => captureReferralCode());
   const isRegistrationRoute = window.location.pathname.replace(/\/+$/, '') === '/register';
   const [activeTab, setActiveTab] = useState<'offers' | 'daily' | 'admin'>('offers');
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
@@ -184,10 +174,8 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>(() =>
-    isRegistrationRoute || Boolean(referralCode) ? 'signup' : 'signin'
-  );
-  const [authOpenRequest, setAuthOpenRequest] = useState(() => isRegistrationRoute || Boolean(referralCode) ? 1 : 0);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>(isRegistrationRoute ? 'signup' : 'signin');
+  const [authOpenRequest, setAuthOpenRequest] = useState(isRegistrationRoute ? 1 : 0);
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
@@ -198,16 +186,14 @@ export default function App() {
   const handleAuthUserChange = useCallback((user: AuthUser | null) => {
     setAuthUser(user);
     if (user) {
-      setReferralCode(null);
-      try {
-        sessionStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
-      } catch (error) {
-        console.warn('Could not clear the saved referral code after authentication:', error);
-      }
       if (window.location.pathname.replace(/\/+$/, '') === '/register') {
         window.history.replaceState(null, '', '/');
       }
     }
+  }, []);
+
+  useEffect(() => {
+    clearPausedReferralAttribution();
   }, []);
 
   useEffect(() => {
@@ -1168,15 +1154,6 @@ export default function App() {
               setOfferFilter={setOfferFilter}
               totalOffersCount={publicOffers.length}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
-              onOpenReferralProgram={() => {
-                if (authUser) {
-                  setAccountOpen(true);
-                  return;
-                }
-                setAuthModalMode('signup');
-                setAuthOpenRequest((request) => request + 1);
-              }}
-              hasAccount={Boolean(authUser)}
             />
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">
@@ -1355,8 +1332,7 @@ export default function App() {
         user={authUser}
         onUserChange={handleAuthUserChange}
         openRequest={authOpenRequest}
-        mode={isRegistrationRoute || Boolean(referralCode) ? 'signup' : authModalMode}
-        referralCode={referralCode}
+        mode={authModalMode}
         disabled={recordingMode}
       />
       {accountOpen && authUser && (

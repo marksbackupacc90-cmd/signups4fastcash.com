@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, LoaderCircle, Users, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface AuthUser {
   id: string;
@@ -16,22 +16,14 @@ interface AuthModalProps {
   onUserChange: (user: AuthUser | null) => void;
   openRequest?: number;
   mode?: 'signin' | 'signup';
-  referralCode?: string | null;
   disabled?: boolean;
   requiredAuth?: boolean;
 }
 
-type ReferralPreviewState =
-  | { status: 'loading' }
-  | { status: 'verified'; referrerName: string }
-  | { status: 'invalid' }
-  | { status: 'unavailable' };
-
-export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', referralCode, disabled = false, requiredAuth = false }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRequest = 0, mode = 'signin', disabled = false, requiredAuth = false }) => {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
-  const [referralPreview, setReferralPreview] = useState<ReferralPreviewState | null>(null);
   const needsUsername = Boolean(user && !user.username);
   const [authPopup, setAuthPopup] = useState<Window | null>(null);
 
@@ -53,36 +45,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
   }, [disabled, openRequest, requiredAuth, user]);
 
   useEffect(() => {
-    if (!referralCode) {
-      setReferralPreview(null);
-      return;
-    }
-    const controller = new AbortController();
-    setReferralPreview({ status: 'loading' });
-    fetch(`/api/referrals/preview?code=${encodeURIComponent(referralCode)}`, {
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json() as { valid?: boolean; referrerName?: string };
-        if (response.status === 404) {
-          setReferralPreview({ status: 'invalid' });
-          return;
-        }
-        if (!response.ok || data.valid !== true || typeof data.referrerName !== 'string') {
-          setReferralPreview({ status: 'unavailable' });
-          return;
-        }
-        setReferralPreview({ status: 'verified', referrerName: data.referrerName });
-      })
-      .catch((previewError: unknown) => {
-        if (previewError instanceof DOMException && previewError.name === 'AbortError') return;
-        setReferralPreview({ status: 'unavailable' });
-      });
-    return () => controller.abort();
-  }, [referralCode]);
-
-  useEffect(() => {
     if (disabled) return;
     loadAuthenticatedUser()
       .catch(() => {
@@ -101,11 +63,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
 
   const signIn = () => {
     setError('');
-    const code = referralCode || new URLSearchParams(window.location.search).get('ref')?.trim();
-    const authUrl = code
-      ? `/api/auth/google?ref=${encodeURIComponent(code)}`
-      : '/api/auth/google';
-    const popup = window.open(authUrl, 'sfc-google-signin', 'width=520,height=650');
+    const popup = window.open('/api/auth/google', 'sfc-google-signin', 'width=520,height=650');
     if (!popup) setError('Please allow pop-ups to sign in with Google.');
     else {
       setAuthPopup(popup);
@@ -180,33 +138,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, openRe
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
           {mode === 'signup'
-            ? 'Create a free account with Google to get a personal referral link and track your offers. You can browse offers without signing in.'
+            ? 'Create a free account with Google to sync and track your offers across devices. You can browse offers without signing in.'
             : 'Optional: continue with Google to sync and track your offers across devices. You can browse and use offers without signing in.'}
         </p>
-        {referralCode && referralPreview && (
-          <div
-            role={referralPreview.status === 'invalid' ? 'alert' : 'status'}
-            className={`mt-4 flex items-start gap-2 rounded-lg border p-3 text-xs leading-relaxed ${
-              referralPreview.status === 'invalid'
-                ? 'border-rose-300/20 bg-rose-400/5 text-rose-200'
-                : 'border-cyan-300/20 bg-cyan-300/[0.06] text-cyan-100'
-            }`}
-          >
-            {referralPreview.status === 'loading' ? (
-              <LoaderCircle className="mt-0.5 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
-            ) : referralPreview.status === 'verified' ? (
-              <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            ) : (
-              <Users className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            )}
-            <span>
-              {referralPreview.status === 'loading' && 'Checking your referral link…'}
-              {referralPreview.status === 'verified' && <>You were invited by <strong>{referralPreview.referrerName}</strong>. To qualify the $5 referrer reward, use offers opened from this site; at least $10 in net commission must be received and verified. Activity marked complete by a member alone does not qualify.</>}
-              {referralPreview.status === 'invalid' && 'This referral link could not be verified. You can still create an account, but this code will not be attached.'}
-              {referralPreview.status === 'unavailable' && 'Your referral code is saved for signup, but we could not verify the inviter right now. A $5 reward requires eligible activity through this site and at least $10 in net commission that we actually receive and verify.'}
-            </span>
-          </div>
-        )}
         {needsUsername ? (
           <form onSubmit={saveUsername} className="mt-5 space-y-3">
             <label className="block text-xs font-semibold text-zinc-300" htmlFor="account-username">Username</label>

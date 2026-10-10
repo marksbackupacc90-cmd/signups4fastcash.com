@@ -17,6 +17,7 @@ const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
+const MEMBER_REFERRALS_ENABLED = false;
 const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
 const REFERRAL_MIN_NET_REVENUE = 10;
 const cpxAppId = env.CPX_APP_ID || '36089';
@@ -29,6 +30,13 @@ const ownerEmails = new Set(
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean),
 );
+
+function requireMemberReferralsEnabled(_req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!MEMBER_REFERRALS_ENABLED) {
+    return res.status(410).json({ error: 'The member referral program is temporarily paused.' });
+  }
+  return next();
+}
 
 function getRequestAppUrl(req: express.Request) {
   const configuredAppUrl = env.APP_URL?.trim().replace(/\/$/, '');
@@ -384,6 +392,8 @@ const seoPageRoutes: Record<string, string> = {
 };
 
 const legacySeoRedirects: Record<string, string> = {
+  '/about.html': '/#trust',
+  '/disclosures.html': '/#trust',
   '/best-cashback-offers.html': '/cashback-offers',
   '/best-referral-bonuses.html': '/signup-bonus-sites',
   '/best-free-stock-bonuses.html': '/free-stock-bonuses',
@@ -500,12 +510,8 @@ app.get('/api/auth/google', (req, res) => {
   if (!googleClientId || !googleClientSecret) {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
-  const requestedReferralCode = typeof req.query.ref === 'string' ? req.query.ref.trim().toUpperCase() : '';
-  if (requestedReferralCode && !REFERRAL_CODE_PATTERN.test(requestedReferralCode)) {
-    return res.status(400).json({ error: 'The referral code is not valid.' });
-  }
   const nonce = randomBytes(32).toString('hex');
-  const state = createGoogleOAuthState(nonce, requestedReferralCode || null);
+  const state = createGoogleOAuthState(nonce, null);
   const redirectUri = `${getOAuthAppUrl(req)}/api/auth/google/callback`;
   const params = new URLSearchParams({
     client_id: googleClientId,
@@ -572,7 +578,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
       ? hashReferralValue(`ip:${signupIp}`)
       : null;
     const userId = randomUUID();
-    const accountReferralCode = randomBytes(6).toString('hex').toUpperCase();
+    const accountReferralCode = MEMBER_REFERRALS_ENABLED ? randomBytes(6).toString('hex').toUpperCase() : null;
     type AuthAccountRow = {
       id: string;
       google_sub: string;
@@ -599,7 +605,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
         );
         user = inserted.rows[0];
 
-        if (user) {
+        if (user && accountReferralCode) {
           await client.query(
             `INSERT INTO referral_code_aliases (code, user_id)
              VALUES ($1, $2)
@@ -608,7 +614,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
           );
         }
 
-        if (user && verifiedOAuthState.referralCode && signupIpHash && referralHashSecret) {
+        if (MEMBER_REFERRALS_ENABLED && user && verifiedOAuthState.referralCode && signupIpHash && referralHashSecret) {
           const referrerResult = await client.query<{ id: string }>(
             'SELECT user_id AS id FROM referral_code_aliases WHERE code = $1 LIMIT 1',
             [verifiedOAuthState.referralCode],
@@ -712,7 +718,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 });
 
-app.get('/api/referrals/preview', async (req, res) => {
+app.get('/api/referrals/preview', requireMemberReferralsEnabled, async (req, res) => {
   const referralCode = typeof req.query.code === 'string' ? req.query.code.trim().toUpperCase() : '';
   if (!REFERRAL_CODE_PATTERN.test(referralCode)) {
     return res.status(400).json({ error: 'Enter a valid referral code.' });
@@ -739,7 +745,7 @@ app.get('/api/referrals/preview', async (req, res) => {
   }
 });
 
-app.get('/api/referrals/me', async (req, res) => {
+app.get('/api/referrals/me', requireMemberReferralsEnabled, async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
   if (!database) return res.status(503).json({ error: 'Referral accounts require the database service.' });
@@ -858,7 +864,7 @@ app.get('/api/referrals/me', async (req, res) => {
   }
 });
 
-app.put('/api/referrals/me/code', async (req, res) => {
+app.put('/api/referrals/me/code', requireMemberReferralsEnabled, async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
   if (!database) return res.status(503).json({ error: 'Referral links require the database service.' });
@@ -918,7 +924,7 @@ app.put('/api/referrals/me/code', async (req, res) => {
   }
 });
 
-app.post('/api/referrals/claim', async (req, res) => {
+app.post('/api/referrals/claim', requireMemberReferralsEnabled, async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
   if (!database) return res.status(503).json({ error: 'Referral claims require the database service.' });

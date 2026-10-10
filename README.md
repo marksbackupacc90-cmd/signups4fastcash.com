@@ -48,20 +48,14 @@ Never commit `.env.local` or provider secrets.
 1. Open the site and enter the configured admin passcode in the offer search field.
 2. Review or create offers in the Admin Panel.
 3. Publish only offers with verified official and referral URLs.
-4. For owner accounts, use the referral payout queue to review pending bonuses. Mark a bonus completed only after paying it; this status change does not issue a payment.
+4. For owner accounts, use the referral payout queue to review historical bonuses. Mark a bonus completed only after paying it; this status change does not issue a payment.
 5. Re-lock the panel when finished.
 
-Signed-in members can customize their referral code from the account dashboard.
-Older referral links remain valid, and visitors with a valid link see the
-referrer's username before continuing to Google sign-up. A $5 referral reward
-is not payable unless that referred signup generates at least $10 in net
-commission actually received and verified by the owner from offers opened
-through this site. Offer completion or estimated revenue alone does not
-qualify. The owner payout queue lists that account's saved offer activity;
-completion statuses are member-reported and must not be treated as proof of
-a provider conversion or payment. Outbound offer clicks can be attributed to a
-referred member only while they are signed in; provider-side completion and
-commission still require a partner postback or owner verification.
+The member-to-member referral program is temporarily paused. The site does not
+promote personal referral links, attach new signups to a referrer, or accept
+referral claims while paused. Existing referral records and the owner-only
+payout queue are retained for historical review. This does not affect merchant
+referral or affiliate links used to present individual offers.
 
 Offer edits persist in PostgreSQL when `DATABASE_URL` is configured. Without it,
 the app uses in-memory storage and changes are lost on restart.

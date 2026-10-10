@@ -53,35 +53,27 @@ test('responses preserve a caller request ID for support diagnostics', async () 
   assert.equal(response.headers.get('x-request-id'), 'test-request-123');
 });
 
-test('referral endpoints require an authenticated account', async () => {
+test('member referral endpoints are paused without deleting prior records', async () => {
   const account = await request('/api/referrals/me');
-  assert.equal(account.status, 401);
-  assert.equal(account.body.error, 'Sign in with Google first.');
-
+  assert.equal(account.status, 410);
+  assert.match(account.body.error, /temporarily paused/i);
   const claim = await request('/api/referrals/claim', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ referralCode: 'ABCDEF123456' }),
   });
-  assert.equal(claim.status, 401);
-  assert.equal(claim.body.error, 'Sign in with Google first.');
+  assert.equal(claim.status, 410);
 
   const updateCode = await request('/api/referrals/me/code', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ referralCode: 'MY-CUSTOM-LINK' }),
   });
-  assert.equal(updateCode.status, 401);
-});
+  assert.equal(updateCode.status, 410);
 
-test('referral previews validate custom links without exposing account data', async () => {
-  const malformed = await request('/api/referrals/preview?code=bad%20code');
-  assert.equal(malformed.status, 400);
-  assert.match(malformed.body.error, /valid referral code/i);
-
-  const validButUnavailable = await request('/api/referrals/preview?code=MY-CUSTOM-LINK');
-  assert.equal(validButUnavailable.status, 503);
-  assert.match(validButUnavailable.body.error, /temporarily unavailable/i);
+  const preview = await request('/api/referrals/preview?code=MY-CUSTOM-LINK');
+  assert.equal(preview.status, 410);
+  assert.match(preview.body.error, /temporarily paused/i);
 });
 
 test('referral payouts require twice the reward in verified net commission', () => {
@@ -102,7 +94,7 @@ test('Google OAuth referral state is signed, nonce-bound, and expires', () => {
   assert.equal(readGoogleOAuthState(expiredState, 'test-nonce'), null);
 });
 
-test('Google signup carries a referral code in protected OAuth state', async () => {
+test('Google signup ignores referral codes while the member program is paused', async () => {
   const response = await requestText('/api/auth/google?ref=MARK-REF_1', { redirect: 'manual' });
   assert.equal(response.status, 302);
   const redirectUrl = new URL(response.headers.get('location'));
@@ -112,7 +104,15 @@ test('Google signup carries a referral code in protected OAuth state', async () 
   const nonce = cookie?.match(/sfc_oauth_state=([a-f0-9]+)/)?.[1];
   assert.ok(state);
   assert.ok(nonce);
-  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: 'MARK-REF_1' });
+  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: null });
+
+  const malformedCode = await requestText('/api/auth/google?ref=bad%20code', { redirect: 'manual' });
+  assert.equal(malformedCode.status, 302);
+  const malformedState = new URL(malformedCode.headers.get('location')).searchParams.get('state');
+  const malformedNonce = malformedCode.headers.get('set-cookie')?.match(/sfc_oauth_state=([a-f0-9]+)/)?.[1];
+  assert.ok(malformedState);
+  assert.ok(malformedNonce);
+  assert.deepEqual(readGoogleOAuthState(malformedState, malformedNonce), { referralCode: null });
 });
 
 test('sitemap contains only canonical indexable routes', async () => {
@@ -126,6 +126,8 @@ test('sitemap contains only canonical indexable routes', async () => {
 
 test('legacy and .html SEO URLs redirect before static files can serve duplicate pages', async () => {
   const redirects = [
+    ['/about.html', '/#trust'],
+    ['/disclosures.html', '/#trust'],
     ['/cashback-offers.html', '/cashback-offers'],
     ['/best-cashback-offers.html', '/cashback-offers'],
     ['/banking-fintech-signup-bonuses.html', '/banking-signup-offers'],
