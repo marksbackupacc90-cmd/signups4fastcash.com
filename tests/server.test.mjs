@@ -215,6 +215,23 @@ test('public offers disclose complete requirements without unsupported trust or 
   }
 });
 
+test('Inter offer clearly labels reported Loop points value and required referral code', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-inter-loop-points');
+
+  assert.ok(offer, 'Inter should be in the public offer catalog');
+  assert.equal(offer.referralCode, 'OVTHOJDC');
+  assert.match(offer.referralUrl, /^https:\/\/inter\.co\/us\/$/);
+  assert.equal(offer.incentiveValue, 25);
+  assert.match(offer.incentiveAmount, /10,000 Loop points.*reported equivalent: \$25/i);
+  assert.match(offer.honestTruth.summary, /referrer and eligible new member each receive 10,000 Loop points/i);
+  assert.match(offer.honestTruth.summary, /enter referral code OVTHOJDC during signup/i);
+  assert.match(offer.honestTruth.theCatch, /not been independently confirmed/i);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /not cash/i);
+  assert.equal(offer.honestTruth.idVerificationRequired, true);
+});
+
 test('unsupported Acebet and Debbie promos are kept out of public listings', () => {
   assert.equal(isTemporarilyHiddenOffer({ id: 'custom-acebet', company: 'Acebet' }), true);
   assert.equal(isTemporarilyHiddenOffer({ id: 'custom-debbie', company: 'Debbie' }), true);
