@@ -1323,11 +1323,6 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
-    ALTER TABLE referrals
-    ADD COLUMN IF NOT EXISTS verified_net_revenue NUMERIC(10,2) NOT NULL DEFAULT 0
-    CHECK (verified_net_revenue >= 0)
-  `);
-  await database.query(`
     CREATE TABLE IF NOT EXISTS newsletter_subscribers (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
@@ -1447,6 +1442,11 @@ async function initializeOfferStore() {
       bonus_amount NUMERIC(10,2) NOT NULL DEFAULT 5.00 CHECK (bonus_amount >= 0),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+  await database.query(`
+    ALTER TABLE referrals
+    ADD COLUMN IF NOT EXISTS verified_net_revenue NUMERIC(10,2) NOT NULL DEFAULT 0
+    CHECK (verified_net_revenue >= 0)
   `);
   await database.query(`
     CREATE TABLE IF NOT EXISTS referral_offer_clicks (
