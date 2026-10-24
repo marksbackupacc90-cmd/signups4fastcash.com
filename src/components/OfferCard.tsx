@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, MousePointerClick, ShieldCheck } from 'lucide-react';
+import { Copy, ExternalLink, MousePointerClick, ShieldCheck } from 'lucide-react';
 import { Offer } from '../types';
 import { getOfferReviewBadge, getOfferReviewDateLabel } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
@@ -77,9 +77,24 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           <MousePointerClick className="h-3 w-3" aria-hidden="true" />
           {Math.max(0, Number(offer.clicksCount) || 0).toLocaleString()} tracked clicks
         </div>
-        <a href={claimUrl} target="_blank" rel="noopener noreferrer" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onClaimClick(offer.id); }} id={`claim-offer-btn-${offer.id}`} aria-label={`View the ${offer.company} offer`} className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]">
-          <span>View offer</span><ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
-        </a>
+        {offer.referralCodeRequired ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onMoreInfo(offer);
+            }}
+            id={`claim-offer-btn-${offer.id}`}
+            aria-label={`See required referral code for ${offer.company}`}
+            className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
+          >
+            <span>See required code</span><Copy className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        ) : (
+          <a href={claimUrl} target="_blank" rel="noopener noreferrer" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onClaimClick(offer.id); }} id={`claim-offer-btn-${offer.id}`} aria-label={`View the ${offer.company} offer`} className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]">
+            <span>View offer</span><ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
+          </a>
+        )}
         <p className="mt-2 text-center text-[10px] leading-relaxed text-zinc-400">
           This may be a referral link; we may earn a commission at no extra cost. {offer.company} sets eligibility and reward terms.
         </p>

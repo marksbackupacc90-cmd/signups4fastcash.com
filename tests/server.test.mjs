@@ -222,6 +222,7 @@ test('Inter offer clearly labels reported Loop points value and required referra
 
   assert.ok(offer, 'Inter should be in the public offer catalog');
   assert.equal(offer.referralCode, 'OVTHOJDC');
+  assert.equal(offer.referralCodeRequired, true);
   assert.match(offer.referralUrl, /^https:\/\/inter\.co\/us\/$/);
   assert.equal(offer.incentiveValue, 25);
   assert.match(offer.incentiveAmount, /10,000 Loop points.*reported equivalent: \$25/i);

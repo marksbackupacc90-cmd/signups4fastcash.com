@@ -33,6 +33,7 @@ export interface Offer {
   availability: string;
   officialMerchantUrl: string;
   referralCode?: string;
+  referralCodeRequired?: boolean;
   referralUrl: string;
   sourceUrl?: string;
   verifiedAt?: string;

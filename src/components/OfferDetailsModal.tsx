@@ -133,6 +133,22 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
               <span className="font-semibold text-zinc-300">Reward timing:</span> {offer.payoutSpeed}
             </p>
           </div>
+          {offer.referralCode && (
+            <div className="mt-4 rounded-xl border border-amber-200/25 bg-amber-200/[0.06] p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-100">
+                {offer.referralCodeRequired ? 'Required referral code' : 'Referral code'}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <strong className="font-mono text-lg tracking-wider text-white">{offer.referralCode}</strong>
+                <button type="button" onClick={copyCode} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15">
+                  {copyStatus === 'copied' ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copyStatus === 'copied' ? 'Copied' : 'Copy code'}
+                </button>
+              </div>
+              {offer.referralCodeRequired && <p className="mt-2 text-xs leading-relaxed text-amber-50/80">Enter this code during signup to qualify for the reported referral reward.</p>}
+              {copyStatus === 'error' && <p className="mt-2 text-xs text-rose-300">Could not copy. Select and copy the code instead.</p>}
+            </div>
+          )}
 
           <div className="mt-4 space-y-2">
             <Disclosure title={`How to earn · ${offer.speedrunHints.length} steps`}>
@@ -156,16 +172,6 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
                 <div className="col-span-2"><dt className="text-zinc-500">Reward timing</dt><dd className="mt-0.5 text-zinc-200">{offer.payoutSpeed}</dd></div>
               </dl>
               <p className="mt-3 text-xs text-zinc-400">Setup time is an estimate for signing up only. Qualifying steps, provider review, and receiving a reward may take longer.</p>
-              {offer.referralCode && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-3">
-                  <span className="text-xs text-zinc-400">Referral code <strong className="ml-1 text-cyan-100">{offer.referralCode}</strong></span>
-                  <button type="button" onClick={copyCode} className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2.5 py-1.5 text-xs text-white hover:bg-white/15">
-                    {copyStatus === 'copied' ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copyStatus === 'copied' ? 'Copied' : 'Copy code'}
-                  </button>
-                  {copyStatus === 'error' && <p className="w-full text-xs text-rose-300">Could not copy. Select and copy the code instead.</p>}
-                </div>
-              )}
             </Disclosure>
 
             <Disclosure title="Terms & fine print">

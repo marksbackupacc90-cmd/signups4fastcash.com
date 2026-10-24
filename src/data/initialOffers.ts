@@ -206,6 +206,7 @@ export const INITIAL_OFFERS: Offer[] = [
     availability: 'United States; confirm account and Loop Rewards eligibility with Inter',
     officialMerchantUrl: 'https://inter.co/us/',
     referralCode: 'OVTHOJDC',
+    referralCodeRequired: true,
     referralUrl: 'https://inter.co/us/',
     sourceUrl: 'https://inter.co/us/',
     verificationStatus: 'unverified',
