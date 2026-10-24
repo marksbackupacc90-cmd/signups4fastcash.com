@@ -209,6 +209,7 @@ export const INITIAL_OFFERS: Offer[] = [
     referralCodeRequired: true,
     referralUrl: 'https://inter.co/us/',
     sourceUrl: 'https://inter.co/us/',
+    logoUrl: '/company-logos/Inter-logo.png',
     verificationStatus: 'unverified',
     logoBgColor: '#ff7a00',
     logoTextColor: '#ffffff',
