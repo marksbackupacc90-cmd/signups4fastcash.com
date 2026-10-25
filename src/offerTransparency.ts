@@ -3,10 +3,22 @@ import { Offer } from './types';
 type OfferReviewFields = Pick<Offer, 'verificationStatus' | 'verifiedAt' | 'verificationExpiresAt'>;
 
 export function getOfferReviewDateLabel(offer: Pick<Offer, 'verifiedAt'>) {
-  if (!offer.verifiedAt) return null;
+  if (!offer.verifiedAt) return 'Review date not recorded';
   const checkedAt = Date.parse(offer.verifiedAt);
-  if (!Number.isFinite(checkedAt)) return null;
+  if (!Number.isFinite(checkedAt)) return 'Review date not recorded';
   return `Last checked ${new Date(checkedAt).toLocaleDateString()}`;
+}
+
+export function getOfferSourceUrl(offer: Pick<Offer, 'sourceUrl' | 'officialMerchantUrl'>) {
+  return offer.sourceUrl || offer.officialMerchantUrl;
+}
+
+export function getOfferRewardKind(offer: Pick<Offer, 'incentiveAmount'>): 'cash' | 'points' | 'other' {
+  const reward = offer.incentiveAmount.toLowerCase();
+  if (/\bpoints?\b/.test(reward)) return 'points';
+  if (/\b(stock|share|shares|gift card|gc|sc|mystery box)\b/.test(reward)) return 'other';
+  if (/\bcash(?:back)?\b|\bpaypal\b|\$\s*\d/.test(reward)) return 'cash';
+  return 'other';
 }
 
 export function getOfferReviewBadge(offer: OfferReviewFields) {

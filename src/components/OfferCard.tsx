@@ -1,7 +1,7 @@
 import React from 'react';
-import { Copy, ExternalLink, MousePointerClick, ShieldCheck } from 'lucide-react';
+import { Check, Copy, ExternalLink, GitCompareArrows, MousePointerClick, ShieldCheck } from 'lucide-react';
 import { Offer } from '../types';
-import { getOfferReviewBadge, getOfferReviewDateLabel } from '../offerTransparency';
+import { getOfferReviewBadge, getOfferReviewDateLabel, getOfferSourceUrl } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -9,13 +9,16 @@ interface OfferCardProps {
   offer: Offer;
   onClaimClick: (offerId: string) => void;
   onMoreInfo: (offer: Offer) => void;
+  isCompared: boolean;
+  onToggleCompare: (offerId: string) => void;
 }
 
-export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo }) => {
+export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo, isCompared, onToggleCompare }) => {
   const reviewBadge = getOfferReviewBadge(offer);
   const reviewDateLabel = getOfferReviewDateLabel(offer);
   const spotlight = getCashoutSpotlightInfo(offer.id);
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
+  const sourceUrl = getOfferSourceUrl(offer);
 
   return (
     <div
@@ -25,6 +28,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
       aria-label={`View details for ${offer.title} from ${offer.company}`}
       onClick={() => onMoreInfo(offer)}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onMoreInfo(offer);
@@ -57,7 +61,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-mono text-zinc-400">
           <span className={`inline-flex items-center gap-1 ${reviewBadge.className}`}><ShieldCheck className="h-3 w-3" /> {reviewBadge.label}</span>
-          {reviewDateLabel && <span aria-label={reviewDateLabel}>{reviewDateLabel}</span>}
+          <span aria-label={reviewDateLabel}>{reviewDateLabel}</span>
         </div>
         {spotlight && (
           <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-violet-100">
@@ -69,6 +73,17 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           <span className="truncate">{offer.company}</span>
           <span className="max-w-[58%] truncate text-right">{offer.payoutSpeed}</span>
         </div>
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
+          className="mt-1 inline-flex min-h-8 items-center justify-center gap-1 text-[10px] text-cyan-100/70 hover:text-cyan-100"
+          aria-label={`View ${offer.company} provider source`}
+        >
+          Provider source <ExternalLink className="h-3 w-3" aria-hidden="true" />
+        </a>
         <div
           className="mt-2 inline-flex items-center justify-center gap-1 text-[10px] font-medium text-cyan-100/80"
           aria-label={`${Math.max(0, Number(offer.clicksCount) || 0).toLocaleString()} tracked referral clicks; clicks are not unique people`}
@@ -77,6 +92,23 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           <MousePointerClick className="h-3 w-3" aria-hidden="true" />
           {Math.max(0, Number(offer.clicksCount) || 0).toLocaleString()} tracked clicks
         </div>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleCompare(offer.id);
+          }}
+          aria-pressed={isCompared}
+          aria-label={`${isCompared ? 'Remove' : 'Add'} ${offer.company} ${isCompared ? 'from' : 'to'} comparison`}
+          className={`focus-ring mt-2 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${
+            isCompared
+              ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100'
+              : 'border-white/10 text-zinc-300 hover:border-cyan-300/30 hover:text-white'
+          }`}
+        >
+          {isCompared ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <GitCompareArrows className="h-3.5 w-3.5" aria-hidden="true" />}
+          {isCompared ? 'Added to compare' : 'Compare'}
+        </button>
         {offer.referralCodeRequired ? (
           <button
             type="button"

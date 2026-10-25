@@ -12,13 +12,15 @@ import { Footer } from './components/Footer';
 import { TrustAndFaq } from './components/TrustAndFaq';
 import { LegalModal, LegalSection } from './components/LegalModal';
 import { SfcCoinLogo } from './components/SfcCoinLogo';
-import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, GitCompareArrows, X } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { HowItWorks } from './components/HowItWorks';
 import { CashoutSpotlight } from './components/CashoutSpotlight';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
+import { OfferComparison } from './components/OfferComparison';
+import { getOfferRewardKind } from './offerTransparency';
 
 interface AuthUser {
   id: string;
@@ -147,6 +149,8 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'random' | 'highest' | 'fastest' | 'easiest'>('random');
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
   const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
+  const [identityFilter, setIdentityFilter] = useState<'all' | 'no-id-listed'>('all');
+  const [rewardFilter, setRewardFilter] = useState<'all' | 'cash' | 'points'>('all');
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
   const pageViewRecordedRef = useRef(false);
   const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0, moved: false });
@@ -179,7 +183,12 @@ export default function App() {
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [comparisonOfferIds, setComparisonOfferIds] = useState<string[]>([]);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
   const publicOffers = useMemo(() => liveOffers.filter((offer) => offer.status === 'live'), [liveOffers]);
+  const comparisonOffers = comparisonOfferIds
+    .map((id) => publicOffers.find((offer) => offer.id === id))
+    .filter((offer): offer is Offer => Boolean(offer));
   const [myOfferIds, setMyOfferIds] = useState<string[]>(() => readMyOfferEntries().map((entry) => entry.offerId));
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const liveOfferIds = liveOffers.map((offer) => offer.id).join('|');
@@ -799,6 +808,8 @@ export default function App() {
       if (offerFilter === 'fast' && !/instant|within \d+ (?:hours?|business days?)/i.test(offer.payoutSpeed)) return false;
       if (offerFilter === 'beginner' && offer.difficulty === 'Standard (10 min)') return false;
       if (offerFilter === 'purchase' && !/\$0|no deposit/i.test(offer.depositRequired)) return false;
+      if (identityFilter === 'no-id-listed' && offer.honestTruth.idVerificationRequired) return false;
+      if (rewardFilter !== 'all' && getOfferRewardKind(offer) !== rewardFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -839,6 +850,17 @@ export default function App() {
     setOfferFinderOpen(false);
     setSearchQuery(offer.company);
     window.setTimeout(() => document.getElementById(`offer-card-${offer.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  };
+
+  const handleToggleCompare = (offerId: string) => {
+    setComparisonOfferIds((current) => {
+      if (current.includes(offerId)) return current.filter((id) => id !== offerId);
+      if (current.length >= 3) {
+        showToast('Compare up to 3 offers at a time. Remove one to add another.');
+        return current;
+      }
+      return [...current, offerId];
+    });
   };
 
   const handleResumeOffer = (offer: Offer) => {
@@ -1152,6 +1174,10 @@ export default function App() {
               setSortBy={setSortBy}
               offerFilter={offerFilter}
               setOfferFilter={setOfferFilter}
+              identityFilter={identityFilter}
+              setIdentityFilter={setIdentityFilter}
+              rewardFilter={rewardFilter}
+              setRewardFilter={setRewardFilter}
               totalOffersCount={publicOffers.length}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
             />
@@ -1175,6 +1201,28 @@ export default function App() {
                 <span className="text-xs font-mono text-zinc-500 hidden sm:inline">
                   Requirements and availability can change on the merchant site
                 </span>
+              </div>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Compare offers side by side</p>
+                  <p className="mt-0.5 text-xs text-zinc-400">Choose up to 3 to compare rewards, deposits, ID checks, and timing.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {comparisonOfferIds.length > 0 && (
+                    <button type="button" onClick={() => setComparisonOfferIds([])} className="min-h-10 rounded-lg px-3 text-xs font-semibold text-zinc-400 hover:bg-white/5 hover:text-white">
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setComparisonOpen(true)}
+                    disabled={comparisonOffers.length < 2}
+                    className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-lg bg-cyan-300 px-3 py-2 text-xs font-bold text-[#06131a] hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
+                    Compare ({comparisonOffers.length})
+                  </button>
+                </div>
               </div>
 
               {filteredOffers.length === 0 ? (
@@ -1257,6 +1305,8 @@ export default function App() {
                             offer={offer}
                             onClaimClick={handleClaimClick}
                             onMoreInfo={setSelectedOffer}
+                            isCompared={comparisonOfferIds.includes(offer.id)}
+                            onToggleCompare={handleToggleCompare}
                           />
                         </div>
                       ))}
@@ -1380,6 +1430,21 @@ export default function App() {
           offer={selectedOffer}
           onClose={() => setSelectedOffer(null)}
           onClaimClick={handleClaimClick}
+        />
+      )}
+      {comparisonOpen && comparisonOffers.length >= 2 && (
+        <OfferComparison
+          offers={comparisonOffers}
+          onClose={() => setComparisonOpen(false)}
+          onRemove={(offerId) => {
+            setComparisonOfferIds((current) => current.filter((id) => id !== offerId));
+            if (comparisonOffers.length <= 2) setComparisonOpen(false);
+          }}
+          onViewOffer={(offerId) => {
+            const offer = comparisonOffers.find((candidate) => candidate.id === offerId);
+            setComparisonOpen(false);
+            if (offer) setSelectedOffer(offer);
+          }}
         />
       )}
     </div>

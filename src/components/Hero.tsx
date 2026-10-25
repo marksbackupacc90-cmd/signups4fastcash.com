@@ -13,6 +13,10 @@ interface HeroProps {
   setSortBy: (sort: 'random' | 'highest' | 'fastest' | 'easiest') => void;
   offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase';
   setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase') => void;
+  identityFilter: 'all' | 'no-id-listed';
+  setIdentityFilter: (filter: 'all' | 'no-id-listed') => void;
+  rewardFilter: 'all' | 'cash' | 'points';
+  setRewardFilter: (filter: 'all' | 'cash' | 'points') => void;
   totalOffersCount: number;
   onOpenFinder?: () => void;
   onOpenNewsletter?: () => void;
@@ -39,6 +43,10 @@ export const Hero: React.FC<HeroProps> = ({
   setSortBy,
   offerFilter,
   setOfferFilter,
+  identityFilter,
+  setIdentityFilter,
+  rewardFilter,
+  setRewardFilter,
   totalOffersCount,
   onOpenFinder,
   onOpenNewsletter,
@@ -134,6 +142,20 @@ export const Hero: React.FC<HeroProps> = ({
           <a href="/best-rewards-apps" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Rewards apps</a>
           <a href="/best-free-stock-offers-for-beginners" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Free stock for beginners</a>
           <a href="/best-fintech-bonuses-without-deposit" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit fintech</a>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {[
+            { title: 'Compare before you click', text: 'See the bonus, minimum deposit, and payout timing in one fast scan.' },
+            { title: 'Terms up front', text: 'We surface the fine print and hidden-fee warnings before the offer page.' },
+            { title: 'Find your best fit', text: 'Filter by no-deposit, beginner-friendly, or fastest payout in seconds.' },
+          ].map(({ title, text }) => (
+            <div key={title} className="rounded-2xl border border-white/[0.08] bg-[#0e121a]/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
+              <p className="text-xs font-mono uppercase tracking-[0.14em] text-cyan-300">Why people use this</p>
+              <h3 className="mt-2 text-base font-semibold text-white">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{text}</p>
+            </div>
+          ))}
         </div>
 
         {/* Search and Filters Bar */}
@@ -232,6 +254,58 @@ export const Hero: React.FC<HeroProps> = ({
               </button>
             ))}
           </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div role="group" aria-label="Filter offers by identity verification">
+              <p className="mb-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Identity check</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ['all', 'Any ID requirement'],
+                  ['no-id-listed', 'No ID listed'],
+                ] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setIdentityFilter(id)}
+                    aria-pressed={identityFilter === id}
+                    className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                      identityFilter === id
+                        ? 'border-violet-300/60 bg-violet-300 text-[#101018]'
+                        : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-violet-300/40 hover:text-white'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div role="group" aria-label="Filter offers by reward type">
+              <p className="mb-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Reward type</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ['all', 'Any reward'],
+                  ['cash', 'Cash / USD amount'],
+                  ['points', 'Points'],
+                ] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setRewardFilter(id)}
+                    aria-pressed={rewardFilter === id}
+                    className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                      rewardFilter === id
+                        ? 'border-amber-300/60 bg-amber-300 text-[#16120a]'
+                        : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-amber-300/40 hover:text-white'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+            “No ID listed” means no ID requirement is listed here; providers may still ask for identity checks. Reward-type filters are based on the listed reward wording.
+          </p>
         </div>
           </div>
         </div>

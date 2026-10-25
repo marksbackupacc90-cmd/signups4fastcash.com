@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, ChevronDown, Copy, ExternalLink, X } from 'lucide-react';
 import { Offer } from '../types';
-import { getIdVerificationDescription, getOfferReviewBadge, getOfferReviewDateLabel, getOfferReviewDescription } from '../offerTransparency';
+import { getIdVerificationDescription, getOfferReviewBadge, getOfferReviewDateLabel, getOfferReviewDescription, getOfferSourceUrl } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 
 interface OfferDetailsModalProps {
@@ -39,6 +39,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const reviewBadge = getOfferReviewBadge(offer);
   const reviewDateLabel = getOfferReviewDateLabel(offer);
+  const sourceUrl = getOfferSourceUrl(offer);
   const cashoutSpotlight = getCashoutSpotlightInfo(offer.id);
 
   const copyCode = async () => {
@@ -105,8 +106,26 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
         <div className="overflow-y-auto px-5 py-4">
           <div className="mb-3 rounded-lg border border-amber-200/15 bg-amber-200/[0.04] p-3">
             <p className={`text-xs font-semibold ${reviewBadge.className}`}>{reviewBadge.label}</p>
-            {reviewDateLabel && <p className="mt-1 text-[10px] text-zinc-400">{reviewDateLabel}</p>}
+            <p className="mt-1 text-[10px] text-zinc-400">{reviewDateLabel}</p>
             <p className="mt-1 text-xs leading-relaxed text-zinc-300">{getOfferReviewDescription(offer)}</p>
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-cyan-200 hover:text-cyan-100">
+              View provider source <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+            <button
+              type="button"
+              aria-controls="offer-issue-report"
+              onClick={(event) => {
+                const issueDetails = event.currentTarget.closest('[role="dialog"]')?.querySelector('#offer-issue-report');
+                if (issueDetails instanceof HTMLDetailsElement) {
+                  issueDetails.open = true;
+                  issueDetails.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  issueDetails.querySelector('summary')?.focus();
+                }
+              }}
+              className="ml-3 inline-flex min-h-8 items-center text-xs font-semibold text-amber-200 hover:text-amber-100"
+            >
+              Report incorrect info
+            </button>
           </div>
           {cashoutSpotlight && (
             <section className="mb-3 rounded-xl border border-violet-200/20 bg-violet-200/[0.06] p-3" aria-label="Cashout details reported by the site owner">
@@ -204,7 +223,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
           <p className="mt-2 text-center text-[11px] leading-relaxed text-zinc-300">
             This may be a referral link. We may earn a commission if you use it, at no extra cost to you. {offer.company} controls eligibility, approval, reward value, and payment; confirm its current terms before proceeding.
           </p>
-          <details className="mt-3 rounded-lg border border-white/[0.08]">
+          <details id="offer-issue-report" className="mt-3 rounded-lg border border-white/[0.08]">
             <summary className="cursor-pointer px-3 py-2 text-center text-xs font-medium text-zinc-300 hover:text-white">
               Found an expired link or incorrect terms?
             </summary>
