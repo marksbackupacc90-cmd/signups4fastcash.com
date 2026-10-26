@@ -439,6 +439,35 @@ test('newer Joko terms replace stale saved offer copy while preserving referral 
   assert.equal(merged.conversionsCount, 2);
 });
 
+test('newer Inter reward wording replaces stale saved copy while preserving referral counts', () => {
+  const catalogOffer = {
+    id: 'offer-inter-loop-points',
+    title: 'Get a reported $25 in Loop points with Inter',
+    incentiveAmount: 'Reported $25 value in 10,000 Loop points; not cash',
+    updatedAt: '2026-10-25T00:00:00.000Z',
+    honestTruth: {
+      summary: 'The reported value is $25 in Loop points, not cash.',
+    },
+  };
+  const savedOffer = {
+    id: 'offer-inter-loop-points',
+    title: 'Get 10,000 Loop points with Inter',
+    incentiveAmount: '10,000 Loop points (reported equivalent: $25)',
+    updatedAt: '2026-10-24T00:00:00.000Z',
+    status: 'live',
+    clicksCount: 9,
+    conversionsCount: 2,
+  };
+
+  const merged = mergeCatalogOffer(catalogOffer, savedOffer);
+  assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.incentiveAmount, catalogOffer.incentiveAmount);
+  assert.equal(merged.honestTruth.summary, catalogOffer.honestTruth.summary);
+  assert.equal(merged.status, 'live');
+  assert.equal(merged.clicksCount, 9);
+  assert.equal(merged.conversionsCount, 2);
+});
+
 test('newer Verb catalog details replace stale saved terms while preserving visibility and counts', () => {
   const catalogOffer = {
     id: 'offer-verb',

@@ -231,7 +231,7 @@ export const INITIAL_OFFERS: Offer[] = [
     clicksCount: 0,
     conversionsCount: 0,
     createdAt: '2026-10-24T00:00:00Z',
-    updatedAt: '2026-10-24T00:00:00Z',
+    updatedAt: '2026-10-25T00:00:00Z',
   },
   {
     id: 'offer-freecash',
