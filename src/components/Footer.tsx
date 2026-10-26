@@ -29,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({
     .replace(/^Questions or corrections\?\s*Email\s+[^.]+\.\s*/i, '');
 
   return (
-    <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-400 text-xs py-12">
+    <footer className="border-t border-white/[0.08] bg-[#07090d] text-zinc-300 text-[13px] py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Top row */}
@@ -44,14 +44,14 @@ export const Footer: React.FC<FooterProps> = ({
               </span>
             </div>
             
-            <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
+            <p className="text-zinc-300 text-[13px] leading-relaxed max-w-md">
               {settings.footerBlurb || 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.'}
             </p>
-            <p className="text-zinc-400 text-xs leading-relaxed max-w-md">
+            <p className="text-zinc-300 text-[13px] leading-relaxed max-w-md">
               Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href={`mailto:${settings.supportEmail || 'support@signups4fastcash.com'}`}>{settings.supportEmail || 'support@signups4fastcash.com'}</a>. {disclaimer}
             </p>
 
-            <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px]">
+            <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
               <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 We do not handle or hold your reward
@@ -105,7 +105,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <button onClick={() => onOpenLegal('methodology')} className="block min-h-11 hover:text-white transition-colors text-left">Editorial Methodology</button>
               </div>
             )}
-            <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
+            <p className="text-xs text-zinc-300 leading-relaxed font-sans">
               <strong>Affiliate Disclosure:</strong> Some links may compensate us at no additional cost to you. Offers are controlled by their merchants; eligibility, terms, taxes, fees, and payout timing can change. We do not provide financial, tax, legal, or investment advice.
             </p>
           </div>
@@ -113,7 +113,7 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
 
         {/* Bottom copyright & disclaimer */}
-        <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-zinc-500">
+        <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-zinc-300">
           <div>
             &copy; {new Date().getFullYear()} {settings.brandName || settings.siteName} — All rights reserved.
           </div>

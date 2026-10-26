@@ -76,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="block max-w-[calc(100vw-125px)] truncate font-mono text-sm font-bold tracking-tight text-white sm:text-lg">
                 {settings.brandName || settings.siteName}
               </span>
-              <span className="hidden max-w-[calc(100vw-125px)] truncate text-[10px] font-mono text-cyan-300 sm:block sm:text-[11px]">
+              <span className="hidden max-w-[calc(100vw-125px)] truncate text-xs font-mono text-cyan-200 sm:block">
                 {settings.siteTagline || 'Rewards and cashback with clear terms'}
               </span>
             </div>
@@ -105,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <ListChecks className="h-3.5 w-3.5 text-cyan-300" />
             My Offers
-            {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-black text-[#071016]">{activeOfferCount}</span>}
+            {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[11px] font-black text-[#071016]">{activeOfferCount}</span>}
           </button>
         </nav>
 
@@ -118,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="My Offers"
           >
             <ListChecks className="h-4 w-4 text-cyan-300" />
-            {activeOfferCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-[#071016]">{activeOfferCount}</span>}
+            {activeOfferCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-300 px-1 text-[11px] font-black text-[#071016]">{activeOfferCount}</span>}
           </button>
           {username ? (
             <div ref={accountMenuRef} className="relative">
@@ -126,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-cyan-300/40" />
                 ) : (
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-[10px] font-bold text-cyan-200 ring-1 ring-cyan-300/25">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-xs font-bold text-cyan-200 ring-1 ring-cyan-300/25">
                     {username.slice(0, 1).toUpperCase()}
                   </span>
                 )}
@@ -136,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-white/10 bg-[#0e121a] p-1.5 shadow-2xl">
                   <button onClick={() => { onOpenMyOffers(); setAccountMenuOpen(false); }} className="focus-ring flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">
                     <ListChecks className="h-3.5 w-3.5 text-cyan-300" /> My Offers
-                    {activeOfferCount > 0 && <span className="ml-auto rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-bold text-[#071016]">{activeOfferCount}</span>}
+                    {activeOfferCount > 0 && <span className="ml-auto rounded-full bg-cyan-300 px-1.5 py-0.5 text-[11px] font-bold text-[#071016]">{activeOfferCount}</span>}
                   </button>
                   <button onClick={() => { onAccount(); setAccountMenuOpen(false); }} className="focus-ring block w-full rounded-md px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/10">My account</button>
                   {canAccessAdmin && (
@@ -164,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="retro-button focus-ring inline-flex items-center gap-1.5 rounded-md border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 sm:px-3"
               aria-label="Sign in with Google (optional)"
             >
-              Sign in <span className="hidden text-[10px] font-normal text-cyan-300 min-[360px]:inline">optional</span>
+              Sign in <span className="hidden text-xs font-normal text-cyan-200 min-[360px]:inline">optional</span>
             </button>
           )}
         </div>

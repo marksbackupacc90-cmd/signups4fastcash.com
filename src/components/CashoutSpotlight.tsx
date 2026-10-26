@@ -21,17 +21,17 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/20 bg-violet-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-100">
+          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/20 bg-violet-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.14em] text-violet-100">
             <CircleDollarSign className="h-3.5 w-3.5" /> The Daily Duo
           </div>
           <h2 id="cashout-spotlight-title" className="mt-2 text-xl font-black text-white sm:text-2xl">
             Featured offers and cashout spotlights
           </h2>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
+          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-zinc-300">
             Compare the featured Inter referral reward with the Daily Duo cashout options. Check each offer’s terms before signing up.
           </p>
         </div>
-        <span className="text-[10px] text-zinc-500">Details below are site-owner reported; confirm current terms in each app.</span>
+        <span className="text-xs text-zinc-300">Details below are site-owner reported; confirm current terms in each app.</span>
       </div>
 
       {spotlightOffers.length === 2 && (
@@ -56,26 +56,26 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
                     className="rounded-xl border border-white/10 bg-white p-1 shadow-lg"
                   />
                   <div className="min-w-0">
-                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isEro ? 'text-cyan-200' : 'text-fuchsia-200'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-widest ${isEro ? 'text-cyan-200' : 'text-fuchsia-200'}`}>
                       {spotlight.badge}
                     </p>
                     <h3 className="mt-1 text-lg font-black text-white">{offer.company}</h3>
                   </div>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-right">
-                  <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-white">
+                  <div className="flex items-center justify-end gap-1.5 text-[13px] font-bold text-white">
                     <Clock3 className="h-3.5 w-3.5 text-emerald-300" /> {spotlight.payout}
                   </div>
-                  {spotlight.fee && <div className="mt-1 text-[10px] text-zinc-300">{spotlight.fee}</div>}
+                  {spotlight.fee && <div className="mt-1 text-xs text-zinc-200">{spotlight.fee}</div>}
                 </div>
               </div>
 
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="flex items-start gap-2 rounded-lg bg-black/20 p-2.5 text-[11px] leading-relaxed text-zinc-200">
+                <div className="flex items-start gap-2 rounded-lg bg-black/20 p-2.5 text-xs leading-relaxed text-zinc-100">
                   <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-200" />
                   <span>{spotlight.verification}</span>
                 </div>
-                <div className="flex items-start gap-2 rounded-lg bg-black/20 p-2.5 text-[11px] leading-relaxed text-zinc-200">
+                <div className="flex items-start gap-2 rounded-lg bg-black/20 p-2.5 text-xs leading-relaxed text-zinc-100">
                   <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200" />
                   <span>{spotlight.minimum}</span>
                 </div>
@@ -88,13 +88,13 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
                 </summary>
                 <ol className="space-y-2 border-t border-white/[0.07] px-3 py-3">
                   {spotlight.steps.map((step, index) => (
-                    <li key={step} className="flex gap-2.5 text-[11px] leading-relaxed text-zinc-300">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-[10px] font-bold text-white">{index + 1}</span>
+                    <li key={step} className="flex gap-2.5 text-xs leading-relaxed text-zinc-200">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-xs font-bold text-white">{index + 1}</span>
                       <span>{step}</span>
                     </li>
                   ))}
                 </ol>
-                <p className="border-t border-white/[0.07] px-3 py-2.5 text-[10px] leading-relaxed text-amber-100/80">{spotlight.caveat}</p>
+                <p className="border-t border-white/[0.07] px-3 py-2.5 text-xs leading-relaxed text-amber-100">{spotlight.caveat}</p>
               </details>
 
               <button
@@ -125,18 +125,18 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
                 className="rounded-xl border border-white/10 bg-white p-1 shadow-lg"
               />
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-200">Featured referral reward</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-100">Featured referral reward</p>
                 <h3 className="mt-1 text-lg font-black text-white">Inter</h3>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-300">Reported for both the eligible new member and referrer; enter code <strong className="font-mono text-orange-100">OVTHOJDC</strong> during signup.</p>
               </div>
             </div>
             <div className="shrink-0 rounded-xl border border-orange-200/25 bg-black/25 px-5 py-3 text-center sm:text-right">
               <p className="text-3xl font-black leading-none text-orange-100">$25</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-orange-100/80">reported value in Loop points</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-100">reported value in Loop points</p>
             </div>
           </div>
           <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.08] pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px] leading-relaxed text-amber-100/85">
+            <p className="text-xs leading-relaxed text-amber-100">
               10,000 Loop points—not cash. The $25 value and arrival within 7 days are reported, not independently verified; redemption terms apply. $0 deposit; ID and selfie required.
             </p>
             <button

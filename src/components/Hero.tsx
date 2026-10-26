@@ -69,7 +69,7 @@ export const Hero: React.FC<HeroProps> = ({
           <p className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-2xl">
             {settings.subHeadline}
           </p>
-          <p className="mt-3 text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl">
+          <p className="mt-3 text-[13px] sm:text-sm text-zinc-300 leading-relaxed max-w-2xl">
             This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
@@ -132,7 +132,7 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
         )}
 
-        <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-zinc-300">
           <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-400">Popular guides:</span>
           <a href="/cashback-offers" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Cashback offers</a>
           <a href="/signup-bonus-sites" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Signup bonus sites</a>
@@ -151,7 +151,7 @@ export const Hero: React.FC<HeroProps> = ({
             { title: 'Find your best fit', text: 'Filter by no-deposit, beginner-friendly, or fastest payout in seconds.' },
           ].map(({ title, text }) => (
             <div key={title} className="rounded-2xl border border-white/[0.08] bg-[#0e121a]/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-              <p className="text-xs font-mono uppercase tracking-[0.14em] text-cyan-300">Why people use this</p>
+              <p className="text-xs font-mono uppercase tracking-[0.14em] text-cyan-200">Why people use this</p>
               <h3 className="mt-2 text-base font-semibold text-white">{title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">{text}</p>
             </div>
@@ -192,12 +192,12 @@ export const Hero: React.FC<HeroProps> = ({
           {/* Sort Selector */}
           <div className="flex items-center gap-2 shrink-0">
             <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-500" />
-            <label htmlFor="sort-offers" className="text-xs font-mono text-zinc-400">SORT:</label>
+            <label htmlFor="sort-offers" className="text-xs font-mono text-zinc-300">SORT:</label>
             <select
               id="sort-offers"
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value as 'random' | 'highest' | 'fastest' | 'easiest')}
-              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-xs font-medium text-zinc-200 outline-none transition-colors focus:border-[#2dd4ee]"
+              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-[13px] font-medium text-zinc-100 outline-none transition-colors focus:border-[#2dd4ee]"
             >
               <option value="random">Random order</option>
               <option value="highest">Highest Cash</option>
@@ -244,7 +244,7 @@ export const Hero: React.FC<HeroProps> = ({
                 type="button"
                 onClick={() => setOfferFilter(id)}
                 aria-pressed={offerFilter === id}
-                className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                className={`focus-ring rounded-full border px-3 py-1.5 text-xs transition-colors ${
                   offerFilter === id
                     ? 'border-emerald-300/60 bg-emerald-300 text-[#06131a]'
                     : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-emerald-300/40 hover:text-white'
@@ -256,7 +256,7 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div role="group" aria-label="Filter offers by identity verification">
-              <p className="mb-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Identity check</p>
+              <p className="mb-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400">Identity check</p>
               <div className="flex flex-wrap gap-2">
                 {([
                   ['all', 'Any ID requirement'],
@@ -267,7 +267,7 @@ export const Hero: React.FC<HeroProps> = ({
                     type="button"
                     onClick={() => setIdentityFilter(id)}
                     aria-pressed={identityFilter === id}
-                    className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                    className={`focus-ring rounded-full border px-3 py-1.5 text-xs transition-colors ${
                       identityFilter === id
                         ? 'border-violet-300/60 bg-violet-300 text-[#101018]'
                         : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-violet-300/40 hover:text-white'
@@ -279,7 +279,7 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
             </div>
             <div role="group" aria-label="Filter offers by reward type">
-              <p className="mb-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500">Reward type</p>
+              <p className="mb-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400">Reward type</p>
               <div className="flex flex-wrap gap-2">
                 {([
                   ['all', 'Any reward'],
@@ -291,7 +291,7 @@ export const Hero: React.FC<HeroProps> = ({
                     type="button"
                     onClick={() => setRewardFilter(id)}
                     aria-pressed={rewardFilter === id}
-                    className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
+                    className={`focus-ring rounded-full border px-3 py-1.5 text-xs transition-colors ${
                       rewardFilter === id
                         ? 'border-amber-300/60 bg-amber-300 text-[#16120a]'
                         : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-amber-300/40 hover:text-white'
@@ -303,7 +303,7 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
             </div>
           </div>
-          <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+          <p className="mt-2 text-xs leading-relaxed text-zinc-300">
             “No ID listed” means no ID requirement is listed here; providers may still ask for identity checks. Reward-type filters are based on the listed reward wording.
           </p>
         </div>

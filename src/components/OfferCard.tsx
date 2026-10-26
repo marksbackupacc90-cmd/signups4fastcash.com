@@ -1,7 +1,7 @@
 import React from 'react';
-import { Check, Copy, ExternalLink, GitCompareArrows, MousePointerClick, ShieldCheck } from 'lucide-react';
+import { Check, Copy, ExternalLink, GitCompareArrows, MousePointerClick } from 'lucide-react';
 import { Offer } from '../types';
-import { getOfferReviewBadge, getOfferReviewDateLabel, getOfferSourceUrl } from '../offerTransparency';
+import { getOfferSourceUrl } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -14,8 +14,6 @@ interface OfferCardProps {
 }
 
 export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo, isCompared, onToggleCompare }) => {
-  const reviewBadge = getOfferReviewBadge(offer);
-  const reviewDateLabel = getOfferReviewDateLabel(offer);
   const spotlight = getCashoutSpotlightInfo(offer.id);
   const isInterFeatured = offer.id === 'offer-inter-loop-points';
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
@@ -43,7 +41,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
     >
       <div className="relative flex h-32 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)] sm:h-36">
         {(spotlight || isInterFeatured) && (
-          <span className="absolute left-2.5 top-2.5 z-20 rounded-full border border-violet-100/25 bg-[#211936]/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-violet-100 shadow-lg">
+          <span className="absolute left-2.5 top-2.5 z-20 rounded-full border border-violet-100/25 bg-[#211936]/90 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-100 shadow-lg">
             {isInterFeatured ? 'Featured reward' : 'Cashout spotlight'}
           </span>
         )}
@@ -57,26 +55,22 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1 text-left">
             <h2 className="truncate text-[0.95rem] font-black leading-tight tracking-[-0.01em] text-white transition-colors group-hover:text-[#2dd4ee]">{offer.title}</h2>
-            <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-zinc-400">{offer.honestTruth.summary}</p>
+            <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-mono text-zinc-400">
-          <span className={`inline-flex items-center gap-1 ${reviewBadge.className}`}><ShieldCheck className="h-3 w-3" /> {reviewBadge.label}</span>
-          <span aria-label={reviewDateLabel}>{reviewDateLabel}</span>
-        </div>
         {spotlight && (
-          <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-violet-100">
+          <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-xs font-semibold leading-relaxed text-violet-100">
             {spotlight.payoutLabel}
-            <span className="mt-0.5 block text-[9px] font-normal text-zinc-400">{spotlight.verification}</span>
+            <span className="mt-0.5 block text-xs font-normal text-zinc-300">{spotlight.verification}</span>
           </div>
         )}
         {isInterFeatured && (
           <div className="mt-2 rounded-lg border border-orange-200/25 bg-orange-200/[0.07] px-2.5 py-2 text-left">
             <span className="block text-sm font-black text-orange-100">$25 reported value</span>
-            <span className="mt-0.5 block text-[9px] leading-relaxed text-zinc-300">10,000 Loop points—not cash; redemption terms apply.</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-zinc-200">10,000 Loop points—not cash; redemption terms apply.</span>
           </div>
         )}
-        <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-[9px] text-zinc-500">
+        <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-xs text-zinc-400">
           <span className="truncate">{offer.company}</span>
           <span className="max-w-[58%] truncate text-right">{offer.payoutSpeed}</span>
         </div>
@@ -86,13 +80,13 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           rel="noopener noreferrer"
           onClick={(event) => event.stopPropagation()}
           onPointerUp={(event) => event.stopPropagation()}
-          className="mt-1 inline-flex min-h-8 items-center justify-center gap-1 text-[10px] text-cyan-100/70 hover:text-cyan-100"
+          className="mt-1 inline-flex min-h-8 items-center justify-center gap-1 text-xs text-cyan-100 hover:text-white"
           aria-label={`View ${offer.company} provider source`}
         >
           Provider source <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </a>
         <div
-          className="mt-2 inline-flex items-center justify-center gap-1 text-[10px] font-medium text-cyan-100/80"
+          className="mt-2 inline-flex items-center justify-center gap-1 text-xs font-medium text-cyan-100"
           aria-label={`${Math.max(0, Number(offer.clicksCount) || 0).toLocaleString()} tracked referral clicks; clicks are not unique people`}
           title="Tracked referral-link clicks, not unique people."
         >
@@ -107,7 +101,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           }}
           aria-pressed={isCompared}
           aria-label={`${isCompared ? 'Remove' : 'Add'} ${offer.company} ${isCompared ? 'from' : 'to'} comparison`}
-          className={`focus-ring mt-2 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${
+          className={`focus-ring mt-2 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
             isCompared
               ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100'
               : 'border-white/10 text-zinc-300 hover:border-cyan-300/30 hover:text-white'
@@ -134,7 +128,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
             <span>View offer</span><ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
           </a>
         )}
-        <p className="mt-2 text-center text-[10px] leading-relaxed text-zinc-400">
+        <p className="mt-2 text-center text-xs leading-relaxed text-zinc-300">
           This may be a referral link; we may earn a commission at no extra cost. {offer.company} sets eligibility and reward terms.
         </p>
       </div>

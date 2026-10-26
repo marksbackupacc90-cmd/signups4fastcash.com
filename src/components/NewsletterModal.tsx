@@ -50,7 +50,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-white">Check Your Email</h3>
-            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+            <p className="text-[13px] text-zinc-300 max-w-xs mx-auto">
               Click the confirmation link we sent before alerts begin. You can unsubscribe from any alert.
             </p>
           </div>
@@ -62,19 +62,19 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Instant Earning Alerts</h3>
-                <span className="text-[11px] font-mono text-zinc-400">
+                <span className="text-xs font-mono text-zinc-300">
                   {subscriberCount > 0 ? `${subscriberCount.toLocaleString()} subscribers` : 'No subscriber count published'}
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-zinc-300 leading-relaxed">
+            <p className="text-[13px] text-zinc-200 leading-relaxed">
               Receive email alerts when new offers are added. Confirm your email before alerts begin. We do not publish unverified subscriber or payout numbers.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3 pt-1">
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 uppercase mb-1">
+                <label className="block text-xs font-mono text-zinc-300 uppercase mb-1">
                   Your Email Address
                 </label>
                 <input
@@ -88,7 +88,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 uppercase mb-1">
+                <label className="block text-xs font-mono text-zinc-300 uppercase mb-1">
                   Notification Frequency
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -130,12 +130,12 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
 
               <button
                 type="submit"
-                className="mt-2 w-full rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] py-2.5 text-xs font-mono font-semibold text-[#06131a] shadow-sm transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
+                className="mt-2 w-full rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] py-2.5 text-[13px] font-mono font-semibold text-[#06131a] shadow-sm transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
               >
                 Subscribe to alerts
               </button>
 
-              <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono text-zinc-500 pt-1">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-mono text-zinc-300 pt-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Zero spam. Unsubscribe anytime in 1 click.</span>
               </div>

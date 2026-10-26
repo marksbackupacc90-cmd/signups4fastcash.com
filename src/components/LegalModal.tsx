@@ -67,7 +67,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ section, onClose }) => {
         </button>
         <h2 className="pr-8 text-xl font-bold text-white">{content.title}</h2>
         <div className="mt-5 space-y-4">{content.body}</div>
-        <p className="mt-6 border-t border-white/[0.08] pt-4 text-xs text-zinc-400">Last reviewed: October 2, 2026. Offer-specific terms can change at any time; confirm them with the provider before proceeding.</p>
+        <p className="mt-6 border-t border-white/[0.08] pt-4 text-[13px] text-zinc-300">Last reviewed: October 2, 2026. Offer-specific terms can change at any time; confirm them with the provider before proceeding.</p>
       </div>
     </div>
   );
