@@ -225,7 +225,8 @@ test('Inter offer clearly labels reported Loop points value and required referra
   assert.equal(offer.referralCodeRequired, true);
   assert.match(offer.referralUrl, /^https:\/\/inter\.co\/us\/$/);
   assert.equal(offer.incentiveValue, 25);
-  assert.match(offer.incentiveAmount, /10,000 Loop points.*reported equivalent: \$25/i);
+  assert.match(offer.title, /reported \$25 in Loop points/i);
+  assert.match(offer.incentiveAmount, /reported \$25 value.*10,000 Loop points.*not cash/i);
   assert.match(offer.honestTruth.summary, /referrer and eligible new member each receive 10,000 Loop points/i);
   assert.match(offer.honestTruth.summary, /enter referral code OVTHOJDC during signup/i);
   assert.match(offer.honestTruth.theCatch, /not been independently confirmed/i);

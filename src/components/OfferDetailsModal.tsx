@@ -41,6 +41,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const reviewDateLabel = getOfferReviewDateLabel(offer);
   const sourceUrl = getOfferSourceUrl(offer);
   const cashoutSpotlight = getCashoutSpotlightInfo(offer.id);
+  const isInterOffer = offer.id === 'offer-inter-loop-points';
 
   const copyCode = async () => {
     if (!offer.referralCode) return;
@@ -139,6 +140,14 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
                 {cashoutSpotlight.fee && <div className="sm:col-span-2"><dt className="text-zinc-500">Fee</dt><dd className="mt-0.5 text-zinc-200">{cashoutSpotlight.fee}</dd></div>}
               </dl>
               <p className="mt-2 border-t border-white/[0.07] pt-2 text-[10px] leading-relaxed text-amber-100/80">{cashoutSpotlight.caveat}</p>
+            </section>
+          )}
+          {isInterOffer && (
+            <section className="mb-3 rounded-xl border border-orange-200/25 bg-[radial-gradient(circle_at_0%_0%,rgba(251,146,60,0.14),transparent_60%),rgba(251,146,60,0.04)] p-4" aria-label="Inter reported Loop points value">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-100">Featured referral reward · not independently verified</p>
+              <p className="mt-1 text-3xl font-black leading-none text-orange-100">$25</p>
+              <p className="mt-1 text-xs font-semibold text-orange-50">reported value in Loop points for each eligible participant</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-zinc-300">The reported 10,000 Loop points are rewards points, not cash. The $25 equivalent depends on Inter’s redemption terms and has not been independently verified.</p>
             </section>
           )}
           <p className="text-sm leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>

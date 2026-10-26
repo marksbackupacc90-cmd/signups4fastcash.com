@@ -17,6 +17,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
   const reviewBadge = getOfferReviewBadge(offer);
   const reviewDateLabel = getOfferReviewDateLabel(offer);
   const spotlight = getCashoutSpotlightInfo(offer.id);
+  const isInterFeatured = offer.id === 'offer-inter-loop-points';
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const sourceUrl = getOfferSourceUrl(offer);
 
@@ -41,9 +42,9 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
       }`}
     >
       <div className="relative flex h-32 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)] sm:h-36">
-        {spotlight && (
+        {(spotlight || isInterFeatured) && (
           <span className="absolute left-2.5 top-2.5 z-20 rounded-full border border-violet-100/25 bg-[#211936]/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-violet-100 shadow-lg">
-            Cashout spotlight
+            {isInterFeatured ? 'Featured reward' : 'Cashout spotlight'}
           </span>
         )}
         <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
@@ -67,6 +68,12 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-violet-100">
             {spotlight.payoutLabel}
             <span className="mt-0.5 block text-[9px] font-normal text-zinc-400">{spotlight.verification}</span>
+          </div>
+        )}
+        {isInterFeatured && (
+          <div className="mt-2 rounded-lg border border-orange-200/25 bg-orange-200/[0.07] px-2.5 py-2 text-left">
+            <span className="block text-sm font-black text-orange-100">$25 reported value</span>
+            <span className="mt-0.5 block text-[9px] leading-relaxed text-zinc-300">10,000 Loop points—not cash; redemption terms apply.</span>
           </div>
         )}
         <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-[9px] text-zinc-500">

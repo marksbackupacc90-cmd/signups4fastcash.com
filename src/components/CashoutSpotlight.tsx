@@ -11,7 +11,8 @@ interface CashoutSpotlightProps {
 
 export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onViewOffer }) => {
   const spotlightOffers = offers.filter((offer) => getCashoutSpotlightInfo(offer.id));
-  if (spotlightOffers.length !== 2) return null;
+  const interOffer = offers.find((offer) => offer.id === 'offer-inter-loop-points');
+  if (spotlightOffers.length !== 2 && !interOffer) return null;
 
   return (
     <section
@@ -24,17 +25,18 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
             <CircleDollarSign className="h-3.5 w-3.5" /> The Daily Duo
           </div>
           <h2 id="cashout-spotlight-title" className="mt-2 text-xl font-black text-white sm:text-2xl">
-            Current top instant cashout offers
+            Featured offers and cashout spotlights
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
-            A quick, side-by-side walkthrough of what to check before you start and before you withdraw.
+            Compare the featured Inter referral reward with the Daily Duo cashout options. Check each offer’s terms before signing up.
           </p>
         </div>
         <span className="text-[10px] text-zinc-500">Details below are site-owner reported; confirm current terms in each app.</span>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        {spotlightOffers.map((offer) => {
+      {spotlightOffers.length === 2 && (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {spotlightOffers.map((offer) => {
           const spotlight = getCashoutSpotlightInfo(offer.id);
           if (!spotlight) return null;
           const isEro = offer.id === 'candidate-ero-app-referral';
@@ -106,8 +108,47 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
               </button>
             </article>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
+
+      {interOffer && (
+        <article className="mt-4 overflow-hidden rounded-xl border border-orange-300/35 bg-[radial-gradient(circle_at_0%_0%,rgba(251,146,60,0.16),transparent_48%),linear-gradient(120deg,#1c1714,#111722_75%)] p-4 shadow-[0_12px_38px_rgba(0,0,0,0.24)] sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <CompanyLogo
+                companyName={interOffer.company}
+                slug={interOffer.companySlug}
+                logoUrl={interOffer.logoUrl}
+                size="sm"
+                loading="eager"
+                className="rounded-xl border border-white/10 bg-white p-1 shadow-lg"
+              />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-200">Featured referral reward</p>
+                <h3 className="mt-1 text-lg font-black text-white">Inter</h3>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">Reported for both the eligible new member and referrer; enter code <strong className="font-mono text-orange-100">OVTHOJDC</strong> during signup.</p>
+              </div>
+            </div>
+            <div className="shrink-0 rounded-xl border border-orange-200/25 bg-black/25 px-5 py-3 text-center sm:text-right">
+              <p className="text-3xl font-black leading-none text-orange-100">$25</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-orange-100/80">reported value in Loop points</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.08] pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11px] leading-relaxed text-amber-100/85">
+              10,000 Loop points—not cash. The $25 value and arrival within 7 days are reported, not independently verified; redemption terms apply. $0 deposit; ID and selfie required.
+            </p>
+            <button
+              type="button"
+              onClick={() => onViewOffer(interOffer)}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-orange-200 px-4 py-2 text-xs font-bold text-[#21130a] transition-colors hover:bg-orange-100"
+            >
+              Review Inter offer details <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </article>
+      )}
     </section>
   );
 };
