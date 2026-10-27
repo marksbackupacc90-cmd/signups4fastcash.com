@@ -111,7 +111,7 @@ export const REFERRAL_OFFER_CANDIDATES: Offer[] = [
     clicksCount: 0,
     conversionsCount: 0,
     createdAt: '2026-10-02T00:00:00.000Z',
-    updatedAt: '2026-10-05T04:12:00.000Z',
+    updatedAt: '2026-10-27T04:30:00.000Z',
   },
   {
     id: 'candidate-fetch-referral-a7qrrp',

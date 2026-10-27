@@ -555,9 +555,13 @@ test('newer Coinbase catalog terms replace stale saved terms while preserving vi
 test('newer Measure Protocol terms update stale saved terms and publish the offer', () => {
   const catalogOffer = {
     id: 'candidate-measure-protocol-msr-referral',
-    title: 'Reported instant $10 reward for linking eligible MSR accounts',
+    title: 'MSR: Free instant PayPal cashout at $10',
     referralUrl: 'https://contributor.measureprotocol.com/i/7Osjyx6m',
-    updatedAt: '2026-10-05T04:12:00.000Z',
+    updatedAt: '2026-10-27T04:30:00.000Z',
+    payoutSpeed: 'Check PayPal withdrawal timing and minimum in the app',
+    honestTruth: {
+      summary: 'Join Measure Protocol using the referral link and review the current reward terms.',
+    },
     status: 'live',
     clicksCount: 0,
     conversionsCount: 0,
@@ -566,7 +570,11 @@ test('newer Measure Protocol terms update stale saved terms and publish the offe
     id: 'candidate-measure-protocol-msr-referral',
     title: 'Old doubled welcome bonus',
     referralUrl: 'https://contributor.measureprotocol.com/i/old',
-    updatedAt: '2026-10-02T00:00:00.000Z',
+    payoutSpeed: 'Free instant PayPal withdrawal after the $10 minimum (owner-reported)',
+    honestTruth: {
+      summary: 'The site owner reports an instant reward.',
+    },
+    updatedAt: '2026-10-24T14:31:09.426Z',
     status: 'hidden',
     clicksCount: 2,
     conversionsCount: 0,
@@ -574,6 +582,8 @@ test('newer Measure Protocol terms update stale saved terms and publish the offe
   const merged = mergeCatalogOffer(catalogOffer, savedOffer);
   assert.equal(merged.title, catalogOffer.title);
   assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.payoutSpeed, catalogOffer.payoutSpeed);
+  assert.equal(merged.honestTruth.summary, catalogOffer.honestTruth.summary);
   assert.equal(merged.status, 'live');
   assert.equal(merged.clicksCount, 2);
 });
