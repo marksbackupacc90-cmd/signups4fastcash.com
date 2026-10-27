@@ -443,7 +443,7 @@ test('newer Inter reward wording replaces stale saved copy while preserving refe
     id: 'offer-inter-loop-points',
     title: 'Get $25 in Loop points with Inter',
     incentiveAmount: '10,000 Loop points (about $25; not cash)',
-    updatedAt: '2026-10-25T00:00:00.000Z',
+    updatedAt: '2026-10-27T05:00:00.000Z',
     honestTruth: {
       summary: '10,000 Loop points are worth about $25, not cash.',
     },
