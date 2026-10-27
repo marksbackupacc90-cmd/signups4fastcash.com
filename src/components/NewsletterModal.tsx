@@ -49,9 +49,9 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
             <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-white">Check Your Email</h3>
+            <h3 className="text-lg font-bold text-white">Check your inbox</h3>
             <p className="text-[13px] text-zinc-300 max-w-xs mx-auto">
-              Click the confirmation link we sent before alerts begin. You can unsubscribe from any alert.
+              Click the confirmation link before alerts begin. You can unsubscribe from any alert.
             </p>
           </div>
         ) : (
@@ -61,7 +61,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                 <Send className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Instant Earning Alerts</h3>
+                <h3 className="text-base font-bold text-white">Email alerts</h3>
                 <span className="text-xs font-mono text-zinc-300">
                   {subscriberCount > 0 ? `${subscriberCount.toLocaleString()} subscribers` : 'No subscriber count published'}
                 </span>
@@ -69,7 +69,7 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
             </div>
 
             <p className="text-[13px] text-zinc-200 leading-relaxed">
-              Receive email alerts when new offers are added. Confirm your email before alerts begin. We do not publish unverified subscriber or payout numbers.
+              Get an email when new offers are added. Confirm your address before alerts begin. S4FC does not publish subscriber or payout totals.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3 pt-1">

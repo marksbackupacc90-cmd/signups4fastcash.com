@@ -167,7 +167,7 @@ export const DailyCasinoBonuses: React.FC<DailyCasinoBonusesProps> = ({ offers, 
       Affiliate disclosure: Cards marked &quot;Referral&quot; use a referral URL associated with this site.
       Cards marked &quot;Official&quot; go to the operator&apos;s public website and do not attribute a referral.
       Referral compensation, if any, is at no extra cost to you. Daily bonus values and schedules are based on
-      the current checklist and should be verified on each operator&apos;s website.
+      the current checklist and should be checked on each operator&apos;s website.
     </p>
     <p className="mt-2 text-[10px] text-zinc-400">
       Know another daily bonus?

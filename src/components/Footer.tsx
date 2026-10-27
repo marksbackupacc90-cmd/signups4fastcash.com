@@ -45,7 +45,7 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             
             <p className="text-zinc-300 text-[13px] leading-relaxed max-w-md">
-              {settings.footerBlurb || 'Signups4FastCash.com is an independent rewards comparison resource. We summarize publicly available promotions, show the requirements and fine print, and send visitors back to the official merchant website to apply.'}
+              {settings.footerBlurb || 'S4FC lists referral and promo offers, notes the requirements and payout details available, and links to the company running each offer. The company decides who qualifies and whether a reward is paid.'}
             </p>
             <p className="text-zinc-300 text-[13px] leading-relaxed max-w-md">
               Questions or corrections? Email <a className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2" href={`mailto:${settings.supportEmail || 'support@signups4fastcash.com'}`}>{settings.supportEmail || 'support@signups4fastcash.com'}</a>. {disclaimer}
@@ -54,7 +54,7 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
               <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                We do not handle or hold your reward
+                The company pays your reward
               </span>
             </div>
           </div>
@@ -106,7 +106,7 @@ export const Footer: React.FC<FooterProps> = ({
               </div>
             )}
             <p className="text-xs text-zinc-300 leading-relaxed font-sans">
-              <strong>Affiliate Disclosure:</strong> Some links may compensate us at no additional cost to you. Offers are controlled by their merchants; eligibility, terms, taxes, fees, and payout timing can change. We do not provide financial, tax, legal, or investment advice.
+              <strong>Affiliate Disclosure:</strong> Some links may pay S4FC a commission at no extra cost to you. The companies set the offer terms, fees, and payout timing, and these can change. This site is not financial, tax, legal, or investment advice.
             </p>
           </div>
 

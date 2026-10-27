@@ -66,7 +66,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
         )}
         {isInterFeatured && (
           <div className="mt-2 rounded-lg border border-orange-200/25 bg-orange-200/[0.07] px-2.5 py-2 text-left">
-            <span className="block text-sm font-black text-orange-100">$25 reported value</span>
+            <span className="block text-sm font-black text-orange-100">$25 in Loop points</span>
             <span className="mt-0.5 block text-xs leading-relaxed text-zinc-200">10,000 Loop points—not cash; redemption terms apply.</span>
           </div>
         )}
@@ -129,7 +129,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMor
           </a>
         )}
         <p className="mt-2 text-center text-xs leading-relaxed text-zinc-300">
-          This may be a referral link; we may earn a commission at no extra cost. {offer.company} sets eligibility and reward terms.
+          This may be a referral link. S4FC may earn a commission if you use it; it won’t cost you extra. {offer.company} sets the eligibility and reward terms.
         </p>
       </div>
     </div>

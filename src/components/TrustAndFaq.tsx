@@ -14,21 +14,21 @@ export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
       <div className="max-w-3xl">
         <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs uppercase tracking-wider">
           <ShieldCheck className="w-4 h-4" />
-          Transparent by design
+          How S4FC handles offers
         </div>
         <h2 className="mt-2 text-xl sm:text-2xl font-extrabold text-white">
-          {settings.trustHeading || 'Compare signup bonuses with confidence'}
+          {settings.trustHeading || 'Check the details before you sign up'}
         </h2>
         <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
-          {settings.trustParagraph || 'We organize publicly available referral and promotional offers so you can compare signup bonuses, no-deposit rewards, cashback offers, requirements, timing, and fine print before visiting the official merchant. We do not hold your money, complete applications for you, or guarantee payment.'}
+          {settings.trustParagraph || 'S4FC lists referral and promo offers, notes the requirements and payout details available, and links to the company running each offer. The company decides who qualifies and whether a reward is paid. S4FC does not handle applications or money.'}
         </p>
         <p className="mt-3 text-[13px] text-zinc-300 leading-relaxed">
-          {settings.trustSubtext || 'Signups4FastCash.com is an independent comparison site, not a bank, lender, broker, merchant, or government service. Some links may earn us a referral commission at no extra cost to you. Offer terms, payout timing, and eligibility can change. Please review the current official terms before signing up.'}
+          {settings.trustSubtext || 'Some links may earn S4FC a referral commission at no extra cost to you. Offers can change or end, so read the company’s current terms before signing up.'}
         </p>
         <div className="mt-4 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.04] p-4">
-          <h3 className="text-sm font-bold text-emerald-100">Our standard: keep it 100% honest</h3>
+          <h3 className="text-sm font-bold text-emerald-100">A note about the numbers</h3>
           <p className="mt-1 text-[13px] leading-relaxed text-zinc-200">
-            I instruct the AI assistant I use to stay truthful: no made-up rewards, fake click counts, or payout guarantees. Click totals count tracked link clicks, not unique people. If a detail is uncertain, we say so—and the provider&apos;s current terms always come first.
+            Click totals are tracked link clicks, not a count of unique people. Offer details can change, so the company’s current terms are the final word.
           </p>
         </div>
       </div>
@@ -40,11 +40,11 @@ export const TrustAndFaq: React.FC<TrustAndFaqProps> = ({ siteSettings }) => {
         </div>
         <details className="group rounded-lg border border-white/[0.08] bg-[#0e121a] px-4 py-3">
           <summary className="cursor-pointer text-sm text-zinc-200">Do you guarantee that every offer will pay?</summary>
-          <p className="mt-2 text-[13px] text-zinc-300 leading-relaxed">No. The merchant controls eligibility and payout. We show the requirements we can verify, but you should read the official terms before applying.</p>
+          <p className="mt-2 text-[13px] text-zinc-300 leading-relaxed">No. The company running the offer decides who qualifies and whether it pays. Read its current terms before applying.</p>
         </details>
         <details className="group rounded-lg border border-white/[0.08] bg-[#0e121a] px-4 py-3">
           <summary className="cursor-pointer text-sm text-zinc-200">How does Signups4FastCash.com make money?</summary>
-          <p className="mt-2 text-[13px] text-zinc-300 leading-relaxed">Some links are referral or affiliate links. If you use one, the merchant may compensate us at no additional cost to you. This does not change the requirements set by the merchant.</p>
+          <p className="mt-2 text-[13px] text-zinc-300 leading-relaxed">Some links are referral or affiliate links. If you use one, the company may pay S4FC a commission at no extra cost to you. It does not change the offer terms.</p>
         </details>
         <details className="group rounded-lg border border-white/[0.08] bg-[#0e121a] px-4 py-3">
           <summary className="cursor-pointer text-sm text-zinc-200">Is this financial advice?</summary>

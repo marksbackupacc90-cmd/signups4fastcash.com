@@ -70,7 +70,7 @@ export const Hero: React.FC<HeroProps> = ({
             {settings.subHeadline}
           </p>
           <p className="mt-3 text-[13px] sm:text-sm text-zinc-300 leading-relaxed max-w-2xl">
-            This site is an independent comparison resource. We do not guarantee that every offer will pay, and merchant terms can change at any time. Always review the current official offer before signing up.
+            S4FC lists offer requirements, but the company running each offer decides who qualifies and whether it pays. Check its current terms before signing up.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <button
@@ -88,7 +88,7 @@ export const Hero: React.FC<HeroProps> = ({
                 className="focus-ring inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-xs font-semibold text-zinc-200 transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
               >
                 <Sparkles className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
-                Find my best match
+                Find offers that fit
               </button>
             )}
             {onInstallApp && (
@@ -117,8 +117,8 @@ export const Hero: React.FC<HeroProps> = ({
                 <BellRing className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Get the best new offers sent to you</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-300">Choose instant drops, a daily digest, or a weekly shortlist. Confirm your email and unsubscribe anytime.</p>
+                <p className="text-sm font-bold text-white">Get new offers by email</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">Choose alerts as soon as offers are added, a daily email, or a weekly roundup. Confirm your email; unsubscribe anytime.</p>
               </div>
             </div>
             <button
@@ -147,8 +147,8 @@ export const Hero: React.FC<HeroProps> = ({
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {[
             { title: 'Compare before you click', text: 'See the bonus, minimum deposit, and payout timing in one fast scan.' },
-            { title: 'Terms up front', text: 'We surface the fine print and hidden-fee warnings before the offer page.' },
-            { title: 'Find your best fit', text: 'Filter by no-deposit, beginner-friendly, or fastest payout in seconds.' },
+            { title: 'Terms up front', text: 'S4FC shows requirements and fee notes before you open the company’s page.' },
+            { title: 'Filter your way', text: 'Narrow the list by deposit, experience level, or payout speed.' },
           ].map(({ title, text }) => (
             <div key={title} className="rounded-2xl border border-white/[0.08] bg-[#0e121a]/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
               <p className="text-xs font-mono uppercase tracking-[0.14em] text-cyan-200">Why people use this</p>

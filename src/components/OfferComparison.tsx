@@ -34,7 +34,7 @@ export const OfferComparison: React.FC<OfferComparisonProps> = ({ offers, onClos
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">Side-by-side</p>
           <h2 id="offer-comparison-title" className="mt-1 text-xl font-bold text-white sm:text-2xl">Compare offers</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-zinc-300">Compare requirements and reported rewards. Providers control eligibility and final terms.</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-zinc-300">Compare listed rewards and requirements. Providers control eligibility and final terms.</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close offer comparison" className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white">
           <X className="h-5 w-5" aria-hidden="true" />

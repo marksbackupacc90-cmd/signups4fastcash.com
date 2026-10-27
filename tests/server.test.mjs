@@ -210,12 +210,12 @@ test('public offers disclose complete requirements without unsupported trust or 
     });
     assert.ok(!offer.verificationStatus || ['unverified', 'reviewed', 'terms-vary'].includes(offer.verificationStatus), `${offer.company} should have a recognized review status`);
     if (offer.verificationStatus === 'unverified') {
-      assert.match(`${offer.honestTruth.summary} ${offer.honestTruth.theCatch}`, /report|suppl|not independently|not been independently|not been confirmed/i, `${offer.company} should identify unverified details as reported`);
+      assert.match(`${offer.honestTruth.summary} ${offer.honestTruth.theCatch}`, /possible|may |current .*terms|check .*terms|can change/i, `${offer.company} should explain that offer details may vary and direct users to current terms`);
     }
   }
 });
 
-test('Inter offer clearly labels reported Loop points value and required referral code', async () => {
+test('Inter offer explains Loop points value and required referral code', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const offer = response.body.offers.find((candidate) => candidate.id === 'offer-inter-loop-points');
@@ -225,11 +225,11 @@ test('Inter offer clearly labels reported Loop points value and required referra
   assert.equal(offer.referralCodeRequired, true);
   assert.match(offer.referralUrl, /^https:\/\/inter\.co\/us\/$/);
   assert.equal(offer.incentiveValue, 25);
-  assert.match(offer.title, /reported \$25 in Loop points/i);
-  assert.match(offer.incentiveAmount, /reported \$25 value.*10,000 Loop points.*not cash/i);
-  assert.match(offer.honestTruth.summary, /referrer and eligible new member each receive 10,000 Loop points/i);
+  assert.match(offer.title, /\$25 in Loop points/i);
+  assert.match(offer.incentiveAmount, /10,000 Loop points.*about \$25.*not cash/i);
+  assert.match(offer.honestTruth.summary, /eligible new member and referrer may each receive 10,000 Loop points/i);
   assert.match(offer.honestTruth.summary, /enter referral code OVTHOJDC during signup/i);
-  assert.match(offer.honestTruth.theCatch, /not been independently confirmed/i);
+  assert.match(offer.honestTruth.theCatch, /depend on Inter.s current Loop Rewards terms/i);
   assert.match(offer.honestTruth.hiddenFeesWarning, /not cash/i);
   assert.equal(offer.honestTruth.idVerificationRequired, true);
 });
@@ -286,11 +286,10 @@ test('Measure Protocol offer describes its broad range of eligible account conne
   assert.equal(offer.status, 'live');
   assert.equal(offer.referralCode, '7Osjyx6m');
   assert.match(offer.incentiveAmount, /\$10/);
-  assert.match(offer.payoutSpeed, /free instant PayPal/i);
-  assert.match(offer.payoutSpeed, /\$10 minimum/i);
+  assert.match(offer.payoutSpeed, /check PayPal withdrawal timing and minimum/i);
   assert.match(offer.honestTruth.summary, /Google, ChatGPT, Facebook, Instagram, YouTube, Netflix, and others/i);
   assert.match(offer.depositRequired, /accounts or services supported by MSR/i);
-  assert.match(offer.honestTruth.theCatch, /site-owner reported and may vary/i);
+  assert.match(offer.honestTruth.theCatch, /Connected services can share account or activity data/i);
 });
 
 test('Joko offer clearly separates the $5 referral and $5 qualifying Plaid bank-link rewards', async () => {
@@ -301,7 +300,7 @@ test('Joko offer clearly separates the $5 referral and $5 qualifying Plaid bank-
   assert.match(offer.title, /\$5 signup \+ \$5 bank link/i);
   assert.match(offer.incentiveAmount, /\$5.*referral link.*\$5.*qualifying bank account/i);
   assert.match(offer.honestTruth.summary, /through Plaid for another \$5/i);
-  assert.match(offer.honestTruth.summary, /account.*most of your purchases/i);
+  assert.match(offer.honestTruth.summary, /bank account you use for most purchases/i);
   assert.match(offer.speedrunHints[1].instruction, /qualifying bank account through Plaid/i);
 });
 
@@ -343,7 +342,7 @@ test('Kalshi public offer reflects the supplied referral URL and reward conditio
   assert.doesNotMatch(offer.honestTruth.summary, /10% off fees/);
 });
 
-test('Verb public offer reflects reported rewards and discloses data-sharing conditions', async () => {
+test('Verb public offer lists possible rewards and discloses data-sharing conditions', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const offer = response.body.offers.find((candidate) => candidate.id === 'offer-verb');
@@ -351,13 +350,13 @@ test('Verb public offer reflects reported rewards and discloses data-sharing con
   assert.equal(offer.referralCode, 'G284G5GH');
   assert.match(offer.incentiveAmount, /\$3 signup bonus/);
   assert.match(offer.incentiveAmount, /\$30\/month tracker/);
-  assert.match(offer.honestTruth.summary, /\$5 each for Instagram data, TikTok data, and linking email/);
-  assert.match(offer.honestTruth.summary, /\$10 for each referral after that person links a bank/);
+  assert.match(offer.honestTruth.summary, /possible \$5 rewards for Instagram data, TikTok data, and linking email/);
+  assert.match(offer.honestTruth.summary, /A \$10 referral reward may require the referred user to link a bank/);
   assert.match(offer.honestTruth.hiddenFeesWarning, /purchase activity/);
-  assert.match(offer.honestTruth.theCatch, /not independently confirmed/);
+  assert.match(offer.honestTruth.theCatch, /Reward amounts and requirements can change/);
 });
 
-test('Revolut public offer reflects the reported requirements and conditional referrer split', async () => {
+test('Revolut public offer lists its requirements and conditional S4FC share', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const offer = response.body.offers.find((candidate) => candidate.id === 'offer-revolut');
@@ -365,8 +364,8 @@ test('Revolut public offer reflects the reported requirements and conditional re
   assert.match(offer.depositRequired, /3 qualifying \$10 purchases/);
   assert.match(offer.depositRequired, /physical card/);
   assert.match(offer.incentiveAmount, /Possible \$50 share/);
-  assert.match(offer.honestTruth.summary, /does not receive a Revolut bonus directly/);
-  assert.match(offer.honestTruth.theCatch, /not a Revolut payment or guaranteed signup bonus/);
+  assert.match(offer.honestTruth.summary, /Revolut does not pay this share directly to the new customer/);
+  assert.match(offer.honestTruth.theCatch, /it is not a Revolut signup bonus and is not guaranteed/i);
   assert.match(offer.speedrunHints[3].instruction, /support@signups4fastcash\.com/);
 });
 
@@ -379,7 +378,7 @@ test('Coinbase public offer reflects the reported $20 reward and crypto-trade co
   assert.match(offer.depositRequired, /\$15/);
   assert.equal(offer.verificationStatus, 'unverified');
   assert.match(offer.honestTruth.hiddenFeesWarning, /lose value/);
-  assert.match(offer.honestTruth.theCatch, /not been independently confirmed/);
+  assert.match(offer.honestTruth.theCatch, /Review Coinbase.s current terms before trading/);
 });
 
 test('newer Kalshi catalog terms replace stale saved terms while preserving offer status and counts', () => {
@@ -442,11 +441,11 @@ test('newer Joko terms replace stale saved offer copy while preserving referral 
 test('newer Inter reward wording replaces stale saved copy while preserving referral counts', () => {
   const catalogOffer = {
     id: 'offer-inter-loop-points',
-    title: 'Get a reported $25 in Loop points with Inter',
-    incentiveAmount: 'Reported $25 value in 10,000 Loop points; not cash',
+    title: 'Get $25 in Loop points with Inter',
+    incentiveAmount: '10,000 Loop points (about $25; not cash)',
     updatedAt: '2026-10-25T00:00:00.000Z',
     honestTruth: {
-      summary: 'The reported value is $25 in Loop points, not cash.',
+      summary: '10,000 Loop points are worth about $25, not cash.',
     },
   };
   const savedOffer = {
@@ -614,10 +613,11 @@ test('Ero cashout details are featured and distinguish the activity boost from c
   assert.ok(offer);
   assert.equal(offer.status, 'live');
   assert.equal(offer.featured, true);
-  assert.match(offer.payoutSpeed, /instant debit-card withdrawal/i);
+  assert.match(offer.payoutSpeed, /debit-card withdrawal timing/i);
   assert.doesNotMatch(offer.payoutSpeed, /fee|selfie/i);
   assert.match(offer.honestTruth.summary, /not a fixed signup payment/i);
-  assert.match(offer.honestTruth.hiddenFeesWarning, /no ID required/i);
+  assert.match(offer.honestTruth.summary, /No ID is needed/i);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /No ID is needed/i);
   const eroCopy = [
     offer.payoutSpeed,
     offer.honestTruth.summary,

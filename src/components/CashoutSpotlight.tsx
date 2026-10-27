@@ -31,7 +31,7 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
             Compare the featured Inter referral reward with the Daily Duo cashout options. Check each offer’s terms before signing up.
           </p>
         </div>
-        <span className="text-xs text-zinc-300">Details below are site-owner reported; confirm current terms in each app.</span>
+        <span className="text-xs text-zinc-300">Cashout options and requirements can change; check the current terms in each app.</span>
       </div>
 
       {spotlightOffers.length === 2 && (
@@ -127,17 +127,17 @@ export const CashoutSpotlight: React.FC<CashoutSpotlightProps> = ({ offers, onVi
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-100">Featured referral reward</p>
                 <h3 className="mt-1 text-lg font-black text-white">Inter</h3>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-300">Reported for both the eligible new member and referrer; enter code <strong className="font-mono text-orange-100">OVTHOJDC</strong> during signup.</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">The eligible new member and referrer may each receive the reward. Enter code <strong className="font-mono text-orange-100">OVTHOJDC</strong> during signup.</p>
               </div>
             </div>
             <div className="shrink-0 rounded-xl border border-orange-200/25 bg-black/25 px-5 py-3 text-center sm:text-right">
               <p className="text-3xl font-black leading-none text-orange-100">$25</p>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-100">reported value in Loop points</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-orange-100">value in Loop points</p>
             </div>
           </div>
           <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.08] pt-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-relaxed text-amber-100">
-              10,000 Loop points—not cash. The $25 value and arrival within 7 days are reported, not independently verified; redemption terms apply. $0 deposit; ID and selfie required.
+              10,000 Loop points—not cash. The $25 value and arrival time depend on Inter’s current redemption terms. $0 deposit; ID and selfie required.
             </p>
             <button
               type="button"

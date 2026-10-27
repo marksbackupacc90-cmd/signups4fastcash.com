@@ -124,7 +124,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
             </button>
           </div>
           {cashoutSpotlight && (
-            <section className="mb-3 rounded-xl border border-violet-200/20 bg-violet-200/[0.06] p-3" aria-label="Cashout details reported by the site owner">
+            <section className="mb-3 rounded-xl border border-violet-200/20 bg-violet-200/[0.06] p-3" aria-label="Cashout details">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-violet-100">The Daily Duo</h3>
                 <span className="rounded-full bg-black/20 px-2 py-1 text-xs font-semibold text-emerald-100">{cashoutSpotlight.payout}</span>
@@ -138,11 +138,11 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
             </section>
           )}
           {isInterOffer && (
-            <section className="mb-3 rounded-xl border border-orange-200/25 bg-[radial-gradient(circle_at_0%_0%,rgba(251,146,60,0.14),transparent_60%),rgba(251,146,60,0.04)] p-4" aria-label="Inter reported Loop points value">
-              <p className="text-xs font-bold uppercase tracking-wider text-orange-100">Featured referral reward · not independently verified</p>
+            <section className="mb-3 rounded-xl border border-orange-200/25 bg-[radial-gradient(circle_at_0%_0%,rgba(251,146,60,0.14),transparent_60%),rgba(251,146,60,0.04)] p-4" aria-label="Inter Loop points reward">
+              <p className="text-xs font-bold uppercase tracking-wider text-orange-100">Featured referral reward</p>
               <p className="mt-1 text-3xl font-black leading-none text-orange-100">$25</p>
-              <p className="mt-1 text-xs font-semibold text-orange-50">reported value in Loop points for each eligible participant</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-zinc-200">The reported 10,000 Loop points are rewards points, not cash. The $25 equivalent depends on Inter’s redemption terms and has not been independently verified.</p>
+              <p className="mt-1 text-xs font-semibold text-orange-50">10,000 Loop points for each eligible participant</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-zinc-200">Loop points are rewards points, not cash. The $25 estimate depends on Inter’s redemption terms, so check the current terms before signing up.</p>
             </section>
           )}
           <p className="text-sm leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>
@@ -168,7 +168,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
                   {copyStatus === 'copied' ? 'Copied' : 'Copy code'}
                 </button>
               </div>
-              {offer.referralCodeRequired && <p className="mt-2 text-[13px] leading-relaxed text-amber-50">Enter this code during signup to qualify for the reported referral reward.</p>}
+              {offer.referralCodeRequired && <p className="mt-2 text-[13px] leading-relaxed text-amber-50">Enter this code during signup to qualify for the referral reward.</p>}
               {copyStatus === 'error' && <p className="mt-2 text-xs text-rose-300">Could not copy. Select and copy the code instead.</p>}
             </div>
           )}
@@ -207,7 +207,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
             </Disclosure>
 
             <Disclosure title="Completed this offer?">
-              <p className="text-[13px] text-zinc-300">This is self-reported and is not a verified conversion.</p>
+              <p className="text-[13px] text-zinc-300">This report comes from the member; it does not confirm that the provider paid a reward.</p>
               {completionStatus === 'submitted' ? (
                 <p className="mt-3 text-emerald-300">Thanks — your report was recorded.</p>
               ) : (
@@ -225,7 +225,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
             Continue to {offer.company} <ExternalLink className="h-4 w-4" />
           </a>
           <p className="mt-2 text-center text-xs leading-relaxed text-zinc-200">
-            This may be a referral link. We may earn a commission if you use it, at no extra cost to you. {offer.company} controls eligibility, approval, reward value, and payment; confirm its current terms before proceeding.
+            This may be a referral link. S4FC may earn a commission if you use it; it won’t cost you extra. {offer.company} decides eligibility, approval, reward value, and payment. Check its current terms before signing up.
           </p>
           <details id="offer-issue-report" className="mt-3 rounded-lg border border-white/[0.08]">
             <summary className="cursor-pointer px-3 py-2 text-center text-xs font-medium text-zinc-300 hover:text-white">
@@ -265,7 +265,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
                     <span className="mt-1 block text-xs text-zinc-300">Do not include passwords or financial account details.</span>
                   </label>
                   {issueReportStatus === 'error' && (
-                    <p role="alert" className="text-xs text-rose-300">We couldn't send your report. Please try again.</p>
+                    <p role="alert" className="text-xs text-rose-300">Could not send your report. Please try again.</p>
                   )}
                   <button
                     type="submit"

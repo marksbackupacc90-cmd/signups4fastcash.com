@@ -132,7 +132,7 @@ export const ReferralDashboard: React.FC = () => {
           <p className="text-xs font-mono uppercase tracking-wider text-cyan-300">Share and earn</p>
           <h3 id="referral-dashboard-title" className="mt-1 text-xl font-bold text-white">Your referral dashboard</h3>
           <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-            Share your personal link. A $5 reward remains conditional until the referred signup uses offers opened from this site and generates at least $10 in net commission we actually receive and verify. Member-reported completion alone does not qualify.
+            Share your personal link. The $5 reward is conditional: the referred signup must use offers opened from this site, and S4FC must receive at least $10 in net commission from it. A member’s completion report alone does not qualify.
           </p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export const ReferralDashboard: React.FC = () => {
                 Conditional Rewards
               </div>
               <p className="mt-3 text-3xl font-extrabold tracking-tight text-white">{formatMoney(summary.pendingBonusCents)}</p>
-              <p className="mt-1 text-[11px] text-zinc-400">Not payable until the $10 verified net commission threshold is met</p>
+              <p className="mt-1 text-[11px] text-zinc-400">Not payable until S4FC receives $10 in net commission</p>
             </article>
             <article className="rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.09] to-white/[0.02] p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-100">
@@ -219,7 +219,7 @@ export const ReferralDashboard: React.FC = () => {
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-zinc-300">
                       <span>Potential reward: {formatMoney(member.bonusCents)}</span>
                       <span>
-                        Verified net received: {formatMoney(member.verifiedNetRevenueCents)} / {formatMoney(1000)}
+                        Net commission received: {formatMoney(member.verifiedNetRevenueCents)} / {formatMoney(1000)}
                       </span>
                     </div>
                     {member.offers.length === 0 ? (
@@ -238,7 +238,7 @@ export const ReferralDashboard: React.FC = () => {
                     )}
                     {member.status === 'pending' && member.verifiedNetRevenueCents < 1000 && (
                       <p className="mt-2 text-[10px] leading-relaxed text-amber-100/80">
-                        The $5 reward is not payable unless at least $10 in commission from this signup is actually received and verified by the site owner.
+                        The $5 reward is not payable unless S4FC receives at least $10 in commission from this signup.
                       </p>
                     )}
                   </article>

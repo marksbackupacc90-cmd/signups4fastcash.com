@@ -13,10 +13,10 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
     title: 'Privacy Policy',
     body: (
       <>
-        <p>We collect information you choose to submit, such as your email address when you subscribe to alerts. We use it to provide the requested alerts and maintain the service.</p>
-        <p>Our hosting provider may process basic technical information, such as request time, device type, and IP address, for security and reliability. The site counts page loads using a single aggregate total; it does not store a page-view visitor ID, page path, source, or location. No consent popup is used for this aggregate counter.</p>
-        <p>When someone follows an offer link, we record only the offer and event time so the site can show aggregate referral-click counts. These counts represent tracked clicks, not unique people, and click records do not include a visitor ID or location. Previously collected visitor analytics, if any, remain subject to the configured retention period (365 days by default). To request access to or deletion of information associated with you, or to withdraw newsletter consent, contact the site operator at the support address shown below.</p>
-        <p>We do not sell your personal information. Merchant websites have their own privacy policies, and you should review them before applying through an external link.</p>
+        <p>S4FC collects information you choose to submit, such as your email address when you subscribe to alerts. S4FC uses it to provide the requested alerts and maintain the service.</p>
+        <p>The site’s hosting provider may process basic technical information, such as request time, device type, and IP address, for security and reliability. The site counts page loads using a single aggregate total; it does not store a page-view visitor ID, page path, source, or location. No consent popup is used for this aggregate counter.</p>
+        <p>When someone follows an offer link, S4FC records only the offer and event time so the site can show aggregate referral-click counts. These counts represent tracked clicks, not unique people, and click records do not include a visitor ID or location. Previously collected visitor analytics, if any, remain subject to the configured retention period (365 days by default). To request access to or deletion of information associated with you, or to withdraw newsletter consent, contact the site operator at the support address shown below.</p>
+        <p>S4FC does not sell your personal information. Merchant websites have their own privacy policies, and you should review them before applying through an external link.</p>
         <p>To request removal of a newsletter address or ask a privacy question, contact the site operator through the email address listed in the deployment configuration.</p>
       </>
     ),
@@ -27,8 +27,8 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
       <>
         <p>This site provides promotional information and comparison tools. It is not financial, tax, legal, investment, credit, or gambling advice.</p>
         <p>Offers are controlled by third-party merchants. Eligibility, geographic availability, requirements, fees, taxes, payout timing, and expiration dates can change. Confirm the official merchant terms before applying.</p>
-        <p>We do not hold funds, complete applications, guarantee approval, or guarantee that a merchant will issue a reward. You are responsible for deciding whether an offer is appropriate for you.</p>
-        <p>External links take you to third-party websites. We are not responsible for their content, security, availability, or decisions.</p>
+        <p>S4FC does not hold funds, complete applications, guarantee approval, or guarantee that a merchant will issue a reward. You are responsible for deciding whether an offer is appropriate for you.</p>
+        <p>External links take you to third-party websites. S4FC is not responsible for their content, security, availability, or decisions.</p>
       </>
     ),
   },
@@ -36,9 +36,9 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
     title: 'Affiliate Disclosure',
     body: (
       <>
-        <p>Some links on this site are referral or affiliate links. If you use one, the merchant may compensate us at no additional cost to you.</p>
+        <p>Some links on this site are referral or affiliate links. If you use one, the merchant may compensate S4FC at no additional cost to you.</p>
         <p>Affiliate compensation does not change the merchant's eligibility rules, approval decisions, fees, or payout obligations.</p>
-        <p>We aim to describe requirements plainly, but the official merchant terms are the controlling source. Please report outdated or inaccurate offer information so it can be reviewed.</p>
+        <p>S4FC aims to describe requirements plainly, but the official merchant terms are the controlling source. Please report outdated or inaccurate offer information so it can be reviewed.</p>
       </>
     ),
   },
@@ -46,9 +46,9 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
     title: 'Editorial Methodology',
     body: (
       <>
-        <p>We organize publicly available promotions so visitors can compare the advertised reward, required actions, timing, fees, eligibility, and important fine print before visiting the official merchant.</p>
+        <p>S4FC organizes promotions so visitors can compare the advertised reward, required actions, timing, fees, eligibility, and fine print before visiting the official merchant.</p>
         <p>Offers are reviewed against the official merchant or program page when available. A review records what was visible at that time; it does not guarantee approval, eligibility, payout, or that terms will remain unchanged. Reviews are scheduled to expire so stale promotions can be checked again.</p>
-        <p>Offers are not ranked solely by the largest advertised dollar amount. We consider clarity of requirements, deposit or purchase obligations, payout timing, geographic limitations, and the risk of conditions being misunderstood.</p>
+        <p>Offers are not ranked solely by the largest advertised dollar amount. S4FC considers clarity of requirements, deposit or purchase obligations, payout timing, geographic limitations, and the risk of conditions being misunderstood.</p>
         <p>Some links are referral or affiliate links. That compensation does not buy a favorable review or change how requirements are described. If you find an outdated or inaccurate offer, contact the site operator so it can be reviewed and corrected.</p>
       </>
     ),

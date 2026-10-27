@@ -21,7 +21,7 @@ export const SupportBot: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<SupportMessage[]>([
-    { role: 'assistant', content: 'Hi! I can help you compare offers, understand requirements, and find the right place to start.' },
+    { role: 'assistant', content: 'What would you like to know about an offer?' },
   ]);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export const SupportBot: React.FC = () => {
       });
       const data = await response.json() as { answer?: string; error?: string };
       if (!response.ok) throw new Error(data.error || 'The support assistant is unavailable.');
-      setMessages((current) => [...current, { role: 'assistant', content: data.answer || 'I could not find an answer. Please review the offer details and official terms.' }]);
+      setMessages((current) => [...current, { role: 'assistant', content: data.answer || 'S4FC could not find an answer. Check the offer details and official terms.' }]);
     } catch (error) {
       setMessages((current) => [...current, {
         role: 'assistant',
