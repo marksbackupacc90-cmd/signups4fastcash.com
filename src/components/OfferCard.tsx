@@ -1,137 +1,37 @@
 import React from 'react';
-import { Check, Copy, ExternalLink, GitCompareArrows, MousePointerClick } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Offer } from '../types';
-import { getOfferSourceUrl } from '../offerTransparency';
-import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
 import { CompanyLogo } from './CompanyLogo';
 
 interface OfferCardProps {
   offer: Offer;
-  onClaimClick: (offerId: string) => void;
   onMoreInfo: (offer: Offer) => void;
-  isCompared: boolean;
-  onToggleCompare: (offerId: string) => void;
 }
 
-export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClaimClick, onMoreInfo, isCompared, onToggleCompare }) => {
-  const spotlight = getCashoutSpotlightInfo(offer.id);
-  const isInterFeatured = offer.id === 'offer-inter-loop-points';
-  const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
-  const sourceUrl = getOfferSourceUrl(offer);
-
-  return (
-    <div
-      id={`offer-card-${offer.id}`}
-      role="button"
-      tabIndex={0}
-      aria-label={`View details for ${offer.title} from ${offer.company}`}
-      onClick={() => onMoreInfo(offer)}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onMoreInfo(offer);
-        }
-      }}
-      className={`offer-card retro-window group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border bg-[#171a22]/95 shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${
-        spotlight
-          ? 'border-violet-300/40 shadow-[0_18px_50px_rgba(0,0,0,0.25),0_0_28px_rgba(167,139,250,0.12)] hover:border-violet-200/60'
-          : 'border-white/[0.1] hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)]'
-      }`}
-    >
-      <div className="relative flex h-32 shrink-0 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_20%_100%,rgba(45,212,238,0.2),transparent_42%),linear-gradient(145deg,#263747,#0d141f_78%)] sm:h-36">
-        {(spotlight || isInterFeatured) && (
-          <span className="absolute left-2.5 top-2.5 z-20 rounded-full border border-violet-100/25 bg-[#211936]/90 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-100 shadow-lg">
-            {isInterFeatured ? 'Featured reward' : 'Cashout spotlight'}
-          </span>
-        )}
-        <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:20px_20px]" />
-        <div className="absolute inset-x-8 top-4 h-20 rounded-full bg-cyan-200/10 blur-3xl" />
-        <div className="relative z-10 flex h-full w-full items-center justify-center transition-transform duration-300 group-hover:scale-[1.04]">
-          <CompanyLogo companyName={offer.company} slug={offer.companySlug} logoUrl={offer.logoUrl} size="lg" className="rounded-[1.6rem] bg-white/[0.08] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.35)] backdrop-blur-md" />
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#1b1e27_0%,#171a22_100%)] p-3 sm:p-4">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1 text-left">
-            <h2 className="truncate text-[0.95rem] font-black leading-tight tracking-[-0.01em] text-white transition-colors group-hover:text-[#2dd4ee]">{offer.title}</h2>
-            <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>
-          </div>
-        </div>
-        {spotlight && (
-          <div className="mt-2 rounded-lg border border-violet-200/15 bg-violet-200/[0.06] px-2.5 py-2 text-xs font-semibold leading-relaxed text-violet-100">
-            {spotlight.payoutLabel}
-            <span className="mt-0.5 block text-xs font-normal text-zinc-300">{spotlight.verification}</span>
-          </div>
-        )}
-        {isInterFeatured && (
-          <div className="mt-2 rounded-lg border border-orange-200/25 bg-orange-200/[0.07] px-2.5 py-2 text-left">
-            <span className="block text-sm font-black text-orange-100">$25 in Loop points</span>
-            <span className="mt-0.5 block text-xs leading-relaxed text-zinc-200">10,000 Loop points—not cash; redemption terms apply.</span>
-          </div>
-        )}
-        <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5 text-xs text-zinc-400">
-          <span className="truncate">{offer.company}</span>
-          <span className="max-w-[58%] truncate text-right">{offer.payoutSpeed}</span>
-        </div>
-        <a
-          href={sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(event) => event.stopPropagation()}
-          onPointerUp={(event) => event.stopPropagation()}
-          className="mt-1 inline-flex min-h-8 items-center justify-center gap-1 text-xs text-cyan-100 hover:text-white"
-          aria-label={`View ${offer.company} provider source`}
-        >
-          Provider source <ExternalLink className="h-3 w-3" aria-hidden="true" />
-        </a>
-        <div
-          className="mt-2 inline-flex items-center justify-center gap-1 text-xs font-medium text-cyan-100"
-          aria-label={`${Math.max(0, Number(offer.clicksCount) || 0).toLocaleString()} tracked referral clicks; clicks are not unique people`}
-          title="Tracked referral-link clicks, not unique people."
-        >
-          <MousePointerClick className="h-3 w-3" aria-hidden="true" />
-          {Math.max(0, Number(offer.clicksCount) || 0).toLocaleString()} tracked clicks
-        </div>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleCompare(offer.id);
-          }}
-          aria-pressed={isCompared}
-          aria-label={`${isCompared ? 'Remove' : 'Add'} ${offer.company} ${isCompared ? 'from' : 'to'} comparison`}
-          className={`focus-ring mt-2 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-            isCompared
-              ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100'
-              : 'border-white/10 text-zinc-300 hover:border-cyan-300/30 hover:text-white'
-          }`}
-        >
-          {isCompared ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <GitCompareArrows className="h-3.5 w-3.5" aria-hidden="true" />}
-          {isCompared ? 'Added to compare' : 'Compare'}
-        </button>
-        {offer.referralCodeRequired ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onMoreInfo(offer);
-            }}
-            id={`claim-offer-btn-${offer.id}`}
-            aria-label={`See required referral code for ${offer.company}`}
-            className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
-          >
-            <span>See required code</span><Copy className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        ) : (
-          <a href={claimUrl} target="_blank" rel="noopener noreferrer" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onClaimClick(offer.id); }} id={`claim-offer-btn-${offer.id}`} aria-label={`View the ${offer.company} offer`} className="focus-ring group/btn mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] px-3 py-2.5 text-xs font-semibold text-[#06131a] shadow-[0_0_16px_rgba(45,212,238,0.18)] transition-all hover:bg-[#67e8f9] active:scale-[0.99]">
-            <span>View offer</span><ExternalLink className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
-          </a>
-        )}
-        <p className="mt-2 text-center text-xs leading-relaxed text-zinc-300">
-          This may be a referral link. S4FC may earn a commission if you use it; it won’t cost you extra. {offer.company} sets the eligibility and reward terms.
-        </p>
-      </div>
+export const OfferCard: React.FC<OfferCardProps> = ({ offer, onMoreInfo }) => (
+  <button
+    type="button"
+    id={`offer-card-${offer.id}`}
+    aria-label={`View ${offer.company} offer details. Potential reward: ${offer.incentiveAmount}.`}
+    onClick={() => onMoreInfo(offer)}
+    className="offer-card retro-window group flex h-full w-full min-w-0 items-center gap-4 overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#171a22]/95 p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-200/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.32),0_0_30px_rgba(45,212,238,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 sm:p-5"
+  >
+    <CompanyLogo
+      companyName={offer.company}
+      slug={offer.companySlug}
+      logoUrl={offer.logoUrl}
+      size="sm"
+      className="shrink-0 rounded-2xl bg-white/[0.08] p-2 shadow-lg"
+    />
+    <div className="min-w-0 flex-1">
+      <h2 className="truncate text-base font-black leading-tight text-white transition-colors group-hover:text-[#2dd4ee]">
+        {offer.company}
+      </h2>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300">Potential reward</p>
+      <p className="mt-0.5 line-clamp-2 break-words text-sm font-bold leading-snug text-cyan-100 sm:text-base">
+        {offer.incentiveAmount}
+      </p>
     </div>
-  );
-};
+    <ChevronRight className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-cyan-100" aria-hidden="true" />
+  </button>
+);

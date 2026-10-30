@@ -470,24 +470,37 @@ test('newer Inter reward wording replaces stale saved copy while preserving refe
 test('newer Verb catalog details replace stale saved terms while preserving visibility and counts', () => {
   const catalogOffer = {
     id: 'offer-verb',
-    title: 'Updated Verb data rewards',
+    title: 'Possible $3 Verb signup bonus plus data rewards',
+    incentiveAmount: '$3 signup bonus; possible $5 data rewards and $30/month tracker',
     referralUrl: 'https://verb-data.com/signup?ref=G284G5GH',
-    updatedAt: '2026-10-02T16:00:00.000Z',
+    updatedAt: '2026-10-29T22:00:00.000Z',
     status: 'live',
     clicksCount: 0,
     conversionsCount: 0,
+    honestTruth: {
+      summary: 'S4FC lists a possible $3 signup bonus and possible additional data rewards.',
+    },
+    payoutSpeed: 'Timing and approval vary; check tracker terms with Verb',
   };
   const savedOffer = {
     id: 'offer-verb',
-    title: 'Old Verb data rewards',
-    updatedAt: '2026-09-16T22:14:44Z',
+    title: 'Get a reported $3 Verb signup bonus plus data rewards',
+    incentiveAmount: '$3 signup bonus; reported $5 data rewards and $30/month tracker',
+    updatedAt: '2026-10-24T14:31:06.371Z',
     status: 'hidden',
     clicksCount: 8,
     conversionsCount: 2,
+    honestTruth: {
+      summary: 'Additional reported rewards are available.',
+    },
+    payoutSpeed: 'Tracker reward is reported as monthly',
   };
   const merged = mergeCatalogOffer(catalogOffer, savedOffer);
   assert.equal(merged.title, catalogOffer.title);
+  assert.equal(merged.incentiveAmount, catalogOffer.incentiveAmount);
   assert.equal(merged.referralUrl, catalogOffer.referralUrl);
+  assert.equal(merged.honestTruth.summary, catalogOffer.honestTruth.summary);
+  assert.equal(merged.payoutSpeed, catalogOffer.payoutSpeed);
   assert.equal(merged.status, 'hidden');
   assert.equal(merged.clicksCount, 8);
   assert.equal(merged.conversionsCount, 2);

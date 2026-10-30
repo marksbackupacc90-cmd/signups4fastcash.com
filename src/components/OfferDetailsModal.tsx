@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLink, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink, GitCompareArrows, X } from 'lucide-react';
 import { Offer } from '../types';
 import { getIdVerificationDescription, getOfferSourceUrl } from '../offerTransparency';
 import { getCashoutSpotlightInfo } from '../cashoutSpotlight';
@@ -8,6 +8,8 @@ interface OfferDetailsModalProps {
   offer: Offer;
   onClose: () => void;
   onClaimClick: (offerId: string) => void;
+  isCompared: boolean;
+  onToggleCompare: (offerId: string) => void;
 }
 
 const Disclosure: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -30,7 +32,7 @@ const Disclosure: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
   </details>
 );
 
-export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onClose, onClaimClick }) => {
+export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onClose, onClaimClick, isCompared, onToggleCompare }) => {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [completionStatus, setCompletionStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
   const [issueType, setIssueType] = useState('');
@@ -156,6 +158,19 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
               <span className="font-semibold text-zinc-300">Reward timing:</span> {offer.payoutSpeed}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => onToggleCompare(offer.id)}
+            aria-pressed={isCompared}
+            className={`mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+              isCompared
+                ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100'
+                : 'border-white/10 text-zinc-300 hover:border-cyan-300/30 hover:text-white'
+            }`}
+          >
+            <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
+            {isCompared ? 'Remove from comparison' : 'Add to comparison'}
+          </button>
           {offer.referralCode && (
             <div className="mt-4 rounded-xl border border-amber-200/25 bg-amber-200/[0.06] p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-amber-100">

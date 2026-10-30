@@ -504,7 +504,7 @@ export const INITIAL_OFFERS: Offer[] = [
     clicksCount: 0,
     conversionsCount: 0,
     createdAt: '2026-09-12T00:00:00Z',
-    updatedAt: '2026-10-02T16:24:21.317Z',
+    updatedAt: '2026-10-29T22:00:00.000Z',
   },
   {
     id: 'offer-topcashback',

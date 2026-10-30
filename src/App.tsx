@@ -1303,10 +1303,7 @@ export default function App() {
                         <div key={offer.id} data-offer-carousel-item className="min-w-0 shrink-0 basis-[68vw] snap-start self-start sm:basis-[35%] lg:basis-[24%] xl:basis-[19%]">
                           <OfferCard
                             offer={offer}
-                            onClaimClick={handleClaimClick}
                             onMoreInfo={setSelectedOffer}
-                            isCompared={comparisonOfferIds.includes(offer.id)}
-                            onToggleCompare={handleToggleCompare}
                           />
                         </div>
                       ))}
@@ -1430,6 +1427,8 @@ export default function App() {
           offer={selectedOffer}
           onClose={() => setSelectedOffer(null)}
           onClaimClick={handleClaimClick}
+          isCompared={comparisonOfferIds.includes(selectedOffer.id)}
+          onToggleCompare={handleToggleCompare}
         />
       )}
       {comparisonOpen && comparisonOffers.length >= 2 && (
