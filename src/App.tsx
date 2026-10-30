@@ -17,7 +17,6 @@ import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
 import { HowItWorks } from './components/HowItWorks';
-import { CashoutSpotlight } from './components/CashoutSpotlight';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 import { OfferComparison } from './components/OfferComparison';
 import { getOfferRewardKind } from './offerTransparency';
@@ -1190,7 +1189,6 @@ export default function App() {
                 Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
                 so you can compare offers before applying.
               </div>
-              <CashoutSpotlight offers={filteredOffers} onViewOffer={setSelectedOffer} />
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold uppercase tracking-wider text-[#f1e6cf]" aria-live="polite">
@@ -1300,7 +1298,7 @@ export default function App() {
                       aria-label="Available offers carousel"
                     >
                       {filteredOffers.map((offer) => (
-                        <div key={offer.id} data-offer-carousel-item className="min-w-0 shrink-0 basis-[68vw] snap-start self-start sm:basis-[35%] lg:basis-[24%] xl:basis-[19%]">
+                        <div key={offer.id} data-offer-carousel-item className="min-w-0 shrink-0 basis-[43vw] snap-start self-start sm:basis-[25%] lg:basis-[18%] xl:basis-[14%]">
                           <OfferCard
                             offer={offer}
                             onMoreInfo={setSelectedOffer}

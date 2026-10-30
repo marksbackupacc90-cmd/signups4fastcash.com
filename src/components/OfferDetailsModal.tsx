@@ -41,7 +41,6 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const sourceUrl = getOfferSourceUrl(offer);
   const cashoutSpotlight = getCashoutSpotlightInfo(offer.id);
-  const isInterOffer = offer.id === 'offer-inter-loop-points';
 
   const copyCode = async () => {
     if (!offer.referralCode) return;
@@ -128,7 +127,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
           {cashoutSpotlight && (
             <section className="mb-3 rounded-xl border border-violet-200/20 bg-violet-200/[0.06] p-3" aria-label="Cashout details">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-violet-100">The Daily Duo</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-violet-100">Cashout details</h3>
                 <span className="rounded-full bg-black/20 px-2 py-1 text-xs font-semibold text-emerald-100">{cashoutSpotlight.payout}</span>
               </div>
               <dl className="mt-3 grid gap-2 text-[13px] sm:grid-cols-2">
@@ -137,14 +136,6 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
                 {cashoutSpotlight.fee && <div className="sm:col-span-2"><dt className="text-zinc-300">Fee</dt><dd className="mt-0.5 text-zinc-100">{cashoutSpotlight.fee}</dd></div>}
               </dl>
               <p className="mt-2 border-t border-white/[0.07] pt-2 text-xs leading-relaxed text-amber-100">{cashoutSpotlight.caveat}</p>
-            </section>
-          )}
-          {isInterOffer && (
-            <section className="mb-3 rounded-xl border border-orange-200/25 bg-[radial-gradient(circle_at_0%_0%,rgba(251,146,60,0.14),transparent_60%),rgba(251,146,60,0.04)] p-4" aria-label="Inter Loop points reward">
-              <p className="text-xs font-bold uppercase tracking-wider text-orange-100">Featured referral reward</p>
-              <p className="mt-1 text-3xl font-black leading-none text-orange-100">$25</p>
-              <p className="mt-1 text-xs font-semibold text-orange-50">10,000 Loop points for each eligible participant</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-zinc-200">Loop points are rewards points, not cash. The $25 estimate depends on Inter’s redemption terms, so check the current terms before signing up.</p>
             </section>
           )}
           <p className="text-sm leading-relaxed text-zinc-300">{offer.honestTruth.summary}</p>

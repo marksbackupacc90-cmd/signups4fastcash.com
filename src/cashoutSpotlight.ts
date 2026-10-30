@@ -1,5 +1,4 @@
 export interface CashoutSpotlightInfo {
-  badge: string;
   payout: string;
   payoutLabel: string;
   verification: string;
@@ -11,7 +10,6 @@ export interface CashoutSpotlightInfo {
 
 const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
   'candidate-ero-app-referral': {
-    badge: 'The Daily Duo',
     payout: 'Debit-card withdrawal',
     payoutLabel: 'Debit-card cashout',
     verification: 'No ID needed',
@@ -25,7 +23,6 @@ const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
     caveat: 'No ID is needed for this offer. Cashout options, eligible activity, and minimums can change; check Ero’s current terms in the app.',
   },
   'candidate-measure-protocol-msr-referral': {
-    badge: 'The Daily Duo',
     payout: 'PayPal withdrawal',
     payoutLabel: 'PayPal cashout · check minimum',
     verification: 'Check current in-app requirements',
