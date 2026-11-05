@@ -392,6 +392,8 @@ const seoPageRoutes: Record<string, string> = {
 };
 
 const legacySeoRedirects: Record<string, string> = {
+  '/index.html': '/',
+  '/support.html': '/',
   '/about.html': '/#trust',
   '/disclosures.html': '/#trust',
   '/best-cashback-offers.html': '/cashback-offers',

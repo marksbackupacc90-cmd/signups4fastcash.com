@@ -124,8 +124,25 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.doesNotMatch(response.body, /\?offer=/);
 });
 
+test('robots.txt allows crawling and identifies the submitted sitemap', async () => {
+  const response = await requestText('/robots.txt');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /User-agent:\s*\*\s*Allow:\s*\/?/i);
+  assert.match(response.body, /Sitemap:\s*https:\/\/signups4fastcash\.com\/sitemap\.xml/i);
+});
+
+test('Ibotta referral guide gives specific eligibility and tracking guidance', async () => {
+  const response = await requestText('/ibotta-referral-bonus');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/ibotta-referral-bonus"/);
+  assert.match(response.body, /Referral reward versus regular cashback/);
+  assert.match(response.body, /Before making a purchase/);
+});
+
 test('legacy and .html SEO URLs redirect before static files can serve duplicate pages', async () => {
   const redirects = [
+    ['/index.html', '/'],
+    ['/support.html', '/'],
     ['/about.html', '/#trust'],
     ['/disclosures.html', '/#trust'],
     ['/cashback-offers.html', '/cashback-offers'],
@@ -177,6 +194,26 @@ test('hidden referral offer candidates are not exposed in the public offer catal
   ];
   const publicIds = response.body.offers.map((offer) => offer.id);
   candidateIds.forEach((id) => assert.equal(publicIds.includes(id), false, `${id} must stay hidden`));
+});
+
+test('EarnX offer clearly lists the referral reward, cashout thresholds, and verification terms', async () => {
+  const response = await request('/api/offers');
+  assert.equal(response.status, 200);
+  const offer = response.body.offers.find((candidate) => candidate.id === 'offer-earnx');
+
+  assert.ok(offer, 'EarnX should be in the public offer catalog');
+  assert.equal(offer.referralCode, '8HLWMZ');
+  assert.equal(offer.referralCodeRequired, true);
+  assert.equal(offer.referralUrl, 'https://earnx.gg/r/8HLWMZ');
+  assert.equal(offer.incentiveValue, 2);
+  assert.match(offer.incentiveAmount, /\$2/);
+  assert.match(offer.honestTruth.minimumHoldTime, /first cashout.*\$20.*later cashouts.*\$1/i);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /selfie/i);
+  assert.match(offer.honestTruth.theCatch, /\$0\.50.*free spin/i);
+
+  const logo = await request('/company-logos/earnx.gg-logo.jpg');
+  assert.equal(logo.status, 200);
+  assert.match(logo.headers.get('content-type'), /image\/jpeg/i);
 });
 
 test('public offers disclose complete requirements without unsupported trust or payout guarantees', async () => {
