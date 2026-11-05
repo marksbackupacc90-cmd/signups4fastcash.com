@@ -19,6 +19,7 @@ import { OfferFinder } from './components/OfferFinder';
 import { HowItWorks } from './components/HowItWorks';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 import { OfferComparison } from './components/OfferComparison';
+import { TrackingCheck } from './components/TrackingCheck';
 import { getOfferRewardKind } from './offerTransparency';
 
 interface AuthUser {
@@ -181,6 +182,7 @@ export default function App() {
   const [authOpenRequest, setAuthOpenRequest] = useState(isRegistrationRoute ? 1 : 0);
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
+  const [trackingCheckOpen, setTrackingCheckOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [comparisonOfferIds, setComparisonOfferIds] = useState<string[]>([]);
   const [comparisonOpen, setComparisonOpen] = useState(false);
@@ -1058,6 +1060,7 @@ export default function App() {
         shareCopied={shareCopied}
         onOpenFinder={() => setOfferFinderOpen(true)}
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
+        onOpenTrackingCheck={() => setTrackingCheckOpen(true)}
         onAccount={() => setAccountOpen(true)}
         onSignOut={async () => {
           await fetch('/api/auth/logout', { method: 'POST' });
@@ -1419,6 +1422,7 @@ export default function App() {
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
+      {trackingCheckOpen && <TrackingCheck onClose={() => setTrackingCheckOpen(false)} />}
       {offerFinderOpen && <OfferFinder offers={publicOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
       {selectedOffer && (
         <OfferDetailsModal

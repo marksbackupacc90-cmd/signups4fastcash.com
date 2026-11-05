@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
-import { Bell, ChevronDown, ListChecks, Search, Share2 } from 'lucide-react';
+import { Bell, ChevronDown, ListChecks, Search, Share2, ShieldCheck } from 'lucide-react';
 
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
@@ -22,6 +22,7 @@ interface NavbarProps {
   shareCopied: boolean;
   onOpenFinder: () => void;
   onOpenNewsletter: () => void;
+  onOpenTrackingCheck: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -43,6 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   shareCopied,
   onOpenFinder,
   onOpenNewsletter,
+  onOpenTrackingCheck,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -107,9 +109,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             My Offers
             {activeOfferCount > 0 && <span className="rounded-full bg-cyan-300 px-1.5 py-0.5 text-[11px] font-black text-[#071016]">{activeOfferCount}</span>}
           </button>
+          <button
+            type="button"
+            onClick={onOpenTrackingCheck}
+            className="retro-button focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border border-cyan-300/25 px-3 py-2 text-xs font-medium text-cyan-100 transition-all hover:bg-cyan-300/10 hover:text-white"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            Tracking check
+          </button>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={onOpenTrackingCheck}
+            className="retro-button focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md border border-cyan-300/25 text-cyan-100 hover:bg-cyan-300/10 md:hidden"
+            aria-label="Run browser tracking check"
+            title="Tracking check"
+          >
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+          </button>
           <button
             type="button"
             onClick={onOpenMyOffers}
