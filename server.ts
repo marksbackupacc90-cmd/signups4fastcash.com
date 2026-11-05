@@ -373,6 +373,7 @@ ${urls.map((url) => `  <url>
 });
 
 const seoPageRoutes: Record<string, string> = {
+  '/partners': 'partners.html',
   '/cashback-offers': 'cashback-offers.html',
   '/signup-bonus-sites': 'signup-bonus-sites.html',
   '/free-stock-bonuses': 'free-stock-bonuses.html',

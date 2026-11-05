@@ -66,6 +66,11 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             <ul className="space-y-1.5 text-zinc-400 font-sans">
               <li>
+                <a href="/partners" className="inline-flex min-h-11 items-center hover:text-white transition-colors">
+                  Publisher &amp; Offerwall Partnerships
+                </a>
+              </li>
+              <li>
                 <button onClick={onSelectOffers} className="min-h-11 hover:text-white transition-colors">
                   All Available Offers
                 </button>

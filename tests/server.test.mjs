@@ -120,8 +120,18 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type'), /application\/xml/i);
   assert.match(response.body, /\/cashback-offers</);
+  assert.match(response.body, /\/partners</);
   assert.doesNotMatch(response.body, /\.html/);
   assert.doesNotMatch(response.body, /\?offer=/);
+});
+
+test('publisher partnership page explains current tracking and contact details', async () => {
+  const response = await requestText('/partners');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/partners"/);
+  assert.match(response.body, /do not currently claim to verify game milestones/i);
+  assert.match(response.body, /server-to-server postbacks/i);
+  assert.match(response.body, /mailto:support@signups4fastcash\.com/);
 });
 
 test('robots.txt allows crawling and identifies the submitted sitemap', async () => {
