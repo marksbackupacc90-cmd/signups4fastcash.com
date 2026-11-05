@@ -1,52 +1,17 @@
 import React from 'react';
-import { ArrowRight, BellRing, Download, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ArrowRight, BellRing, Download, Sparkles } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
 interface HeroProps {
   siteSettings?: SiteSettings;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  onSearchSubmit?: (query: string) => void;
-  selectedCategory: string;
-  setSelectedCategory: (category: string) => void;
-  sortBy: 'random' | 'highest' | 'fastest' | 'easiest';
-  setSortBy: (sort: 'random' | 'highest' | 'fastest' | 'easiest') => void;
-  offerFilter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase';
-  setOfferFilter: (filter: 'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase') => void;
-  identityFilter: 'all' | 'no-id-listed';
-  setIdentityFilter: (filter: 'all' | 'no-id-listed') => void;
-  rewardFilter: 'all' | 'cash' | 'points';
-  setRewardFilter: (filter: 'all' | 'cash' | 'points') => void;
   totalOffersCount: number;
   onOpenFinder?: () => void;
   onOpenNewsletter?: () => void;
   onInstallApp?: () => void;
 }
 
-const CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: 'All Offers' },
-  { id: 'fintech', label: 'Banking & Fintech' },
-  { id: 'brokerage', label: 'Free Stocks & Brokerages' },
-  { id: 'cashback', label: 'Cashback & Rebates' },
-  { id: 'apps', label: 'Apps & Rewards' },
-  { id: 'crypto', label: 'Crypto & Web3' },
-];
-
 export const Hero: React.FC<HeroProps> = ({
   siteSettings,
-  searchQuery,
-  setSearchQuery,
-  onSearchSubmit,
-  selectedCategory,
-  setSelectedCategory,
-  sortBy,
-  setSortBy,
-  offerFilter,
-  setOfferFilter,
-  identityFilter,
-  setIdentityFilter,
-  rewardFilter,
-  setRewardFilter,
   totalOffersCount,
   onOpenFinder,
   onOpenNewsletter,
@@ -131,182 +96,6 @@ export const Hero: React.FC<HeroProps> = ({
             </button>
           </div>
         )}
-
-        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-zinc-300">
-          <span className="mr-1 font-mono uppercase tracking-[0.12em] text-zinc-400">Popular guides:</span>
-          <a href="/cashback-offers" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Cashback offers</a>
-          <a href="/signup-bonus-sites" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Signup bonus sites</a>
-          <a href="/best-no-deposit-bonuses-this-month" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit bonuses</a>
-          <a href="/how-to-compare-referral-bonuses-safely" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Referral safety guide</a>
-          <a href="/best-fintech-bonuses" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Fintech bonuses</a>
-          <a href="/best-rewards-apps" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Rewards apps</a>
-          <a href="/best-free-stock-offers-for-beginners" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">Free stock for beginners</a>
-          <a href="/best-fintech-bonuses-without-deposit" className="rounded-full border border-white/10 bg-[#10141d] px-2.5 py-1 hover:border-cyan-300/40 hover:text-white">No-deposit fintech</a>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {[
-            { title: 'Compare before you click', text: 'See the bonus, minimum deposit, and payout timing in one fast scan.' },
-            { title: 'Terms up front', text: 'S4FC shows requirements and fee notes before you open the company’s page.' },
-            { title: 'Filter your way', text: 'Narrow the list by deposit, experience level, or payout speed.' },
-          ].map(({ title, text }) => (
-            <div key={title} className="rounded-2xl border border-white/[0.08] bg-[#0e121a]/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-              <p className="text-xs font-mono uppercase tracking-[0.14em] text-cyan-200">Why people use this</p>
-              <h3 className="mt-2 text-base font-semibold text-white">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{text}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Search and Filters Bar */}
-        <div className="mt-6 flex flex-col items-stretch justify-between gap-4 rounded-lg border border-white/[0.06] bg-[#0e121a] p-4 md:flex-row md:items-center">
-          
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
-            <input
-              type="text"
-              id="search-offers-input"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  onSearchSubmit?.((e.target as HTMLInputElement).value);
-                }
-              }}
-              placeholder="Search companies, cash bonuses, or $0 deposit..."
-              className="w-full rounded-lg border border-white/10 bg-[#10141d] py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-zinc-500 transition-colors focus:border-[#00f2fe]/50 focus:outline-none focus:ring-1 focus:ring-[#00f2fe]/50 font-sans"
-              aria-label="Search offers"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="focus-ring absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded px-1 text-xs text-zinc-400 hover:text-white"
-                aria-label="Clear offer search"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* Sort Selector */}
-          <div className="flex items-center gap-2 shrink-0">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-500" />
-            <label htmlFor="sort-offers" className="text-xs font-mono text-zinc-300">SORT:</label>
-            <select
-              id="sort-offers"
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value as 'random' | 'highest' | 'fastest' | 'easiest')}
-              className="rounded-md border border-white/10 bg-[#10141d] px-3 py-2 text-[13px] font-medium text-zinc-100 outline-none transition-colors focus:border-[#2dd4ee]"
-            >
-              <option value="random">Random order</option>
-              <option value="highest">Highest Cash</option>
-              <option value="fastest">Fastest Payout</option>
-              <option value="easiest">Lowest Deposit</option>
-            </select>
-          </div>
-
-        </div>
-
-        {/* Quick category filters */}
-        <div className="mt-4" aria-label="Filter offers by category">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  aria-pressed={isSelected}
-                  className={`focus-ring shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    isSelected
-                      ? 'border-cyan-300/60 bg-cyan-300 text-[#06131a]'
-                      : 'border-white/10 bg-[#10141d] text-zinc-300 hover:border-cyan-300/40 hover:text-white'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2" aria-label="Filter offers by requirements">
-            {([
-              ['all', 'All requirements'],
-              ['no-deposit', 'No deposit'],
-              ['paypal', 'PayPal cashout'],
-              ['fast', 'Fast payout'],
-              ['beginner', 'Beginner-friendly'],
-              ['purchase', 'Purchase required'],
-            ] as const).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setOfferFilter(id)}
-                aria-pressed={offerFilter === id}
-                className={`focus-ring rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                  offerFilter === id
-                    ? 'border-emerald-300/60 bg-emerald-300 text-[#06131a]'
-                    : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-emerald-300/40 hover:text-white'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div role="group" aria-label="Filter offers by identity verification">
-              <p className="mb-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400">Identity check</p>
-              <div className="flex flex-wrap gap-2">
-                {([
-                  ['all', 'Any ID requirement'],
-                  ['no-id-listed', 'No ID listed'],
-                ] as const).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setIdentityFilter(id)}
-                    aria-pressed={identityFilter === id}
-                    className={`focus-ring rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                      identityFilter === id
-                        ? 'border-violet-300/60 bg-violet-300 text-[#101018]'
-                        : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-violet-300/40 hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div role="group" aria-label="Filter offers by reward type">
-              <p className="mb-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400">Reward type</p>
-              <div className="flex flex-wrap gap-2">
-                {([
-                  ['all', 'Any reward'],
-                  ['cash', 'Cash / USD amount'],
-                  ['points', 'Points'],
-                ] as const).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setRewardFilter(id)}
-                    aria-pressed={rewardFilter === id}
-                    className={`focus-ring rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                      rewardFilter === id
-                        ? 'border-amber-300/60 bg-amber-300 text-[#16120a]'
-                        : 'border-white/10 bg-[#10141d] text-zinc-400 hover:border-amber-300/40 hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-300">
-            “No ID listed” means no ID requirement is listed here; providers may still ask for identity checks. Reward-type filters are based on the listed reward wording.
-          </p>
-        </div>
           </div>
         </div>
 

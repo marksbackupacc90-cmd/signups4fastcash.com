@@ -16,11 +16,9 @@ import { ArrowLeft, ArrowRight, CheckCircle2, GitCompareArrows, X } from 'lucide
 import { AuthModal } from './components/AuthModal';
 import { AccountPanel } from './components/AccountPanel';
 import { OfferFinder } from './components/OfferFinder';
-import { HowItWorks } from './components/HowItWorks';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 import { OfferComparison } from './components/OfferComparison';
 import { TrackingCheck } from './components/TrackingCheck';
-import { getOfferRewardKind } from './offerTransparency';
 
 interface AuthUser {
   id: string;
@@ -36,19 +34,6 @@ interface AuthUser {
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-}
-
-function payoutSortValue(payoutSpeed: string) {
-  if (/instant|immediate/i.test(payoutSpeed)) return 0;
-  const hours = payoutSpeed.match(/(\d+)(?:\s*-\s*\d+)?\s*hours?/i);
-  if (hours) return Number(hours[1]);
-  const days = payoutSpeed.match(/(\d+)(?:\s*-\s*\d+)?\s*business days?/i);
-  return days ? Number(days[1]) * 24 : Number.MAX_SAFE_INTEGER;
-}
-
-function depositSortValue(depositRequired: string) {
-  const amount = depositRequired.match(/\$(\d+(?:\.\d+)?)/);
-  return amount ? Number(amount[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 function isAvailableOffer(offer: Offer) {
@@ -145,12 +130,7 @@ export default function App() {
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [blastLogs, setBlastLogs] = useState<EmailBlastLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState<'random' | 'highest' | 'fastest' | 'easiest'>('random');
   const [randomOfferOrder, setRandomOfferOrder] = useState<string[]>(() => shuffleOfferIds(liveOffers));
-  const [offerFilter, setOfferFilter] = useState<'all' | 'no-deposit' | 'paypal' | 'fast' | 'beginner' | 'purchase'>('all');
-  const [identityFilter, setIdentityFilter] = useState<'all' | 'no-id-listed'>('all');
-  const [rewardFilter, setRewardFilter] = useState<'all' | 'cash' | 'points'>('all');
   const offersCarouselRef = useRef<HTMLDivElement | null>(null);
   const pageViewRecordedRef = useRef(false);
   const carouselDragRef = useRef({ active: false, startX: 0, startScrollLeft: 0, moved: false });
@@ -322,10 +302,6 @@ export default function App() {
   const getAdminHeaders = () => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
     return token ? { 'x-admin-token': token } : {};
-  };
-
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
   };
 
   const loadAdminUsernames = async (token?: string) => {
@@ -789,51 +765,19 @@ export default function App() {
     }
   };
 
-  const orderedLiveOffers = [...publicOffers].sort((a, b) => {
-    if (sortBy === 'random') {
-      return randomOfferOrder.indexOf(a.id) - randomOfferOrder.indexOf(b.id);
-    }
-    if (Number(b.featured ?? false) !== Number(a.featured ?? false)) {
-      return Number(b.featured ?? false) - Number(a.featured ?? false);
-    }
-    return b.incentiveValue - a.incentiveValue;
+  const orderedLiveOffers = [...publicOffers].sort(
+    (a, b) => randomOfferOrder.indexOf(a.id) - randomOfferOrder.indexOf(b.id),
+  );
+  const filteredOffers = orderedLiveOffers.filter((offer) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      offer.company.toLowerCase().includes(query) ||
+      offer.title.toLowerCase().includes(query) ||
+      offer.incentiveAmount.toLowerCase().includes(query) ||
+      offer.depositRequired.toLowerCase().includes(query)
+    );
   });
-
-  const filteredOffers = orderedLiveOffers
-    .filter((offer) => {
-      if (selectedCategory !== 'all' && offer.category !== selectedCategory) {
-        return false;
-      }
-      if (offerFilter === 'no-deposit' && !/\$0|no deposit/i.test(offer.depositRequired)) return false;
-      if (offerFilter === 'paypal' && !/paypal/i.test(`${offer.honestTruth.summary} ${offer.honestTruth.hiddenFeesWarning} ${offer.payoutSpeed}`)) return false;
-      if (offerFilter === 'fast' && !/instant|within \d+ (?:hours?|business days?)/i.test(offer.payoutSpeed)) return false;
-      if (offerFilter === 'beginner' && offer.difficulty === 'Standard (10 min)') return false;
-      if (offerFilter === 'purchase' && !/\$0|no deposit/i.test(offer.depositRequired)) return false;
-      if (identityFilter === 'no-id-listed' && offer.honestTruth.idVerificationRequired) return false;
-      if (rewardFilter !== 'all' && getOfferRewardKind(offer) !== rewardFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
-          offer.company.toLowerCase().includes(q) ||
-          offer.title.toLowerCase().includes(q) ||
-          offer.incentiveAmount.toLowerCase().includes(q) ||
-          offer.depositRequired.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'highest') {
-        return b.incentiveValue - a.incentiveValue;
-      }
-      if (sortBy === 'fastest') {
-        return payoutSortValue(a.payoutSpeed) - payoutSortValue(b.payoutSpeed);
-      }
-      if (sortBy === 'easiest') {
-        return depositSortValue(a.depositRequired) - depositSortValue(b.depositRequired);
-      }
-      return 0;
-    });
   const filteredOfferIds = filteredOffers.map((offer) => offer.id).join(',');
 
   const shareUrl = 'https://signups4fastcash.com/?utm_source=visitor_share&utm_medium=referral&utm_campaign=share_cta';
@@ -1165,33 +1109,13 @@ export default function App() {
           <div>
             <Hero
               siteSettings={siteSettings}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              onSearchSubmit={handleSearchChange}
               onOpenFinder={() => setOfferFinderOpen(true)}
               onInstallApp={isInstalled ? undefined : () => void handleInstallApp()}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              offerFilter={offerFilter}
-              setOfferFilter={setOfferFilter}
-              identityFilter={identityFilter}
-              setIdentityFilter={setIdentityFilter}
-              rewardFilter={rewardFilter}
-              setRewardFilter={setRewardFilter}
               totalOffersCount={publicOffers.length}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
             />
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">
-              <HowItWorks />
-              <div className="rounded-xl border border-white/[0.08] bg-[#0e121a] px-4 py-3 text-xs leading-relaxed text-zinc-300">
-                <span className="font-semibold text-[#8ad7f5]">Affiliate disclosure:</span>{' '}
-                Some links below are referral or affiliate links. If you use one, the merchant may compensate
-                Signups4FastCash.com at no extra cost to you. We still show the requirements, risks, and fine print
-                so you can compare offers before applying.
-              </div>
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold uppercase tracking-wider text-[#f1e6cf]" aria-live="polite">
@@ -1233,17 +1157,13 @@ export default function App() {
                   </div>
                   <h3 className="text-base font-bold text-white">No Matching Offers Found</h3>
                   <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-                    Try adjusting your search keywords or switching category filters to see all available referral signups.
+                    No available offers match the selected company.
                   </p>
                   <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('all');
-                      setOfferFilter('all');
-                    }}
+                    onClick={() => setSearchQuery('')}
                     className="mt-4 px-3 py-1.5 rounded bg-white/10 text-xs font-mono text-white hover:bg-white/20"
                   >
-                    Reset Filters
+                    Show all offers
                   </button>
                 </div>
               ) : (
