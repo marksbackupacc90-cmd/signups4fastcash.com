@@ -210,6 +210,8 @@ test('EarnX offer clearly lists the referral reward, cashout thresholds, and ver
   assert.match(offer.honestTruth.minimumHoldTime, /first cashout.*\$20.*later cashouts.*\$1/i);
   assert.match(offer.honestTruth.hiddenFeesWarning, /selfie/i);
   assert.match(offer.honestTruth.theCatch, /\$0\.50.*free spin/i);
+  assert.match(offer.speedrunHints[3].instruction, /offer-tracking check/i);
+  assert.match(offer.speedrunHints[3].proTip, /does not guarantee/i);
 
   const logo = await request('/company-logos/earnx.gg-logo.jpg');
   assert.equal(logo.status, 200);
