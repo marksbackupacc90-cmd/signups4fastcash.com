@@ -156,7 +156,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: 'Signups4FastCash.com',
   siteTagline: 'Offers, with the fine print up front',
   heroBadge: 'Offers, with the fine print up front',
-  mainHeadline: 'Compare rewards before you sign up.',
+  mainHeadline: 'S4FC',
   subHeadline: 'Review signup bonuses, cashback offers, and referral rewards with requirements, payout timing, and important terms shown upfront.',
   brandName: 'Signups4FastCash.com',
   brandBadge: 'Check current offer terms',
