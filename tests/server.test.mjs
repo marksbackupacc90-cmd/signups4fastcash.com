@@ -121,8 +121,37 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.match(response.headers.get('content-type'), /application\/xml/i);
   assert.match(response.body, /\/cashback-offers</);
   assert.match(response.body, /\/partners</);
+  assert.match(response.body, /\/guides</);
+  assert.match(response.body, /\/best-fintech-bonuses</);
+  assert.equal((response.body.match(/<loc>/g) || []).length, 19);
   assert.doesNotMatch(response.body, /\.html/);
   assert.doesNotMatch(response.body, /\?offer=/);
+});
+
+test('guides directory links to all canonical editorial pages', async () => {
+  const response = await requestText('/guides');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/guides"/);
+  for (const route of [
+    '/cashback-offers',
+    '/signup-bonus-sites',
+    '/free-stock-bonuses',
+    '/banking-signup-offers',
+    '/crypto-signup-bonuses',
+    '/best-no-deposit-bonuses-this-month',
+    '/how-to-compare-referral-bonuses-safely',
+    '/best-cashback-apps',
+    '/best-fintech-bonuses',
+    '/best-rewards-apps',
+    '/best-free-stock-offers-for-beginners',
+    '/best-fintech-bonuses-without-deposit',
+    '/cashback-apps-that-pay-paypal',
+    '/ibotta-referral-bonus',
+    '/ibotta-vs-upside',
+    '/apps-that-pay-for-receipts',
+  ]) {
+    assert.match(response.body, new RegExp(`href="${route}"`), `${route} should be linked from the directory`);
+  }
 });
 
 test('publisher partnership page explains current tracking and contact details', async () => {
@@ -147,6 +176,29 @@ test('Ibotta referral guide gives specific eligibility and tracking guidance', a
   assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/ibotta-referral-bonus"/);
   assert.match(response.body, /Referral reward versus regular cashback/);
   assert.match(response.body, /Before making a purchase/);
+});
+
+test('Ibotta vs Upside guide answers the cashback comparison queries', async () => {
+  const response = await requestText('/ibotta-vs-upside');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/ibotta-vs-upside"/);
+  assert.match(response.body, /Ibotta vs\. Upside: Cashback for Groceries, Gas &amp; More/);
+  assert.match(response.body, /Ibotta vs\. Upside for retail rewards/);
+  assert.match(response.body, /How do the apps track a qualifying purchase/);
+  assert.match(response.body, /do not give shoppers a shared, independent measure/);
+  assert.match(response.body, /https:\/\/www\.ibotta\.com\//);
+  assert.match(response.body, /https:\/\/www\.upside\.com\//);
+});
+
+test('signup bonus guide explains simple signup requirements without promising easy rewards', async () => {
+  const response = await requestText('/signup-bonus-sites');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/signup-bonus-sites"/);
+  assert.match(response.body, /Simple Sign-Up Bonuses: Compare Signup Bonus Sites/);
+  assert.match(response.body, /What makes a sign-up bonus simple/);
+  assert.match(response.body, /Frequently asked questions/);
+  assert.match(response.body, /may still require verification or activity/);
+  assert.match(response.body, /requirements and payout terms, not just the headline reward/);
 });
 
 test('legacy and .html SEO URLs redirect before static files can serve duplicate pages', async () => {

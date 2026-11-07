@@ -71,6 +71,11 @@ export const Footer: React.FC<FooterProps> = ({
                 </a>
               </li>
               <li>
+                <a href="/guides" className="inline-flex min-h-11 items-center hover:text-white transition-colors">
+                  Offers &amp; Rewards Guides
+                </a>
+              </li>
+              <li>
                 <button onClick={onSelectOffers} className="min-h-11 hover:text-white transition-colors">
                   All Available Offers
                 </button>
