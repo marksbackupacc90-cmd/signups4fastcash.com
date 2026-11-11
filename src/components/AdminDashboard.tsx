@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BarChart3, CheckCircle2, DollarSign, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
+import { AlertTriangle, BarChart3, CheckCircle2, DollarSign, Flag, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, OfferRevenueEvent, SiteSettings } from '../types';
 import type { OfferActivity, OfferActivitySinceReport } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
 
-type DashboardView = 'overview' | 'offers' | 'email';
+type DashboardView = 'overview' | 'offers' | 'reports' | 'email';
 
 interface AdminDashboardProps {
   initialView?: DashboardView;
@@ -58,6 +58,17 @@ interface ReferralPayout {
   }[];
 }
 
+interface AdminOfferIssueReport {
+  id: string;
+  offerId: string;
+  issue: 'expired' | 'broken-link' | 'terms-wrong';
+  description: string;
+  status: 'open' | 'reviewing' | 'resolved';
+  reportedAt: string;
+  title: string;
+  company: string;
+}
+
 function readOfferActivityCursor() {
   try {
     const saved = localStorage.getItem(OFFER_ACTIVITY_CURSOR_KEY);
@@ -107,6 +118,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [updatingReferralId, setUpdatingReferralId] = useState<string | null>(null);
   const [referralRevenueDrafts, setReferralRevenueDrafts] = useState<Record<string, string>>({});
   const [minimumReferralNetRevenue, setMinimumReferralNetRevenue] = useState(10);
+  const [issueReports, setIssueReports] = useState<AdminOfferIssueReport[]>([]);
+  const [issueReportsLoading, setIssueReportsLoading] = useState(false);
+  const [issueReportsError, setIssueReportsError] = useState<string | null>(null);
+  const [issueReportsRefreshKey, setIssueReportsRefreshKey] = useState(0);
+  const [updatingIssueReportId, setUpdatingIssueReportId] = useState<string | null>(null);
   const [initialActivityCursor] = useState(readOfferActivityCursor);
   const activityCursorRef = useRef(initialActivityCursor);
   useEffect(() => {
@@ -223,6 +239,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     void loadReferralPayouts();
     return () => controller.abort();
   }, [props.isOwnerAdmin]);
+  useEffect(() => {
+    if (!props.isOwnerAdmin) return;
+    const controller = new AbortController();
+    const loadIssueReports = async () => {
+      setIssueReportsLoading(true);
+      setIssueReportsError(null);
+      try {
+        const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+        const response = await fetch('/api/admin/offer-issue-reports', {
+          headers: token ? { 'x-admin-token': token } : {},
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => null) as { reports?: AdminOfferIssueReport[]; error?: string } | null;
+        if (!response.ok || !Array.isArray(data?.reports)) throw new Error(data?.error || 'Could not load offer issue reports.');
+        setIssueReports(data.reports);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('Could not load offer issue reports:', error);
+        setIssueReportsError(error instanceof Error ? error.message : 'Could not load offer issue reports.');
+      } finally {
+        if (!controller.signal.aborted) setIssueReportsLoading(false);
+      }
+    };
+    void loadIssueReports();
+    return () => controller.abort();
+  }, [props.isOwnerAdmin, issueReportsRefreshKey]);
   const activityByOffer = activityReport?.offers || {};
   const offersNeedingReview = useMemo(() => {
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -274,8 +316,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const nav = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
     { id: 'offers' as const, label: 'Offers', icon: Store },
+    ...(props.isOwnerAdmin ? [{
+      id: 'reports' as const,
+      label: issueReports.filter((report) => report.status === 'open').length
+        ? `Reports (${issueReports.filter((report) => report.status === 'open').length})`
+        : 'Reports',
+      icon: Flag,
+    }] : []),
     { id: 'email' as const, label: 'Email', icon: Mail },
   ];
+  const updateIssueReportStatus = async (report: AdminOfferIssueReport, status: AdminOfferIssueReport['status']) => {
+    if (status === report.status) return;
+    setUpdatingIssueReportId(report.id);
+    setIssueReportsError(null);
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+      const response = await fetch(`/api/admin/offer-issue-reports/${encodeURIComponent(report.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json().catch(() => null) as { report?: { id: string; status: AdminOfferIssueReport['status'] }; error?: string } | null;
+      const updatedReport = data?.report;
+      if (!response.ok || !updatedReport) throw new Error(data?.error || 'Could not update this report.');
+      setIssueReports((current) => current.map((item) => item.id === report.id ? { ...item, status: updatedReport.status } : item));
+    } catch (error) {
+      console.error('Could not update offer issue report:', error);
+      setIssueReportsError(error instanceof Error ? error.message : 'Could not update this report.');
+    } finally {
+      setUpdatingIssueReportId(null);
+    }
+  };
   const sendOfferEmail = async () => {
     if (!selectedOfferId) return;
     setEmailSending(true);
@@ -941,6 +1012,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           onDeleteLiveOffer={props.onDeleteLiveOffer}
           onCreateCustomOffer={props.onCreateCustomOffer}
         />
+      )}
+
+      {view === 'reports' && props.isOwnerAdmin && (
+        <section className="rounded-2xl border border-white/[0.08] bg-[#0e121a] p-5" aria-labelledby="offer-issue-reports-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-cyan-200">
+                <Flag className="h-5 w-5" aria-hidden="true" />
+                <h2 id="offer-issue-reports-title" className="text-lg font-bold text-white">Visitor offer reports</h2>
+              </div>
+              <p className="mt-2 max-w-2xl text-xs leading-relaxed text-zinc-400">Review reports of expired offers, broken links, and incorrect terms. Reports do not change a public offer until you update it.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIssueReportsRefreshKey((key) => key + 1)}
+              disabled={issueReportsLoading}
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/[0.06] disabled:opacity-50"
+            >
+              {issueReportsLoading ? 'Refreshing…' : 'Refresh reports'}
+            </button>
+          </div>
+          {issueReportsError && <p className="mt-4 rounded-lg border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-200" role="alert">{issueReportsError}</p>}
+          {issueReportsLoading ? (
+            <p className="mt-4 text-sm text-zinc-400" role="status">Loading visitor reports…</p>
+          ) : issueReports.length === 0 && !issueReportsError ? (
+            <p className="mt-4 rounded-xl border border-white/[0.07] bg-[#090d12] p-5 text-sm text-zinc-400">No visitor reports yet.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {issueReports.map((report) => (
+                <article key={report.id} className="rounded-xl border border-white/[0.08] bg-[#090d12] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-bold text-white">{report.company || 'Offer'}{report.title ? ` — ${report.title}` : ''}</h3>
+                        <span className="rounded-full border border-amber-300/20 bg-amber-300/5 px-2 py-1 text-[10px] font-bold uppercase text-amber-100">
+                          {report.issue === 'expired' ? 'Appears expired' : report.issue === 'broken-link' ? 'Broken link' : 'Incorrect terms'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-zinc-500">{new Date(report.reportedAt).toLocaleString()}</p>
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-300">
+                        {report.description || 'No additional details provided.'}
+                      </p>
+                    </div>
+                    <label className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                      Status
+                      <select
+                        value={report.status}
+                        onChange={(event) => void updateIssueReportStatus(report, event.target.value as AdminOfferIssueReport['status'])}
+                        disabled={updatingIssueReportId === report.id}
+                        className="admin-offer-status-filter mt-1 block min-h-10 rounded-lg border border-white/10 bg-[#141824] px-3 text-xs font-semibold text-white disabled:opacity-60"
+                      >
+                        <option value="open">Open</option>
+                        <option value="reviewing">Reviewing</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                    </label>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {view === 'email' && (

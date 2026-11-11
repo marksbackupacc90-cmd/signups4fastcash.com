@@ -102,6 +102,11 @@ contain the offer ID and event time, not a visitor ID or location. Conversion
 totals increase only when an integration records a conversion; a referral click
 alone does not confirm a merchant signup or payout.
 
+The public Tracking Check performs a read-only readiness request for the site's
+click-tracking storage and tests temporary browser storage. It does not create an
+offer click or verify a partner's attribution. Owner admins can review visitor
+reports for expired offers, broken links, and incorrect terms in the Reports tab.
+
 The owner-only Admin overview also shows aggregate click and page-view totals.
 The click counter is resettable using the existing owner-only analytics reset;
 page views are counted from this deployment forward and are also cleared by

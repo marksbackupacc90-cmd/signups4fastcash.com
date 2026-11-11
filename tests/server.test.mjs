@@ -45,6 +45,14 @@ test('health endpoint reports memory readiness without a database', async () => 
   assert.ok(['configured', 'not_configured'].includes(response.body.email));
 });
 
+test('tracking readiness check reports temporary storage without creating an offer click', async () => {
+  const clicksBefore = getOfferActivityReport(7).totals.clicks;
+  const response = await request('/api/tracking-check');
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { status: 'temporary', storage: 'memory' });
+  assert.equal(getOfferActivityReport(7).totals.clicks, clicksBefore);
+});
+
 test('responses preserve a caller request ID for support diagnostics', async () => {
   const response = await request('/api/health', {
     headers: { 'x-request-id': 'test-request-123' },

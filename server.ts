@@ -1839,6 +1839,23 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
+app.get('/api/tracking-check', async (_req, res) => {
+  if (!database) return res.json({ status: 'temporary', storage: 'memory' });
+  try {
+    const result = await database.query<{ eventsReady: boolean; counterReady: boolean }>(
+      `SELECT to_regclass('public.offer_analytics_events') IS NOT NULL AS "eventsReady",
+              EXISTS (SELECT 1 FROM analytics_counters WHERE id = 1) AS "counterReady"`,
+    );
+    if (!result.rows[0]?.eventsReady || !result.rows[0]?.counterReady) {
+      return res.status(503).json({ status: 'unavailable' });
+    }
+    return res.json({ status: 'ready', storage: 'database' });
+  } catch (error) {
+    console.error('Referral tracking readiness check failed:', error);
+    return res.status(503).json({ status: 'unavailable' });
+  }
+});
+
 app.get('/api/cpx/balance', async (req, res) => {
   const userId = typeof req.query.user_id === 'string' ? req.query.user_id.trim() : '';
   if (!/^[a-zA-Z0-9_-]{8,128}$/.test(userId)) {
@@ -2219,10 +2236,15 @@ app.post('/api/offers/:id/issue-report', async (req, res) => {
   const description = typeof req.body?.description === 'string' ? req.body.description.trim().slice(0, 1000) : '';
   const report = { id: randomUUID(), offerId: offer.id, issue: req.body.issue, description, status: 'open', reportedAt: new Date().toISOString() };
   if (database) {
-    await database.query(
-      'INSERT INTO offer_issue_reports (id, offer_id, issue, description, reported_at) VALUES ($1, $2, $3, $4, $5)',
-      [report.id, report.offerId, report.issue, report.description, report.reportedAt],
-    );
+    try {
+      await database.query(
+        'INSERT INTO offer_issue_reports (id, offer_id, issue, description, reported_at) VALUES ($1, $2, $3, $4, $5)',
+        [report.id, report.offerId, report.issue, report.description, report.reportedAt],
+      );
+    } catch (error) {
+      console.error('Could not save visitor offer issue report:', error);
+      return res.status(500).json({ error: 'Could not save your report. Please try again.' });
+    }
   } else {
     issueReportsStore.unshift(report);
   }
@@ -2231,14 +2253,19 @@ app.post('/api/offers/:id/issue-report', async (req, res) => {
 
 app.get('/api/admin/offer-issue-reports', requireAuthenticatedOwnerAdmin, async (_req, res) => {
   if (database) {
-    const result = await database.query(
-      `SELECT r.id, r.offer_id AS "offerId", r.issue, r.description, r.status,
-              r.reported_at AS "reportedAt", o.title, o.company
-       FROM offer_issue_reports r
-       LEFT JOIN offers o ON o.id = r.offer_id
-       ORDER BY r.reported_at DESC`,
-    );
-    return res.json({ reports: result.rows });
+    try {
+      const result = await database.query(
+        `SELECT r.id, r.offer_id AS "offerId", r.issue, r.description, r.status,
+                r.reported_at AS "reportedAt", o.title, o.company
+         FROM offer_issue_reports r
+         LEFT JOIN offers o ON o.id = r.offer_id
+         ORDER BY r.reported_at DESC`,
+      );
+      return res.json({ reports: result.rows });
+    } catch (error) {
+      console.error('Could not load visitor offer issue reports:', error);
+      return res.status(500).json({ error: 'Could not load offer issue reports.' });
+    }
   }
   return res.json({
     reports: issueReportsStore.map((report) => ({
@@ -2256,12 +2283,17 @@ app.patch('/api/admin/offer-issue-reports/:id', requireAuthenticatedOwnerAdmin, 
     return res.status(400).json({ error: 'Choose a valid report status.' });
   }
   if (database) {
-    const result = await database.query(
-      'UPDATE offer_issue_reports SET status = $1 WHERE id = $2 RETURNING id, status',
-      [status, req.params.id],
-    );
-    if (!result.rowCount) return res.status(404).json({ error: 'Issue report not found.' });
-    return res.json({ report: result.rows[0] });
+    try {
+      const result = await database.query(
+        'UPDATE offer_issue_reports SET status = $1 WHERE id = $2 RETURNING id, status',
+        [status, req.params.id],
+      );
+      if (!result.rowCount) return res.status(404).json({ error: 'Issue report not found.' });
+      return res.json({ report: result.rows[0] });
+    } catch (error) {
+      console.error('Could not update visitor offer issue report:', error);
+      return res.status(500).json({ error: 'Could not update this report.' });
+    }
   }
   const report = issueReportsStore.find((candidate) => candidate.id === req.params.id);
   if (!report) return res.status(404).json({ error: 'Issue report not found.' });

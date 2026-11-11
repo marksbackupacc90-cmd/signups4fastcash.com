@@ -38,6 +38,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const [issueType, setIssueType] = useState('');
   const [issueDescription, setIssueDescription] = useState('');
   const [issueReportStatus, setIssueReportStatus] = useState<'idle' | 'submitting' | 'submitted' | 'error'>('idle');
+  const [issueReportError, setIssueReportError] = useState('');
   const claimUrl = `/go/${encodeURIComponent(offer.id)}`;
   const sourceUrl = getOfferSourceUrl(offer);
   const cashoutSpotlight = getCashoutSpotlightInfo(offer.id);
@@ -71,15 +72,19 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
   const reportOfferIssue = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIssueReportStatus('submitting');
+    setIssueReportError('');
     try {
       const response = await fetch(`/api/offers/${encodeURIComponent(offer.id)}/issue-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ issue: issueType, description: issueDescription }),
       });
-      if (!response.ok) throw new Error('Could not submit offer issue report.');
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Could not submit offer issue report.');
       setIssueReportStatus('submitted');
-    } catch {
+    } catch (error) {
+      console.error('Could not submit visitor offer issue report:', error);
+      setIssueReportError(error instanceof Error ? error.message : 'Could not submit offer issue report.');
       setIssueReportStatus('error');
     }
   };
@@ -271,7 +276,7 @@ export const OfferDetailsModal: React.FC<OfferDetailsModalProps> = ({ offer, onC
                     <span className="mt-1 block text-xs text-zinc-300">Do not include passwords or financial account details.</span>
                   </label>
                   {issueReportStatus === 'error' && (
-                    <p role="alert" className="text-xs text-rose-300">Could not send your report. Please try again.</p>
+                    <p role="alert" className="text-xs text-rose-300">{issueReportError || 'Could not send your report. Please try again.'}</p>
                   )}
                   <button
                     type="submit"

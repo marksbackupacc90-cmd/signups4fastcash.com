@@ -154,7 +154,49 @@ function checkReferralParameters(): CheckResult {
     : { id: 'parameters', title: 'Referral URL parameters', status: 'attention', detail: 'The sample referral parameters were not preserved. Check whether a browser extension is rewriting links.' };
 }
 
+async function checkS4fcTrackingService(): Promise<CheckResult> {
+  try {
+    const response = await fetch('/api/tracking-check', {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    });
+    const data = await response.json().catch(() => null) as { status?: string } | null;
+    if (response.ok && data?.status === 'ready') {
+      return {
+        id: 's4fc-tracking',
+        title: 'S4FC click-tracking storage',
+        status: 'passed',
+        detail: 'S4FC can reach its persistent click-tracking storage. This check did not create an offer click and cannot confirm partner credit.',
+      };
+    }
+    if (response.ok && data?.status === 'temporary') {
+      return {
+        id: 's4fc-tracking',
+        title: 'S4FC click-tracking storage',
+        status: 'attention',
+        detail: 'The site is responding, but click records are held in temporary runtime storage and can be lost when the service restarts.',
+      };
+    }
+    return {
+      id: 's4fc-tracking',
+      title: 'S4FC click-tracking storage',
+      status: 'attention',
+      detail: 'S4FC could not confirm that its click-tracking storage is ready. Try again later; do not assume a click was recorded.',
+    };
+  } catch {
+    return {
+      id: 's4fc-tracking',
+      title: 'S4FC click-tracking storage',
+      status: 'attention',
+      detail: 'This browser could not reach S4FC’s tracking readiness check. Check your connection and try again.',
+    };
+  }
+}
+
 const checks: { id: string; run: () => CheckResult | Promise<CheckResult> }[] = [
+  { id: 's4fc-tracking', run: checkS4fcTrackingService },
   { id: 'cookies', run: checkFirstPartyCookies },
   { id: 'local-storage', run: () => checkStorage('local-storage', 'Local storage', () => window.localStorage) },
   { id: 'session-storage', run: () => checkStorage('session-storage', 'Session storage', () => window.sessionStorage) },
@@ -237,7 +279,7 @@ export const TrackingCheck: React.FC<TrackingCheckProps> = ({ onClose }) => {
       } catch {
         result = {
           id: check.id,
-          title: 'Browser check',
+          title: check.id === 's4fc-tracking' ? 'S4FC click-tracking storage' : 'Browser check',
           status: 'attention',
           detail: 'The browser could not complete this check. Review this site’s browser permissions and try again.',
         };
@@ -277,7 +319,7 @@ export const TrackingCheck: React.FC<TrackingCheckProps> = ({ onClose }) => {
                 <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-cyan-200">Browser diagnostics</p>
                 <h2 id="tracking-check-title" className="mt-1 text-2xl font-bold text-white sm:text-3xl">Referral Tracking Check</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-300">
-                  Check basic browser storage and referral-link handling before starting an offer. A clean result cannot confirm that a provider credited an offer.
+                  Check this browser’s storage and whether S4FC’s own click-tracking storage is available. A clean result cannot confirm that a provider credited an offer.
                 </p>
               </div>
             </div>
@@ -288,7 +330,7 @@ export const TrackingCheck: React.FC<TrackingCheckProps> = ({ onClose }) => {
 
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2.5 text-xs leading-relaxed text-zinc-300">
             <LockKeyhole className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
-            <span>Runs only in this browser. Temporary test data is removed; nothing is sent to S4FC or advertisers.</span>
+            <span>Browser tests use temporary data and clean it up. One read-only request checks S4FC’s service; no offer click or advertiser request is made.</span>
           </div>
         </div>
 
@@ -296,9 +338,9 @@ export const TrackingCheck: React.FC<TrackingCheckProps> = ({ onClose }) => {
           <div className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-white">
-                {isRunning ? `Checking browser storage · ${completedCount} of ${checks.length}` : results ? `${passedCount} passed · ${attentionCount} need attention · ${notTested.length} not tested` : 'Run a quick browser check'}
+                {isRunning ? `Checking tracking readiness · ${completedCount} of ${checks.length}` : results ? `${passedCount} passed · ${attentionCount} need attention · ${notTested.length} not tested` : 'Run a quick tracking check'}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-400">A few quick checks. No offer links are opened and no third-party tracking pixels are loaded.</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">Checks browser storage and S4FC’s tracking service. No offer links are opened and no third-party tracking pixels are loaded.</p>
             </div>
             <button
               ref={runButtonRef}
@@ -323,7 +365,7 @@ export const TrackingCheck: React.FC<TrackingCheckProps> = ({ onClose }) => {
                       <div key={check.id} className="flex gap-3 rounded-xl border border-white/[0.07] bg-[#141824] p-3">
                         <span className="mt-0.5"><StatusIcon status={result?.status ?? 'not-tested'} /></span>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white">{check.id === 'local-storage' ? 'Local storage' : check.id === 'session-storage' ? 'Session storage' : check.id === 'indexeddb' ? 'IndexedDB site storage' : check.id === 'parameters' ? 'Referral URL parameters' : 'First-party cookies'}</p>
+                          <p className="text-sm font-semibold text-white">{result?.title || (check.id === 'local-storage' ? 'Local storage' : check.id === 'session-storage' ? 'Session storage' : check.id === 'indexeddb' ? 'IndexedDB site storage' : check.id === 'parameters' ? 'Referral URL parameters' : 'First-party cookies')}</p>
                           <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{result?.detail ?? (isRunning ? 'Waiting for this check.' : 'Not run yet.')}</p>
                         </div>
                         {result && <span className={`ml-auto shrink-0 self-start rounded px-2 py-1 text-[10px] font-bold uppercase ${result.status === 'passed' ? 'bg-emerald-300/10 text-emerald-200' : 'bg-amber-300/10 text-amber-100'}`}>{result.status === 'passed' ? 'Passed' : 'Review'}</span>}
