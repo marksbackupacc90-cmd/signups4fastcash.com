@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, BellRing, Check, Download, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, BellRing, Check, CheckCircle2, Download, Send, Sparkles, X } from 'lucide-react';
 import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
 
 interface HeroProps {
@@ -18,6 +18,34 @@ export const Hero: React.FC<HeroProps> = ({
   onInstallApp,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
+  const [suggestionMessage, setSuggestionMessage] = useState('');
+  const [suggestionEmail, setSuggestionEmail] = useState('');
+  const [suggestionStatus, setSuggestionStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [suggestionError, setSuggestionError] = useState('');
+  const suggestionLinkIndex = settings.subHeadline.toLowerCase().indexOf('click here');
+
+  const sendSuggestion = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSuggestionStatus('sending');
+    setSuggestionError('');
+    try {
+      const response = await fetch('/api/site-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: suggestionMessage, email: suggestionEmail }),
+      });
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || 'Your message could not be sent.');
+      setSuggestionStatus('sent');
+      setSuggestionMessage('');
+      setSuggestionEmail('');
+    } catch (error) {
+      console.error('Could not send site suggestion:', error);
+      setSuggestionError(error instanceof Error ? error.message : 'Your message could not be sent.');
+      setSuggestionStatus('error');
+    }
+  };
 
   return (
     <section className="relative overflow-hidden pb-5 pt-5 sm:pb-6 sm:pt-7">
@@ -29,13 +57,29 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="max-w-3xl">
                 <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-200/[0.08] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-100">
                   <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                  {settings.heroBadge || 'Offers, with the fine print up front'}
+                  {settings.heroBadge || 'Easiest ways to make money online'}
                 </span>
                 <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
                   {settings.mainHeadline}
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-                  {settings.subHeadline}
+                  {suggestionLinkIndex >= 0 ? (
+                    <>
+                      {settings.subHeadline.slice(0, suggestionLinkIndex)}
+                      <a
+                        href="#send-suggestion"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setSuggestionOpen(true);
+                          setSuggestionStatus('idle');
+                        }}
+                        className="focus-ring rounded-sm font-semibold text-cyan-200 underline decoration-cyan-200/60 underline-offset-4 hover:text-cyan-100"
+                      >
+                        {settings.subHeadline.slice(suggestionLinkIndex, suggestionLinkIndex + 'click here'.length)}
+                      </a>
+                      {settings.subHeadline.slice(suggestionLinkIndex + 'click here'.length)}
+                    </>
+                  ) : settings.subHeadline}
                 </p>
                 <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-zinc-400 sm:text-sm">
                   S4FC shares offer details, but the company running each offer decides who qualifies and whether it pays. Always check its current terms.
@@ -97,29 +141,108 @@ export const Hero: React.FC<HeroProps> = ({
             </div>
 
             {onOpenNewsletter && (
-              <div className="mt-5 flex flex-col gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-cyan-300/30 bg-[linear-gradient(110deg,rgba(45,212,238,0.12),rgba(45,212,238,0.035)_58%,rgba(99,102,241,0.08))] p-4 shadow-[0_12px_36px_rgba(45,212,238,0.08)] sm:flex-row sm:items-center sm:justify-between sm:p-5">
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
-                    <BellRing className="h-4 w-4" aria-hidden="true" />
+                  <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-200/30 bg-cyan-200/15 text-cyan-100 shadow-inner">
+                    <BellRing className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Get new offers by email</p>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-300">Choose alerts as soon as offers are added, a daily email, or a weekly roundup. Confirm your email; unsubscribe anytime.</p>
+                    <p className="text-base font-extrabold text-white sm:text-lg">Don’t miss the next offer worth checking out.</p>
+                    <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-200 sm:text-sm">Get new offers in your inbox as soon as they’re added, or choose a daily or weekly roundup. Confirm by email; unsubscribe anytime.</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onOpenNewsletter}
-                  className="focus-ring inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-cyan-300 px-4 py-2.5 text-xs font-bold text-[#06131a] transition-colors hover:bg-cyan-200"
+                  className="focus-ring inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-[#06131a] shadow-[0_8px_24px_rgba(45,212,238,0.2)] transition-all hover:-translate-y-0.5 hover:bg-cyan-200 hover:shadow-[0_12px_30px_rgba(45,212,238,0.28)]"
                 >
-                  Subscribe to alerts
-                  <ArrowRight className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
+                  Yes, send me new offers
+                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             )}
           </div>
         </div>
       </div>
+      {suggestionOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && suggestionStatus !== 'sending') setSuggestionOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="site-suggestion-title"
+            id="send-suggestion"
+            className="w-full max-w-lg rounded-2xl border border-cyan-300/25 bg-[#0d1724] p-5 shadow-2xl sm:p-6"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-cyan-200">Your feedback matters</p>
+                <h2 id="site-suggestion-title" className="mt-1 text-xl font-bold text-white">Send a suggestion</h2>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">Have an idea or something we should fix? Send a note directly to the site owner.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSuggestionOpen(false)}
+                disabled={suggestionStatus === 'sending'}
+                aria-label="Close suggestion form"
+                className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            {suggestionStatus === 'sent' ? (
+              <div role="status" className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] p-4">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-200" aria-hidden="true" />
+                <p className="text-sm leading-relaxed text-emerald-100">Thanks! Your message has been sent to the site owner.</p>
+              </div>
+            ) : (
+              <form onSubmit={sendSuggestion} className="mt-5 space-y-4">
+                <label className="block text-xs font-semibold text-zinc-200">
+                  Your suggestion
+                  <textarea
+                    required
+                    minLength={5}
+                    maxLength={2000}
+                    rows={5}
+                    value={suggestionMessage}
+                    onChange={(event) => setSuggestionMessage(event.target.value)}
+                    disabled={suggestionStatus === 'sending'}
+                    placeholder="Tell us what you think would make the site better…"
+                    className="mt-1.5 w-full resize-y rounded-lg border border-white/10 bg-[#07111b] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-cyan-300/50 focus:outline-none"
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-zinc-200">
+                  Email (optional, if you’d like a reply)
+                  <input
+                    type="email"
+                    maxLength={254}
+                    value={suggestionEmail}
+                    onChange={(event) => setSuggestionEmail(event.target.value)}
+                    disabled={suggestionStatus === 'sending'}
+                    placeholder="you@example.com"
+                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07111b] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-cyan-300/50 focus:outline-none"
+                  />
+                </label>
+                <p className="text-xs leading-relaxed text-zinc-500">Your message is visible only to the site owner. Email is optional and used only if a reply is needed.</p>
+                {suggestionStatus === 'error' && <p role="alert" className="text-sm text-rose-300">{suggestionError}</p>}
+                <button
+                  type="submit"
+                  disabled={suggestionStatus === 'sending' || suggestionMessage.trim().length < 5}
+                  className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-2.5 text-sm font-bold text-[#06131a] transition-colors hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                  {suggestionStatus === 'sending' ? 'Sending…' : 'Send message'}
+                </button>
+              </form>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   );
 };

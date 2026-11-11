@@ -4,7 +4,7 @@ import { Offer, NewsletterSubscriber, EmailBlastLog, OfferRevenueEvent, SiteSett
 import type { OfferActivity, OfferActivitySinceReport } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
 
-type DashboardView = 'overview' | 'offers' | 'reports' | 'email';
+type DashboardView = 'overview' | 'offers' | 'reports' | 'messages' | 'email';
 
 interface AdminDashboardProps {
   initialView?: DashboardView;
@@ -69,6 +69,14 @@ interface AdminOfferIssueReport {
   company: string;
 }
 
+interface AdminSiteMessage {
+  id: string;
+  message: string;
+  email: string;
+  status: 'new' | 'read' | 'resolved';
+  createdAt: string;
+}
+
 function readOfferActivityCursor() {
   try {
     const saved = localStorage.getItem(OFFER_ACTIVITY_CURSOR_KEY);
@@ -123,6 +131,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [issueReportsError, setIssueReportsError] = useState<string | null>(null);
   const [issueReportsRefreshKey, setIssueReportsRefreshKey] = useState(0);
   const [updatingIssueReportId, setUpdatingIssueReportId] = useState<string | null>(null);
+  const [siteMessages, setSiteMessages] = useState<AdminSiteMessage[]>([]);
+  const [siteMessagesLoading, setSiteMessagesLoading] = useState(false);
+  const [siteMessagesError, setSiteMessagesError] = useState<string | null>(null);
+  const [siteMessagesRefreshKey, setSiteMessagesRefreshKey] = useState(0);
+  const [siteMessagesUnreadCount, setSiteMessagesUnreadCount] = useState(0);
+  const [updatingSiteMessageId, setUpdatingSiteMessageId] = useState<string | null>(null);
   const [initialActivityCursor] = useState(readOfferActivityCursor);
   const activityCursorRef = useRef(initialActivityCursor);
   useEffect(() => {
@@ -265,6 +279,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     void loadIssueReports();
     return () => controller.abort();
   }, [props.isOwnerAdmin, issueReportsRefreshKey]);
+  useEffect(() => {
+    if (!props.isOwnerAdmin) return;
+    const controller = new AbortController();
+    let firstLoad = true;
+    const loadSiteMessages = async () => {
+      if (firstLoad) setSiteMessagesLoading(true);
+      try {
+        const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+        const response = await fetch('/api/admin/site-messages', {
+          headers: token ? { 'x-admin-token': token } : {},
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => null) as {
+          messages?: AdminSiteMessage[];
+          unreadCount?: number;
+          error?: string;
+        } | null;
+        if (!response.ok || !Array.isArray(data?.messages) || typeof data.unreadCount !== 'number') {
+          throw new Error(data?.error || 'Could not load visitor messages.');
+        }
+        setSiteMessages(data.messages);
+        setSiteMessagesUnreadCount(data.unreadCount);
+        setSiteMessagesError(null);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('Could not load visitor messages:', error);
+        setSiteMessagesError(error instanceof Error ? error.message : 'Could not load visitor messages.');
+      } finally {
+        if (firstLoad && !controller.signal.aborted) setSiteMessagesLoading(false);
+        firstLoad = false;
+      }
+    };
+    void loadSiteMessages();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadSiteMessages();
+    }, 30_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, [props.isOwnerAdmin, siteMessagesRefreshKey]);
   const activityByOffer = activityReport?.offers || {};
   const offersNeedingReview = useMemo(() => {
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -323,6 +378,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         : 'Reports',
       icon: Flag,
     }] : []),
+    ...(props.isOwnerAdmin ? [{
+      id: 'messages' as const,
+      label: siteMessagesUnreadCount ? `Messages (${siteMessagesUnreadCount} new)` : 'Messages',
+      icon: Mail,
+    }] : []),
     { id: 'email' as const, label: 'Email', icon: Mail },
   ];
   const updateIssueReportStatus = async (report: AdminOfferIssueReport, status: AdminOfferIssueReport['status']) => {
@@ -345,6 +405,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setIssueReportsError(error instanceof Error ? error.message : 'Could not update this report.');
     } finally {
       setUpdatingIssueReportId(null);
+    }
+  };
+  const updateSiteMessageStatus = async (message: AdminSiteMessage, status: AdminSiteMessage['status']) => {
+    if (status === message.status) return;
+    setUpdatingSiteMessageId(message.id);
+    setSiteMessagesError(null);
+    try {
+      const token = localStorage.getItem('signups4fastcash_admin_token') || '';
+      const response = await fetch(`/api/admin/site-messages/${encodeURIComponent(message.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'x-admin-token': token } : {}) },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json().catch(() => null) as { message?: { id: string; status: AdminSiteMessage['status'] }; error?: string } | null;
+      const updatedMessage = data?.message;
+      if (!response.ok || !updatedMessage) throw new Error(data?.error || 'Could not update this message.');
+      setSiteMessages((current) => current.map((item) => item.id === message.id ? { ...item, status: updatedMessage.status } : item));
+      setSiteMessagesUnreadCount((count) => Math.max(0, count + (message.status === 'new' && status !== 'new' ? -1 : message.status !== 'new' && status === 'new' ? 1 : 0)));
+    } catch (error) {
+      console.error('Could not update visitor message:', error);
+      setSiteMessagesError(error instanceof Error ? error.message : 'Could not update this message.');
+    } finally {
+      setUpdatingSiteMessageId(null);
     }
   };
   const sendOfferEmail = async () => {
@@ -498,6 +581,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
           ))}
         </nav>
+        {props.isOwnerAdmin && siteMessagesUnreadCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setView('messages')}
+            role="status"
+            className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-amber-300/25 bg-amber-300/[0.07] px-4 py-3 text-left text-sm font-semibold text-amber-100 hover:bg-amber-300/[0.12]"
+          >
+            <span>{siteMessagesUnreadCount} new visitor {siteMessagesUnreadCount === 1 ? 'message' : 'messages'}</span>
+            <span className="text-xs underline underline-offset-2">Open inbox</span>
+          </button>
+        )}
       </header>
 
       {view === 'overview' && (
@@ -1065,6 +1159,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       >
                         <option value="open">Open</option>
                         <option value="reviewing">Reviewing</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                    </label>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {view === 'messages' && props.isOwnerAdmin && (
+        <section className="rounded-2xl border border-white/[0.08] bg-[#0e121a] p-5" aria-labelledby="site-messages-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-cyan-200">
+                <Mail className="h-5 w-5" aria-hidden="true" />
+                <h2 id="site-messages-title" className="text-lg font-bold text-white">Visitor messages</h2>
+                {siteMessagesUnreadCount > 0 && (
+                  <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-[#17120a]">
+                    {siteMessagesUnreadCount} new
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 max-w-2xl text-xs leading-relaxed text-zinc-400">Suggestions sent from the homepage appear here. The inbox refreshes automatically while the admin dashboard is open.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSiteMessagesRefreshKey((key) => key + 1)}
+              disabled={siteMessagesLoading}
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/[0.06] disabled:opacity-50"
+            >
+              {siteMessagesLoading ? 'Refreshing…' : 'Refresh messages'}
+            </button>
+          </div>
+          {siteMessagesError && <p className="mt-4 rounded-lg border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-200" role="alert">{siteMessagesError}</p>}
+          {siteMessagesLoading ? (
+            <p className="mt-4 text-sm text-zinc-400" role="status">Loading visitor messages…</p>
+          ) : siteMessages.length === 0 && !siteMessagesError ? (
+            <p className="mt-4 rounded-xl border border-white/[0.07] bg-[#090d12] p-5 text-sm text-zinc-400">No messages yet.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {siteMessages.map((message) => (
+                <article
+                  key={message.id}
+                  className={`rounded-xl border p-4 ${message.status === 'new' ? 'border-amber-300/20 bg-amber-300/[0.035]' : 'border-white/[0.08] bg-[#090d12]'}`}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {message.status === 'new' && <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-[#17120a]">New</span>}
+                        <time dateTime={message.createdAt} className="text-[11px] text-zinc-500">{new Date(message.createdAt).toLocaleString()}</time>
+                      </div>
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-200">{message.message}</p>
+                      {message.email && (
+                        <p className="mt-3 text-xs text-zinc-400">
+                          Reply contact: <a href={`mailto:${message.email}`} className="text-cyan-200 underline underline-offset-2 hover:text-cyan-100">{message.email}</a>
+                        </p>
+                      )}
+                    </div>
+                    <label className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                      Status
+                      <select
+                        value={message.status}
+                        onChange={(event) => void updateSiteMessageStatus(message, event.target.value as AdminSiteMessage['status'])}
+                        disabled={updatingSiteMessageId === message.id}
+                        className="admin-offer-status-filter mt-1 block min-h-10 rounded-lg border border-white/10 bg-[#141824] px-3 text-xs font-semibold text-white disabled:opacity-60"
+                      >
+                        <option value="new">New</option>
+                        <option value="read">Read</option>
                         <option value="resolved">Resolved</option>
                       </select>
                     </label>

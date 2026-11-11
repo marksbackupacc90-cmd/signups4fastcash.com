@@ -1152,6 +1152,9 @@ let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHidde
 let pendingOffersStore: any[] = [];
 let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string; verified: boolean; unsubscribedAt?: string | null }[] = [];
 const issueReportsStore: { id: string; offerId: string; issue: string; description: string; status: string; reportedAt: string }[] = [];
+type SiteMessage = { id: string; message: string; email: string; status: 'new' | 'read' | 'resolved'; createdAt: string };
+const siteMessagesStore: SiteMessage[] = [];
+const siteMessageAttempts = new Map<string, { count: number; resetAt: number }>();
 const userOfferEntriesStore = new Map<string, { offerId: string; status: 'active' | 'completed' | 'issue'; updatedAt: string }[]>();
 let analyticsStore = {
   totalClicks: 0,
@@ -1683,6 +1686,16 @@ async function initializeOfferStore() {
   `);
   await database.query(`ALTER TABLE offer_issue_reports ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''`);
   await database.query(`ALTER TABLE offer_issue_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'`);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS site_messages (
+      id TEXT PRIMARY KEY,
+      message TEXT NOT NULL,
+      email TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'read', 'resolved')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS site_messages_status_created_at_idx ON site_messages (status, created_at DESC)');
   const ownerUserId = ownerUserRow.rows[0]?.id;
   if (ownerUserId) {
     await database.query(
@@ -2299,6 +2312,84 @@ app.patch('/api/admin/offer-issue-reports/:id', requireAuthenticatedOwnerAdmin, 
   if (!report) return res.status(404).json({ error: 'Issue report not found.' });
   report.status = status;
   return res.json({ report: { id: report.id, status } });
+});
+
+app.post('/api/site-messages', async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+  if (message.length < 5 || message.length > 2000) {
+    return res.status(400).json({ error: 'Your message must be between 5 and 2,000 characters.' });
+  }
+  if (email && (email.length > 254 || !SURVEY_PAYOUT_EMAIL_PATTERN.test(email))) {
+    return res.status(400).json({ error: 'Enter a valid email address or leave it blank.' });
+  }
+  const siteMessage: SiteMessage = {
+    id: randomUUID(),
+    message,
+    email,
+    status: 'new',
+    createdAt: new Date().toISOString(),
+  };
+  if (database) {
+    try {
+      await database.query(
+        'INSERT INTO site_messages (id, message, email, status, created_at) VALUES ($1, $2, $3, $4, $5)',
+        [siteMessage.id, siteMessage.message, siteMessage.email, siteMessage.status, siteMessage.createdAt],
+      );
+    } catch (error) {
+      console.error('Could not save visitor site message:', error);
+      return res.status(500).json({ error: 'Your message could not be saved. Please try again.' });
+    }
+  } else {
+    siteMessagesStore.unshift(siteMessage);
+  }
+  return res.status(201).json({ success: true });
+});
+
+app.get('/api/admin/site-messages', requireAuthenticatedOwnerAdmin, async (_req, res) => {
+  if (database) {
+    try {
+      const [messages, unread] = await Promise.all([
+        database.query(
+          `SELECT id, message, email, status, created_at AS "createdAt"
+           FROM site_messages ORDER BY created_at DESC LIMIT 200`,
+        ),
+        database.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM site_messages WHERE status = 'new'`),
+      ]);
+      return res.json({ messages: messages.rows, unreadCount: Number(unread.rows[0]?.count || 0) });
+    } catch (error) {
+      console.error('Could not load visitor site messages:', error);
+      return res.status(500).json({ error: 'Could not load visitor messages.' });
+    }
+  }
+  return res.json({
+    messages: siteMessagesStore.slice(0, 200),
+    unreadCount: siteMessagesStore.filter((message) => message.status === 'new').length,
+  });
+});
+
+app.patch('/api/admin/site-messages/:id', requireAuthenticatedOwnerAdmin, async (req, res) => {
+  const status = req.body?.status;
+  if (!['new', 'read', 'resolved'].includes(status)) {
+    return res.status(400).json({ error: 'Choose a valid message status.' });
+  }
+  if (database) {
+    try {
+      const result = await database.query(
+        'UPDATE site_messages SET status = $1 WHERE id = $2 RETURNING id, status',
+        [status, req.params.id],
+      );
+      if (!result.rowCount) return res.status(404).json({ error: 'Visitor message not found.' });
+      return res.json({ message: result.rows[0] });
+    } catch (error) {
+      console.error('Could not update visitor site message:', error);
+      return res.status(500).json({ error: 'Could not update this message.' });
+    }
+  }
+  const message = siteMessagesStore.find((candidate) => candidate.id === req.params.id);
+  if (!message) return res.status(404).json({ error: 'Visitor message not found.' });
+  message.status = status;
+  return res.json({ message: { id: message.id, status: message.status } });
 });
 
 app.get('/api/site-settings', (_req, res) => {

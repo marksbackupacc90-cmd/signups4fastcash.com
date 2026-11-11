@@ -61,6 +61,27 @@ test('responses preserve a caller request ID for support diagnostics', async () 
   assert.equal(response.headers.get('x-request-id'), 'test-request-123');
 });
 
+test('homepage suggestions are stored and only the owner can read them', async () => {
+  const submitted = await request('/api/site-messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Please add more no-deposit offers.', email: 'visitor@example.com' }),
+  });
+  assert.equal(submitted.status, 201);
+  assert.equal(submitted.body.success, true);
+
+  const unauthorized = await request('/api/admin/site-messages');
+  assert.equal(unauthorized.status, 403);
+  assert.equal(unauthorized.body.error, 'Owner admin access is required.');
+
+  const invalidEmail = await request('/api/site-messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'A valid length message.', email: 'not-an-email' }),
+  });
+  assert.equal(invalidEmail.status, 400);
+});
+
 test('member referral endpoints are paused without deleting prior records', async () => {
   const account = await request('/api/referrals/me');
   assert.equal(account.status, 410);

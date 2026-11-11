@@ -154,10 +154,10 @@ export interface SiteSettings {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: 'Signups4FastCash.com',
-  siteTagline: 'Offers, with the fine print up front',
-  heroBadge: 'Offers, with the fine print up front',
-  mainHeadline: 'Know what it takes before you sign up.',
-  subHeadline: 'Compare signup bonuses, cashback, and rewards with requirements, payout timing, and important terms laid out upfront.',
+  siteTagline: 'Easiest ways to make money online',
+  heroBadge: 'Easiest ways to make money online',
+  mainHeadline: 'Sign-up bonuses, Apps and more that give you money SIMPLIFIED',
+  subHeadline: 'This website is for people looking for easy sign-up rewards, bonuses and daily rewards. Have any suggestions? click here to send a message.',
   brandName: 'Signups4FastCash.com',
   brandBadge: 'Check current offer terms',
   footerBlurb: 'S4FC lists referral and promo offers, notes the requirements and payout details available, and links to the company running each offer. The company decides who qualifies and whether a reward is paid.',

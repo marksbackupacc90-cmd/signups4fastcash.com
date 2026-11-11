@@ -132,12 +132,12 @@ export const NewsletterModal: React.FC<NewsletterModalProps> = ({
                 type="submit"
                 className="mt-2 w-full rounded-lg border border-[#2dd4ee]/60 bg-[#2dd4ee] py-2.5 text-[13px] font-mono font-semibold text-[#06131a] shadow-sm transition-all hover:bg-[#67e8f9] active:scale-[0.99]"
               >
-                Subscribe to alerts
+                Yes, send me new offers
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-xs font-mono text-zinc-300 pt-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Zero spam. Unsubscribe anytime in 1 click.</span>
+                <span>Confirm by email. Unsubscribe anytime.</span>
               </div>
             </form>
           </div>
