@@ -23,6 +23,32 @@ interface MyOffersProps {
 }
 
 const STORAGE_KEY = 'signups4fastcash_my_offers';
+const CONFETTI_COLORS = ['#2dd4ee', '#34d399', '#facc15', '#a78bfa', '#fb7185'];
+
+interface ConfettiBurstProps {
+  x: number;
+  y: number;
+}
+
+const ConfettiBurst: React.FC<ConfettiBurstProps> = ({ x, y }) => (
+  <div className="completion-confetti" aria-hidden="true">
+    {Array.from({ length: 24 }, (_, index) => {
+      const angle = (Math.PI * 2 * index) / 24;
+      const distance = 52 + (index % 4) * 16;
+      const style = {
+        left: `${x}px`,
+        top: `${y}px`,
+        backgroundColor: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
+        '--confetti-x': `${Math.cos(angle) * distance}px`,
+        '--confetti-y': `${Math.sin(angle) * distance - 24}px`,
+        '--confetti-rotation': `${(index % 2 === 0 ? 1 : -1) * (180 + index * 27)}deg`,
+        animationDelay: `${(index % 5) * 18}ms`,
+      } as React.CSSProperties;
+
+      return <span key={index} className="completion-confetti-piece" style={style} />;
+    })}
+  </div>
+);
 
 export function readMyOfferEntries(): MyOfferEntry[] {
   try {
@@ -45,6 +71,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
   onRemove,
 }) => {
   const [entries, setEntries] = useState<MyOfferEntry[]>(readMyOfferEntries);
+  const [confettiBurst, setConfettiBurst] = useState<{ x: number; y: number } | null>(null);
   const trackedOffers = useMemo(
     () => trackedOfferIds.map((id) => offers.find((offer) => offer.id === id)).filter((offer): offer is Offer => Boolean(offer)),
     [offers, trackedOfferIds],
@@ -59,6 +86,12 @@ export const MyOffers: React.FC<MyOffersProps> = ({
   useEffect(() => {
     setEntries(readMyOfferEntries());
   }, [trackedOfferIds.join('|')]);
+
+  useEffect(() => {
+    if (!confettiBurst) return;
+    const timeout = window.setTimeout(() => setConfettiBurst(null), 900);
+    return () => window.clearTimeout(timeout);
+  }, [confettiBurst]);
 
   const updateStatus = (offerId: string, status: MyOfferStatus) => {
     const next = entries.map((entry) => entry.offerId === offerId
@@ -78,6 +111,7 @@ export const MyOffers: React.FC<MyOffersProps> = ({
 
   return (
     <>
+      {confettiBurst && <ConfettiBurst x={confettiBurst.x} y={confettiBurst.y} />}
       {open && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 px-4 py-8 backdrop-blur-sm">
           <section role="dialog" aria-modal="true" aria-labelledby="my-offers-title" className="mx-auto max-w-2xl rounded-2xl border border-cyan-300/25 bg-[#0c1017] p-5 shadow-2xl sm:p-7">
@@ -117,8 +151,16 @@ export const MyOffers: React.FC<MyOffersProps> = ({
                           <ExternalLink className="h-3.5 w-3.5" /> Resume offer
                         </button>
                         {status !== 'completed' && (
-                          <button type="button" onClick={() => updateStatus(offer.id, 'completed')} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/30 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-300/10">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> I completed it
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              updateStatus(offer.id, 'completed');
+                              const bounds = event.currentTarget.getBoundingClientRect();
+                              setConfettiBurst({ x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 });
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/30 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-300/10"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Mark as completed
                           </button>
                         )}
                         {status !== 'active' && (

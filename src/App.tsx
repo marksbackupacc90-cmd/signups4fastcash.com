@@ -1,3 +1,4 @@
+import { OfferLandingPage } from './components/OfferLandingPage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
@@ -64,6 +65,7 @@ function clearPausedReferralAttribution() {
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
   const isRegistrationRoute = window.location.pathname.replace(/\/+$/, '') === '/register';
+  const isOfferRoute = /^\/offers\/[^/]+\/?$/.test(window.location.pathname);
   const [activeTab, setActiveTab] = useState<'offers' | 'daily' | 'admin'>('offers');
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
@@ -215,6 +217,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isOfferRoute) return;
     const rootTitle = siteSettings.metaTitle || DEFAULT_SITE_SETTINGS.metaTitle;
     document.title = rootTitle;
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
@@ -224,7 +227,7 @@ export default function App() {
       document.head.appendChild(meta);
     }
     meta.content = siteSettings.metaDescription || DEFAULT_SITE_SETTINGS.metaDescription;
-  }, [siteSettings]);
+  }, [siteSettings, isOfferRoute]);
 
   useEffect(() => {
     try {
@@ -976,6 +979,10 @@ export default function App() {
     }
   };
 
+  if (isOfferRoute) {
+    return <OfferLandingPage />;
+  }
+
   return (
     <div
       data-site-theme="custom"
@@ -1342,7 +1349,6 @@ export default function App() {
       />
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
-      {trackingCheckOpen && <TrackingCheck onClose={() => setTrackingCheckOpen(false)} />}
       {offerFinderOpen && <OfferFinder offers={publicOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}
       {selectedOffer && (
         <OfferDetailsModal
@@ -1368,6 +1374,7 @@ export default function App() {
           }}
         />
       )}
+      {trackingCheckOpen && <TrackingCheck onClose={() => setTrackingCheckOpen(false)} />}
     </div>
   );
 }

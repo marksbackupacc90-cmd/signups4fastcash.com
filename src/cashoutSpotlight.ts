@@ -12,15 +12,15 @@ const cashoutSpotlights: Record<string, CashoutSpotlightInfo> = {
   'candidate-ero-app-referral': {
     payout: 'Debit-card withdrawal',
     payoutLabel: 'Debit-card cashout',
-    verification: 'No ID needed',
+    verification: 'Kraken may require ID',
     minimum: 'Check the current in-app minimum',
-    fee: '',
+    fee: 'Reddit report mentions a $2 Ero debit-card fee; confirm the current fee in-app',
     steps: [
-      'Join with the referral and check that the 50% activity boost appears in your account.',
-      'Complete eligible activities you choose. The boost applies to qualifying activity; it is not a guaranteed signup payment.',
-      'Review the current cashout options and confirm the net amount shown in the app before withdrawing.',
+      'The reported path starts with eligible Ero app connections; review each permission and confirm any credit in Ero.',
+      'Check Ero’s current cashout minimum, fee, and delivery estimate before withdrawing.',
+      'The reported Kraken step may require a $10 deposit for a $40 reward; confirm Kraken’s current eligibility and payout terms before funding.',
     ],
-    caveat: 'No ID is needed for this offer. Cashout options, eligible activity, and minimums can change; check Ero’s current terms in the app.',
+    caveat: 'The amounts, fee, and instant-cashout claim come from a Reddit report and are not verified here. Ero and Kraken terms, eligibility, and timing can change; Kraken may require identity verification and a deposit carries financial risk.',
   },
   'candidate-measure-protocol-msr-referral': {
     payout: 'PayPal withdrawal',

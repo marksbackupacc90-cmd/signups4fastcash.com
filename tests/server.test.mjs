@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import test from 'node:test';
 
@@ -152,7 +152,8 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.match(response.body, /\/partners</);
   assert.match(response.body, /\/guides</);
   assert.match(response.body, /\/best-fintech-bonuses</);
-  assert.equal((response.body.match(/<loc>/g) || []).length, 19);
+  assert.equal((response.body.match(/<loc>/g) || []).length, 31);
+  assert.match(response.body, /\/offers\/chime</);
   assert.doesNotMatch(response.body, /\.html/);
   assert.doesNotMatch(response.body, /\?offer=/);
 });
@@ -211,7 +212,7 @@ test('Ibotta vs Upside guide answers the cashback comparison queries', async () 
   const response = await requestText('/ibotta-vs-upside');
   assert.equal(response.status, 200);
   assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/ibotta-vs-upside"/);
-  assert.match(response.body, /Ibotta vs\. Upside: Cashback for Groceries, Gas &amp; More/);
+  assert.match(response.body, /Ibotta vs\. Upside: Which Cashback App Is Better for You\?/);
   assert.match(response.body, /Ibotta vs\. Upside for retail rewards/);
   assert.match(response.body, /How do the apps track a qualifying purchase/);
   assert.match(response.body, /do not give shoppers a shared, independent measure/);
@@ -223,7 +224,7 @@ test('signup bonus guide explains simple signup requirements without promising e
   const response = await requestText('/signup-bonus-sites');
   assert.equal(response.status, 200);
   assert.match(response.body, /rel="canonical" href="https:\/\/signups4fastcash\.com\/signup-bonus-sites"/);
-  assert.match(response.body, /Simple Sign-Up Bonuses: Compare Signup Bonus Sites/);
+  assert.match(response.body, /Simple Sign-Up Bonus Sites: Compare Offers \| S4FC/);
   assert.match(response.body, /What makes a sign-up bonus simple/);
   assert.match(response.body, /Frequently asked questions/);
   assert.match(response.body, /may still require verification or activity/);
@@ -465,7 +466,7 @@ test('Kalshi public offer reflects the supplied referral URL and reward conditio
   const offer = response.body.offers.find((candidate) => candidate.id === 'offer-kalshi');
   assert.ok(offer);
   assert.equal(offer.referralUrl, 'https://kalshi.com/r/75f5cdb1-f534-4db6-8ec3-ba0ca0003a23');
-  assert.match(offer.incentiveAmount, /\$25–\$2,000/);
+  assert.match(offer.incentiveAmount, /\$25\u2013\$2,000/);
   assert.match(offer.depositRequired, /\$5/);
   assert.match(offer.honestTruth.summary, /\$25 in qualifying trading volume/);
   assert.match(offer.honestTruth.hiddenFeesWarning, /loss/);
@@ -731,12 +732,12 @@ test('newer Measure Protocol terms update stale saved terms and publish the offe
   assert.equal(merged.clicksCount, 2);
 });
 
-test('newer Ero referral details replace stale terms and publish the featured offer', () => {
+test('newer Ero referral details replace stale terms and publish the featured guide', () => {
   const catalogOffer = {
     id: 'candidate-ero-app-referral',
-    title: 'Ero: 50% boost on eligible activity for 24 hours',
+    title: 'Ero: Guide to the reported $40 Kraken offer',
     referralUrl: 'https://ero.app/r/v7tfsepe5d?link=bgp4v6nfbrt6',
-    updatedAt: '2026-10-04T15:25:00.000Z',
+    updatedAt: '2026-11-11T22:25:00.000Z',
     status: 'live',
     featured: true,
     clicksCount: 0,
@@ -759,19 +760,25 @@ test('newer Ero referral details replace stale terms and publish the featured of
   assert.equal(merged.conversionsCount, 1);
 });
 
-test('Ero cashout details are featured and distinguish the activity boost from cash', async () => {
+test('Ero offer details distinguish the reported Kraken reward and cashout claims from verified terms', async () => {
   const response = await request('/api/offers');
   assert.equal(response.status, 200);
   const offer = response.body.offers.find((candidate) => candidate.id === 'candidate-ero-app-referral');
   assert.ok(offer);
   assert.equal(offer.status, 'live');
   assert.equal(offer.featured, true);
-  assert.match(offer.payoutSpeed, /debit-card withdrawal timing/i);
-  assert.doesNotMatch(offer.payoutSpeed, /fee|selfie/i);
-  assert.match(offer.honestTruth.summary, /not a fixed signup payment/i);
-  assert.match(offer.honestTruth.summary, /No ID is needed/i);
-  assert.match(offer.honestTruth.hiddenFeesWarning, /No ID is needed/i);
+  assert.equal(offer.referralUrl, 'https://ero.app/r/v7tfsepe5d?link=bgp4v6nfbrt6');
+  assert.equal(offer.incentiveValue, 0);
+  assert.match(offer.incentiveAmount, /reported \$40 Kraken offer/i);
+  assert.match(offer.payoutSpeed, /timing vary/i);
+  assert.match(offer.honestTruth.summary, /not a verified or guaranteed promotion/i);
+  assert.match(offer.honestTruth.summary, /at least \$13/i);
+  assert.match(offer.honestTruth.summary, /after a \$10 Kraken deposit/i);
+  assert.match(offer.honestTruth.hiddenFeesWarning, /mentions a \$2/i);
+  assert.equal(offer.honestTruth.idVerificationRequired, true);
   const eroCopy = [
+    offer.title,
+    offer.incentiveAmount,
     offer.payoutSpeed,
     offer.honestTruth.summary,
     offer.honestTruth.theCatch,
@@ -779,7 +786,9 @@ test('Ero cashout details are featured and distinguish the activity boost from c
     offer.honestTruth.hiddenFeesWarning,
     ...offer.speedrunHints.flatMap((hint) => [hint.instruction, hint.proTip]),
   ].join(' ');
-  assert.doesNotMatch(eroCopy, /selfie|fee/i);
+  assert.match(eroCopy, /reported \$40/i);
+  assert.match(eroCopy, /neither is verified here/i);
+  assert.match(eroCopy, /fee/i);
 });
 
 test('newsletter email layout uses the website theme and Glory typography', () => {
@@ -1046,3 +1055,4 @@ test('newsletter provider webhook rejects unauthenticated requests', async () =>
   });
   assert.equal(response.status, 401);
 });
+

@@ -1,4 +1,5 @@
 import express from 'express';
+import { readFile } from 'node:fs/promises';
 import path from 'path';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { isIP } from 'net';
@@ -320,6 +321,33 @@ function isVerificationCurrent(offer: { verificationExpiresAt?: string }) {
   return !offer.verificationExpiresAt || Date.parse(offer.verificationExpiresAt) > Date.now();
 }
 
+function isIndexableOfferLandingPage(offer: any) {
+  const slug = typeof offer.companySlug === 'string'
+    ? offer.companySlug.toLowerCase()
+    : '';
+
+  return (
+    offer.status === 'live' &&
+    isVerificationCurrent(offer) &&
+    !isTemporarilyHiddenOffer(offer) &&
+    (offer.verificationStatus === 'reviewed' || offer.verificationStatus === 'terms-vary') &&
+    String(offer.category || '').toLowerCase() !== 'surveys' &&
+    /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(slug)
+  );
+}
+
+function escapeOfferHtml(value: unknown) {
+  const replacements: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+
+  return String(value ?? '').replace(/[&<>"']/g, (character) => replacements[character]);
+}
+
 export function resolveUpdatedOfferStatus(existingStatus: string, requestedStatus: unknown) {
   return requestedStatus === 'live' || requestedStatus === 'hidden'
     ? requestedStatus
@@ -360,6 +388,23 @@ app.get('/sitemap.xml', (req, res) => {
     }
   });
   
+  const offerSlugCounts = new Map<string, number>();
+
+  for (const offer of liveOffersStore.filter(isIndexableOfferLandingPage)) {
+    const slug = String(offer.companySlug).toLowerCase();
+    offerSlugCounts.set(slug, (offerSlugCounts.get(slug) || 0) + 1);
+  }
+
+  for (const [slug, count] of offerSlugCounts) {
+    if (count !== 1) continue;
+
+    const loc = `${baseUrl}/offers/${encodeURIComponent(slug)}`;
+    if (!seen.has(loc)) {
+      urls.push({ loc, changefreq: 'weekly', priority: '0.7' });
+      seen.add(loc);
+    }
+  }
+
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((url) => `  <url>
@@ -2073,6 +2118,55 @@ app.get('/api/cpx/postback', async (req, res) => {
     cpxBalances.set(userId, Math.max(0, (cpxBalances.get(userId) || 0) + delta));
   }
   res.status(200).send('OK');
+});
+
+app.get('/offers/:slug', async (req, res, next) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+
+  const matches = liveOffersStore.filter(
+    (offer) =>
+      isIndexableOfferLandingPage(offer) &&
+      String(offer.companySlug).toLowerCase() === slug
+  );
+
+  if (matches.length !== 1) {
+    return res.status(404).type('html').send(
+      '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><title>Offer Not Available | S4FC</title></head><body><h1>Offer Not Available</h1><p>This offer may have expired or been removed.</p><a href="/">Browse available offers</a></body></html>'
+    );
+  }
+
+  if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
+    return next();
+  }
+
+  try {
+    const offer = matches[0];
+    const htmlPath = path.join(process.cwd(), 'dist', 'index.html');
+    let html = await readFile(htmlPath, 'utf8');
+
+    const title = `${offer.company} Signup Offer: ${offer.incentiveAmount} | S4FC`;
+    const description =
+      `${offer.title}. Review the reward, requirements, payout timing, and important terms before signing up.`;
+    const canonical = `${getOAuthAppUrl(req)}/offers/${encodeURIComponent(slug)}`;
+
+    const safeTitle = escapeOfferHtml(title);
+    const safeDescription = escapeOfferHtml(description);
+    const safeCanonical = escapeOfferHtml(canonical);
+
+    html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${safeTitle}</title>`);
+    html = html.replace(/<meta\s+name=["']description["'][^>]*>/i, `<meta name="description" content="${safeDescription}" />`);
+    html = html.replace(/<link\s+rel=["']canonical["'][^>]*>/i, `<link rel="canonical" href="${safeCanonical}" />`);
+    html = html.replace(/<meta\s+property=["']og:title["'][^>]*>/i, `<meta property="og:title" content="${safeTitle}" />`);
+    html = html.replace(/<meta\s+property=["']og:description["'][^>]*>/i, `<meta property="og:description" content="${safeDescription}" />`);
+    html = html.replace(/<meta\s+property=["']og:url["'][^>]*>/i, `<meta property="og:url" content="${safeCanonical}" />`);
+    html = html.replace(/<meta\s+name=["']twitter:title["'][^>]*>/i, `<meta name="twitter:title" content="${safeTitle}" />`);
+    html = html.replace(/<meta\s+name=["']twitter:description["'][^>]*>/i, `<meta name="twitter:description" content="${safeDescription}" />`);
+
+    return res.status(200).type('html').send(html);
+  } catch (error) {
+    console.error('Could not render offer landing page:', error);
+    return res.status(500).send('Could not load this offer page.');
+  }
 });
 
 app.get('/api/offers', (req, res) => {

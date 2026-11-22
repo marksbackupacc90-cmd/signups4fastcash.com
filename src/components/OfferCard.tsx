@@ -17,7 +17,7 @@ const CARD_COPY_BY_OFFER_ID: Record<string, { reward?: string; detail?: string }
   'offer-earnx-referral': { reward: '$2 signup bonus', detail: 'Guide to first $20' },
   'offer-inter-loop-points': { reward: 'Easy $25', detail: 'No deposit required' },
   'candidate-measure-protocol-msr-referral': { reward: 'Instant $10 cashout', detail: '+ more over time' },
-  'candidate-ero-app-referral': { reward: 'Easy app-linking', detail: 'Instant money app' },
+  'candidate-ero-app-referral': { reward: '$40 guide', detail: 'Instant cashout' },
   'offer-kalshi': { reward: 'Mystery box up to $2K', detail: '+ at least $40' },
   'offer-coinbase': { reward: 'Easy $20', detail: 'After trading $15 in crypto' },
   'offer-shuffle-us': { detail: 'No deposit required' },

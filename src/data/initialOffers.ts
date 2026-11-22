@@ -462,7 +462,7 @@ export const INITIAL_OFFERS: Offer[] = [
     clicksCount: 0,
     conversionsCount: 0,
     createdAt: '2026-09-12T00:00:00Z',
-    updatedAt: '2026-10-02T16:24:21.317Z',
+    updatedAt: '2026-10-29T22:00:00.000Z',
   },
   {
     id: 'offer-verb',
@@ -504,7 +504,7 @@ export const INITIAL_OFFERS: Offer[] = [
     clicksCount: 0,
     conversionsCount: 0,
     createdAt: '2026-09-12T00:00:00Z',
-    updatedAt: '2026-10-29T22:00:00.000Z',
+    updatedAt: '2026-10-02T16:24:21.317Z',
   },
   {
     id: 'offer-topcashback',
@@ -1079,27 +1079,6 @@ export const INITIAL_OFFERS: Offer[] = [
 ];
 
 export const PUBLIC_OFFERS = INITIAL_OFFERS;
-
-// Keep the public catalog focused on offers with clear requirements and broad beginner appeal.
-// The complete catalog remains available to the admin dashboard for review and future promotion.
-export const CURATED_PUBLIC_OFFER_IDS = new Set([
-  'offer-ibotta',
-  'offer-sofi-banking',
-  'offer-chime-banking',
-  'offer-capital-one-shopping',
-  'offer-onepay-banking',
-  'offer-freecash',
-  'offer-joko',
-  'offer-upside',
-  'offer-topcashback',
-  'offer-rakuten-cashback',
-  'offer-robinhood',
-  'offer-revolut',
-  'offer-paypal',
-  'offer-western-union-referral',
-  'offer-user-interviews-referral',
-  'offer-branded-surveys',
-]);
 export const INITIAL_PENDING_OFFERS: Offer[] = [
   {
     id: 'pending-polymarket-us-50-bonus',
