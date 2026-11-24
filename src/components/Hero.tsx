@@ -8,6 +8,7 @@ interface HeroProps {
   onOpenFinder?: () => void;
   onOpenNewsletter?: () => void;
   onInstallApp?: () => void;
+  onStartEarning?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
@@ -16,6 +17,7 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenFinder,
   onOpenNewsletter,
   onInstallApp,
+  onStartEarning,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const [suggestionOpen, setSuggestionOpen] = useState(false);
@@ -53,6 +55,24 @@ export const Hero: React.FC<HeroProps> = ({
         <div className="retro-window relative isolate overflow-hidden rounded-[1.75rem] border-white/[0.1] bg-[#0d1724] shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_78%_0%,rgba(45,212,238,0.2),transparent_38%),radial-gradient(ellipse_at_0%_100%,rgba(99,102,241,0.12),transparent_42%)]" />
           <div className="p-5 sm:p-7 lg:p-9">
+            <div className="mb-6 grid grid-cols-2 gap-2 border-b border-white/[0.08] pb-5 sm:grid-cols-4" aria-label="Platform highlights">
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-3">
+                <strong className="block text-lg font-black text-white">$0</strong>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Platform fees</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-3">
+                <strong className="block text-lg font-black text-cyan-200">3</strong>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Simple steps</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-3">
+                <strong className="block text-lg font-black text-emerald-300">Clear</strong>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Offer terms</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-3">
+                <strong className="block text-lg font-black text-white">{totalOffersCount}</strong>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Offers listed</span>
+              </div>
+            </div>
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)] lg:items-center">
               <div className="max-w-3xl">
                 <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-200/[0.08] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-100">
@@ -85,10 +105,20 @@ export const Hero: React.FC<HeroProps> = ({
                   S4FC shares offer details, but the company running each offer decides who qualifies and whether it pays. Always check its current terms.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center gap-2.5">
+                  {onStartEarning && (
+                    <button
+                      type="button"
+                      onClick={onStartEarning}
+                      className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-full bg-[#2dd4ee] px-5 py-3 text-sm font-black text-[#06131a] shadow-[0_10px_28px_rgba(45,212,238,0.24)] transition-all hover:-translate-y-0.5 hover:bg-[#67e8f9]"
+                    >
+                      Start Earning Instantly
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-full bg-[#2dd4ee] px-5 py-3 text-sm font-bold text-[#06131a] shadow-[0_10px_28px_rgba(45,212,238,0.24)] transition-all hover:-translate-y-0.5 hover:bg-[#67e8f9]"
+                    className="focus-ring inline-flex min-h-12 items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-zinc-200 transition-all hover:-translate-y-0.5 hover:bg-white/10"
                   >
                     Browse offers
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -132,6 +162,20 @@ export const Hero: React.FC<HeroProps> = ({
                 </ul>
                 <p className="mt-4 text-xs leading-relaxed text-zinc-500">Provider eligibility and payment decisions are always theirs to make.</p>
               </aside>
+            </div>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-3" aria-label="How earning works">
+              {[
+                { step: '1', title: 'Pick a Task', copy: 'Compare a reward, requirements, and payout timing.' },
+                { step: '2', title: 'Complete It', copy: 'Follow the offer provider’s current eligibility rules.' },
+                { step: '3', title: 'Cash Out', copy: 'Track approval and request an available payout.' },
+              ].map((item) => (
+                <article key={item.step} className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300/10 text-xs font-black text-cyan-200">{item.step}</span>
+                  <h2 className="mt-3 text-sm font-black text-white">{item.title}</h2>
+                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">{item.copy}</p>
+                </article>
+              ))}
             </div>
 
             <div className="mt-7 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/[0.08] pt-5 text-xs font-mono text-zinc-400">

@@ -1,4 +1,5 @@
 ﻿import assert from 'node:assert/strict';
+import { createHash, createHmac } from 'node:crypto';
 import { createServer } from 'node:http';
 import test from 'node:test';
 
@@ -9,7 +10,11 @@ process.env.EMAIL_FROM = '';
 process.env.GOOGLE_CLIENT_ID = 'test-google-client';
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-secret';
 process.env.REFERRAL_HASH_SECRET = 'test-referral-secret';
-const { app, applyCoinsBackTerms, buildOfferActivityReport, buildOfferActivitySinceReport, canApproveReferralPayout, createGoogleOAuthState, getAggregatePageViewCount, getOfferActivityReport, isTemporarilyHiddenOffer, isVerificationCurrent, mergeCatalogOffer, newsletterEmailLayout, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus } = await import('../dist/server.cjs');
+process.env.MILESTONE_CALLBACK_SECRET = 'test-milestone-secret';
+process.env.POSTBACK_SECRET = 'test-postback-secret';
+process.env.CPX_SECURE_HASH = 'test-cpx-secret';
+const { app, applyCoinsBackTerms, broadcastLiveActivity, buildOfferActivityReport, buildOfferActivitySinceReport, buildPostbackSignaturePayload, calculateReferralCommissionCents, calculateRpsPvpRakeUnits, canApproveReferralPayout, compileOutboundTrackingUrl, createGoogleOAuthState, createMockCashoutEvent, createWithdrawalTrackingHash, evaluateRpsOutcome, getAggregatePageViewCount, getOfferActivityReport, getUtcDailyKey, getUtcRaceKey, hashFraudIdentifier, hashWithdrawalDestination, isOfferAvailableInUs, isTemporarilyHiddenOffer, isValidDeviceFingerprint, isVerificationCurrent, maskPublicOfferUsername, maskWithdrawalDestination, mergeCatalogOffer, mockWithdrawalProvider, newsletterEmailLayout, normalizeOfferFeedPayload, parseRpsWager, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus, validateOfferCampaign, validateWithdrawalDestination } = await import('../dist/server.cjs');
+const { seedCampaigns, seedProfiles, SEED_PREFIX } = await import('../scripts/seed-config.mjs');
 
 const server = createServer(app);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -43,6 +48,458 @@ test('health endpoint reports memory readiness without a database', async () => 
   assert.equal(response.body.status, 'ok');
   assert.equal(response.body.database, 'memory');
   assert.ok(['configured', 'not_configured'].includes(response.body.email));
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+
+  const publicHealth = await request('/health');
+  assert.equal(publicHealth.status, 200);
+  assert.equal(publicHealth.body.status, 'ok');
+  assert.equal(publicHealth.body.database, 'memory');
+  assert.ok(Number.isInteger(publicHealth.body.uptimeSeconds));
+});
+
+test('compliance pages expose terms, privacy, cookies, and affiliate disclosure', async () => {
+  for (const [path, text] of [
+    ['/terms', 'Only one account is allowed per person, household'],
+    ['/privacy', 'Device and network security'],
+    ['/cookies', 'Essential cookies'],
+    ['/affiliate-disclosure', 'Referral compensation'],
+  ]) {
+    const response = await requestText(path);
+    assert.equal(response.status, 200);
+    assert.match(response.body, new RegExp(text));
+  }
+});
+
+test('RPS outcomes cover every winning, losing, and drawing choice', () => {
+  assert.equal(evaluateRpsOutcome('rock', 'scissors'), 'win');
+  assert.equal(evaluateRpsOutcome('paper', 'rock'), 'win');
+  assert.equal(evaluateRpsOutcome('scissors', 'paper'), 'win');
+  assert.equal(evaluateRpsOutcome('rock', 'paper'), 'loss');
+  assert.equal(evaluateRpsOutcome('paper', 'scissors'), 'loss');
+  assert.equal(evaluateRpsOutcome('scissors', 'rock'), 'loss');
+  for (const choice of ['rock', 'paper', 'scissors']) {
+    assert.equal(evaluateRpsOutcome(choice, choice), 'draw');
+  }
+});
+
+test('PvP RPS wager validation and rake use the wallet currency precision', () => {
+  assert.deepEqual(parseRpsWager(0.5, 'cash'), { currency: 'cash', amount: 0.5, units: 50 });
+  assert.deepEqual(parseRpsWager(50, 'points'), { currency: 'points', amount: 50, units: 50 });
+  assert.equal(parseRpsWager(0.49, 'cash'), null);
+  assert.equal(parseRpsWager(50.5, 'points'), null);
+  assert.equal(parseRpsWager(50, 'credits'), null);
+  assert.equal(calculateRpsPvpRakeUnits(100), 3);
+  assert.equal(calculateRpsPvpRakeUnits(200), 6);
+});
+
+test('RPS and milestones require an authenticated account and persistent storage', async () => {
+  const game = await request('/api/games/rps/play', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ choice: 'rock' }),
+  });
+  assert.equal(game.status, 401);
+
+  const milestones = await request('/api/offers/milestones');
+  assert.equal(milestones.status, 401);
+
+  const callback = await request('/api/offers/milestones', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Milestone-Timestamp': String(Date.now()),
+      'X-Milestone-Event-Id': 'test-event',
+      'X-Milestone-Signature': '0'.repeat(64),
+    },
+    body: JSON.stringify({ userId: 'test-user', offerId: 'offer-earnx', level: 5 }),
+  });
+  assert.equal(callback.status, 503);
+});
+
+test('PvP RPS matchmaking and move endpoints require authentication', async () => {
+  const requests = [
+    request('/api/v1/rps/lobbies'),
+    request('/api/v1/rps/lobbies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wagerAmount: 0.5, currency: 'cash' }),
+    }),
+    request('/api/v1/rps/lobbies/00000000-0000-4000-8000-000000000001'),
+    request('/api/v1/rps/lobbies/00000000-0000-4000-8000-000000000001/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wagerAmount: 0.5, currency: 'cash' }),
+    }),
+    request('/api/v1/rps/lobbies/00000000-0000-4000-8000-000000000001/moves', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ choice: 'rock' }),
+    }),
+  ];
+  const responses = await Promise.all(requests);
+  assert.deepEqual(responses.map((response) => response.status), [401, 401, 401, 401, 401]);
+});
+
+test('notification history and read-state updates require an authenticated account', async () => {
+  const history = await request('/api/v1/notifications');
+  assert.equal(history.status, 401);
+
+  const update = await request('/api/v1/notifications/00000000-0000-4000-8000-000000000001', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_read: true }),
+  });
+  assert.equal(update.status, 401);
+});
+
+test('device fingerprints are hashed and VPN or proxy auth requests are blocked', async () => {
+  assert.equal(isValidDeviceFingerprint('a'.repeat(64)), true);
+  assert.equal(isValidDeviceFingerprint('not-a-fingerprint'), false);
+  assert.equal(hashFraudIdentifier(' 203.0.113.10 ').length, 64);
+
+  const blockedSignup = await request('/api/auth/signup', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-SFC-Proxy-Blocked': '1',
+    },
+    body: JSON.stringify({
+      email: 'test@example.com',
+      username: 'cashfinder',
+      password: 'a-secure-password',
+      deviceFingerprint: 'a'.repeat(64),
+    }),
+  });
+  assert.equal(blockedSignup.status, 403);
+});
+
+test('withdrawal validation accepts supported channels and rejects unsafe targets', async () => {
+  assert.deepEqual(validateWithdrawalDestination('paypal', ' user@example.com '), {
+    channel: 'paypal',
+    destination: 'user@example.com',
+  });
+  assert.equal(validateWithdrawalDestination('venmo', '@ok').field, 'destination');
+  assert.equal(validateWithdrawalDestination('crypto', 'short-address').field, 'destination');
+  assert.equal(validateWithdrawalDestination('bank', '123').field, 'channel');
+  assert.equal(hashWithdrawalDestination('user@example.com').length, 64);
+  assert.match(maskWithdrawalDestination('paypal', 'avery@example.com'), /\*\*\*@/);
+  assert.equal(createWithdrawalTrackingHash('request-1').length, 64);
+
+  const response = await request('/api/v1/withdrawals/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'withdrawal-test-1' },
+    body: JSON.stringify({ amount: 5, channel: 'paypal', destination: 'user@example.com' }),
+  });
+  assert.equal(response.status, 401);
+});
+
+test('live cash-out activity produces masked mock and broadcast payloads', () => {
+  const mock = createMockCashoutEvent();
+  assert.equal(mock.type, 'mock');
+  assert.match(mock.handle, /\*\*\*$/);
+  assert.ok(mock.amount >= 0.5 && mock.amount <= 25);
+  assert.match(mock.amountText, /^\$\d+\.\d{2}$/);
+  assert.equal(broadcastLiveActivity(mock), 0);
+});
+
+test('background worker schedule keys and protected routes are deterministic', async () => {
+  const sunday = new Date('2026-11-24T23:59:30.000Z');
+  assert.equal(getUtcDailyKey(sunday), '2026-11-24');
+  assert.equal(getUtcRaceKey(sunday), '2026-11-22');
+
+  const leaderboard = await request('/api/v1/leaderboard');
+  assert.equal(leaderboard.status, 503);
+
+  const dailyReset = await request('/api/v1/admin/workers/daily-reset', { method: 'POST' });
+  assert.equal(dailyReset.status, 403);
+  const leaderboardRun = await request('/api/v1/admin/workers/weekly-leaderboard', { method: 'POST' });
+  assert.equal(leaderboardRun.status, 403);
+});
+
+test('platform analytics and ledger integrity routes require owner admin access', async () => {
+  const summary = await request('/api/admin/analytics/summary');
+  assert.equal(summary.status, 403);
+
+  const integrity = await request('/api/admin/analytics/ledger-integrity');
+  assert.equal(integrity.status, 403);
+});
+
+test('E2E postback payload signs the canonical click, user, offer, tier, and cents', () => {
+  const payload = buildPostbackSignaturePayload('click-e2e', 'user-e2e', 'offer-e2e', 1, 500);
+  assert.equal(payload, 'click-e2e.user-e2e.offer-e2e.1.500');
+  const signature = createHmac('sha256', 'test-postback-secret').update(payload).digest('hex');
+  assert.equal(signature.length, 64);
+});
+
+test('offer feed inventory filters territories and normalizes US payouts', () => {
+  assert.equal(isOfferAvailableInUs({ country: 'US' }), true);
+  assert.equal(isOfferAvailableInUs({ countries: ['CA', 'GB'] }), false);
+  assert.equal(isOfferAvailableInUs({ countries: ['US', 'CA'] }), true);
+
+  const offers = normalizeOfferFeedPayload({
+    offers: [{
+      id: 'lootably-1',
+      name: 'Test Wallet Reward',
+      category: 'fintech',
+      country: 'US',
+      payout_usd: 10,
+      url: 'https://example.com/feed-offer',
+    }],
+  }, 'Lootably');
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].incentiveValue, 8.5);
+  assert.equal(offers[0].category, 'fintech');
+});
+
+test('S2S tracking URLs append user and click Sub-IDs safely', () => {
+  const tracked = compileOutboundTrackingUrl('https://example.com/offer?campaign=seed', 'user-123', 'click-456');
+  const url = new URL(tracked);
+  assert.equal(url.searchParams.get('subid1'), 'user-123');
+  assert.equal(url.searchParams.get('subid2'), 'click-456');
+  assert.equal(url.searchParams.get('campaign'), 'seed');
+  assert.equal(compileOutboundTrackingUrl('not-a-url', 'user', 'click'), '');
+});
+
+test('database seed configuration provides three campaigns and 15 American profiles', () => {
+  assert.equal(SEED_PREFIX, 'seed_s4fc_');
+  assert.equal(seedCampaigns.length, 3);
+  assert.deepEqual(seedCampaigns.map((campaign) => campaign.category), ['gaming', 'fintech', 'crypto']);
+  const monopoly = seedCampaigns.find((campaign) => campaign.id.endsWith('monopoly-go'));
+  assert.deepEqual(monopoly.milestones.map((tier) => tier.payoutAmount), [2, 7.5, 25]);
+  assert.equal(seedCampaigns.find((campaign) => campaign.id.endsWith('sofi-checking')).totalValue, 4.9);
+  assert.equal(seedCampaigns.find((campaign) => campaign.id.endsWith('kraken-trade')).totalValue, 12);
+  assert.equal(seedProfiles.length, 15);
+  assert.equal(new Set(seedProfiles.map((profile) => profile[1])).size >= 15, true);
+});
+
+test('E2E withdrawal and RPS flows remain idempotent and balance-guarded', async () => {
+  const rps = await request('/api/games/rps/play', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'e2e-rps-key' },
+    body: JSON.stringify({ choice: 'rock', entryBet: 0.5 }),
+  });
+  assert.equal(rps.status, 401);
+
+  const withdrawal = await request('/api/v1/withdrawals/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'e2e-withdrawal-key' },
+    body: JSON.stringify({ amount: 5, channel: 'paypal', destination: 'e2e@example.com' }),
+  });
+  assert.equal(withdrawal.status, 401);
+});
+
+test('password signup validates email, username, and bcrypt input length before database access', async () => {
+  const invalidEmail = await request('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'not-an-email', username: 'cashfinder', password: 'a-secure-password' }),
+  });
+  assert.equal(invalidEmail.status, 400);
+  assert.equal(invalidEmail.body.field, 'email');
+
+  const invalidUsername = await request('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'test@example.com', username: 'x', password: 'a-secure-password' }),
+  });
+  assert.equal(invalidUsername.status, 400);
+  assert.equal(invalidUsername.body.field, 'username');
+
+  const invalidPassword = await request('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'test@example.com', username: 'cashfinder', password: 'short' }),
+  });
+  assert.equal(invalidPassword.status, 400);
+  assert.equal(invalidPassword.body.field, 'password');
+
+  const oversizedPassword = await request('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'test@example.com', username: 'cashfinder', password: 'é'.repeat(37) }),
+  });
+  assert.equal(oversizedPassword.status, 400);
+  assert.equal(oversizedPassword.body.field, 'password');
+
+  const validSignupWithoutDatabase = await request('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'test@example.com', username: 'cashfinder', password: 'a-secure-password' }),
+  });
+  assert.equal(validSignupWithoutDatabase.status, 503);
+});
+
+test('password login validates identifiers and reports unavailable persistent storage', async () => {
+  const invalidIdentifier = await request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: 'bad identifier', password: 'a-secure-password' }),
+  });
+  assert.equal(invalidIdentifier.status, 400);
+  assert.equal(invalidIdentifier.body.field, 'identifier');
+
+  const validLoginWithoutDatabase = await request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: 'cashfinder', password: 'a-secure-password' }),
+  });
+  assert.equal(validLoginWithoutDatabase.status, 503);
+  assert.equal(validLoginWithoutDatabase.headers.get('set-cookie'), null);
+});
+
+test('offer campaign schema validates flexible milestone tiers and payout totals', () => {
+  const milestones = Array.from({ length: 25 }, (_, index) => ({
+    step_number: index + 1,
+    level: index + 1,
+    description: `Complete milestone ${index + 1}`,
+    payout_amount: 0.01,
+  }));
+  const valid = validateOfferCampaign({
+    title: 'Seasonal game campaign',
+    description: 'Complete stages to earn the listed rewards.',
+    category: 'Gaming',
+    total_value: 0.25,
+    milestones,
+    tracking_parameters: { source: 'newsletter' },
+  }, 'seasonal-game', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+  assert.ok(valid.campaign);
+  assert.equal(valid.campaign.milestones.length, 25);
+  assert.equal(valid.campaign.category, 'gaming');
+  assert.equal(valid.campaign.total_value, 0.25);
+
+  const defaultLevel = validateOfferCampaign({
+    title: 'Level-based campaign',
+    description: 'Reach the configured step.',
+    category: 'fintech',
+    milestones: [{ step_number: 10, description: 'Reach level 10', payout_amount: 1 }],
+  }, 'level-based', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+  assert.equal(defaultLevel.campaign.milestones[0].level, 10);
+  assert.equal(defaultLevel.campaign.total_value, 1);
+
+  const invalidTotal = validateOfferCampaign({
+    title: 'Campaign',
+    description: 'Campaign details.',
+    category: 'fintech',
+    total_value: 0.26,
+    milestones,
+  }, 'campaign', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+  assert.equal(invalidTotal.field, 'total_value');
+
+  const duplicateSteps = validateOfferCampaign({
+    title: 'Campaign',
+    description: 'Campaign details.',
+    category: 'fintech',
+    milestones: [{ ...milestones[0] }, { ...milestones[1], step_number: milestones[0].step_number }],
+  }, 'campaign', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+  assert.equal(duplicateSteps.field, 'milestones');
+});
+
+test('offer campaign create, update, and deactivate routes require an admin token', async () => {
+  const create = await request('/api/admin/offers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'Campaign' }),
+  });
+  assert.equal(create.status, 401);
+
+  const update = await request('/api/admin/offers/seasonal-game', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: 'Updated copy.' }),
+  });
+  assert.equal(update.status, 401);
+
+  const deactivate = await request('/api/admin/offers/seasonal-game', { method: 'DELETE' });
+  assert.equal(deactivate.status, 401);
+});
+
+test('affiliate postbacks reject malformed or unsigned payouts before storage access', async () => {
+  const missingFields = await request('/api/v1/callbacks/postback');
+  assert.equal(missingFields.status, 400);
+
+  const event = {
+    click_id: 'click-001',
+    user_id: 'user-001',
+    offer_id: 'offer-earnx',
+    milestone_step: '1',
+    payout: '2.00',
+  };
+  const unsignedPath = `/api/v1/callbacks/postback?${new URLSearchParams({ ...event, signature: '0'.repeat(64) })}`;
+  const unsigned = await request(unsignedPath);
+  assert.equal(unsigned.status, 403);
+
+  const payload = buildPostbackSignaturePayload(event.click_id, event.user_id, event.offer_id, 1, 200);
+  const signature = createHmac('sha256', process.env.POSTBACK_SECRET).update(payload).digest('hex');
+  const signedBody = new URLSearchParams({ ...event, signature }).toString();
+  const signed = await request('/api/v1/callbacks/postback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: signedBody,
+  });
+  assert.equal(signed.status, 503);
+});
+
+test('public live-offer feed masks usernames and only includes credited CPX transactions', async () => {
+  assert.equal(maskPublicOfferUsername('MarkWinters'), 'Ma***_Wi***');
+  assert.equal(maskPublicOfferUsername(''), 'Member');
+
+  const transactionId = 'cpx-live-feed-test';
+  const hash = createHash('md5').update(`${transactionId}${process.env.CPX_SECURE_HASH}`).digest('hex');
+  const credited = await request(`/api/cpx/postback?${new URLSearchParams({
+    status: '1',
+    trans_id: transactionId,
+    user_id: 'anonymous-cpx-user',
+    amount_usd: '1.25',
+    offer_id: 'survey-123',
+    hash,
+  })}`);
+  assert.equal(credited.status, 200);
+  const duplicate = await request(`/api/cpx/postback?${new URLSearchParams({
+    status: '1',
+    trans_id: transactionId,
+    user_id: 'anonymous-cpx-user',
+    amount_usd: '1.25',
+    offer_id: 'survey-123',
+    hash,
+  })}`);
+  assert.equal(duplicate.status, 200);
+  const mismatchedUser = await request(`/api/cpx/postback?${new URLSearchParams({
+    status: '2',
+    trans_id: transactionId,
+    user_id: 'different-user',
+    amount_usd: '1.25',
+    offer_id: 'survey-123',
+    hash,
+  })}`);
+  assert.equal(mismatchedUser.status, 403);
+
+  const feed = await request('/api/live-offers');
+  assert.equal(feed.status, 200);
+  assert.equal(feed.body.offers.length, 1);
+  assert.deepEqual(feed.body.offers[0], {
+    id: feed.body.offers[0].id,
+    username: 'Member',
+    offerwall: 'CPX Research',
+    offer: 'Survey survey-123',
+    payoutAmount: 1.25,
+    creditedAt: feed.body.offers[0].creditedAt,
+  });
+  assert.equal(feed.headers.get('cache-control'), 'public, max-age=5, stale-while-revalidate=15');
+
+  const reversalHash = createHash('md5').update(`${transactionId}${process.env.CPX_SECURE_HASH}`).digest('hex');
+  const reversed = await request(`/api/cpx/postback?${new URLSearchParams({
+    status: '2',
+    trans_id: transactionId,
+    user_id: 'anonymous-cpx-user',
+    amount_usd: '1.25',
+    offer_id: 'survey-123',
+    hash: reversalHash,
+  })}`);
+  assert.equal(reversed.status, 200);
+  const afterReversal = await request('/api/live-offers');
+  assert.deepEqual(afterReversal.body.offers, []);
 });
 
 test('tracking readiness check reports temporary storage without creating an offer click', async () => {
@@ -105,6 +562,30 @@ test('member referral endpoints are paused without deleting prior records', asyn
   assert.match(preview.body.error, /temporarily paused/i);
 });
 
+test('missing-credit support tickets require auth and reject unsafe details', async () => {
+  const unauthorized = await request('/api/v1/support/tickets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subject: 'Missing offer credit',
+      message: 'My offer completed but no credit arrived.',
+      transactionReferenceId: 'offer-click-123',
+      screenshotUrl: 'https://example.com/screenshot.png',
+    }),
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const adminList = await request('/api/admin/support/tickets');
+  assert.equal(adminList.status, 403);
+});
+
+test('lifetime referral commission calculates a capped 10-percent payout share', () => {
+  assert.equal(calculateReferralCommissionCents(200, 10), 20);
+  assert.equal(calculateReferralCommissionCents(250, 10), 25);
+  assert.equal(calculateReferralCommissionCents(1, 10), 0);
+  assert.equal(calculateReferralCommissionCents(-100, 10), 0);
+});
+
 test('referral payouts require twice the reward in verified net commission', () => {
   assert.equal(canApproveReferralPayout(9.99), false);
   assert.equal(canApproveReferralPayout(10), true);
@@ -152,7 +633,11 @@ test('sitemap contains only canonical indexable routes', async () => {
   assert.match(response.body, /\/partners</);
   assert.match(response.body, /\/guides</);
   assert.match(response.body, /\/best-fintech-bonuses</);
-  assert.equal((response.body.match(/<loc>/g) || []).length, 31);
+  assert.match(response.body, /\/terms</);
+  assert.match(response.body, /\/privacy</);
+  assert.match(response.body, /\/cookies</);
+  assert.match(response.body, /\/affiliate-disclosure</);
+  assert.equal((response.body.match(/<loc>/g) || []).length, 35);
   assert.match(response.body, /\/offers\/chime</);
   assert.doesNotMatch(response.body, /\.html/);
   assert.doesNotMatch(response.body, /\?offer=/);

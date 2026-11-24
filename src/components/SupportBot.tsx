@@ -20,6 +20,12 @@ export const SupportBot: React.FC = () => {
   const supportMenuRef = useRef<HTMLDivElement | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ticketOpen, setTicketOpen] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketMessage, setTicketMessage] = useState('');
+  const [ticketReference, setTicketReference] = useState('');
+  const [ticketScreenshot, setTicketScreenshot] = useState('');
+  const [ticketStatus, setTicketStatus] = useState('');
   const [messages, setMessages] = useState<SupportMessage[]>([
     { role: 'assistant', content: 'What would you like to know about an offer?' },
   ]);
@@ -61,6 +67,37 @@ export const SupportBot: React.FC = () => {
     }
   };
 
+  const submitTicket = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setTicketStatus('');
+    if (ticketSubject.trim().length < 3 || ticketMessage.trim().length < 10) {
+      setTicketStatus('Complete the subject and at least 10 characters of details.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/v1/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          subject: ticketSubject,
+          message: ticketMessage,
+          transactionReferenceId: ticketReference,
+          screenshotUrl: ticketScreenshot,
+        }),
+      });
+      const data = await response.json() as { ticket?: { id: string }; error?: string };
+      if (!response.ok) throw new Error(data.error || 'Could not submit the ticket.');
+      setTicketStatus(`Ticket submitted${data.ticket?.id ? `: ${data.ticket.id.slice(0, 8)}...` : '.'}`);
+      setTicketSubject('');
+      setTicketMessage('');
+      setTicketReference('');
+      setTicketScreenshot('');
+    } catch (error) {
+      setTicketStatus(error instanceof Error ? error.message : 'Could not submit the ticket.');
+    }
+  };
+
   return (
     <div ref={supportMenuRef} className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
       {open && (
@@ -70,10 +107,34 @@ export const SupportBot: React.FC = () => {
               <MessageCircle className="h-4 w-4 text-[#2dd4ee]" />
               S4FC Support
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf]" aria-label="Close support chat">
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setTicketOpen((current) => !current)} className="rounded border border-cyan-300/30 px-2 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-300/10">
+                {ticketOpen ? 'Chat' : 'Missing credit'}
+              </button>
+              <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf]" aria-label="Close support chat">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
+          {ticketOpen ? (
+            <form onSubmit={submitTicket} className="space-y-2 bg-[#141824] p-3">
+              <label className="block text-[10px] font-semibold text-zinc-300">Subject
+                <input value={ticketSubject} onChange={(event) => setTicketSubject(event.target.value)} maxLength={160} className="mt-1 w-full rounded border border-white/10 bg-[#090d18] px-2 py-2 text-xs text-white" />
+              </label>
+              <label className="block text-[10px] font-semibold text-zinc-300">Offer or transaction reference
+                <input value={ticketReference} onChange={(event) => setTicketReference(event.target.value)} maxLength={255} className="mt-1 w-full rounded border border-white/10 bg-[#090d18] px-2 py-2 text-xs text-white" />
+              </label>
+              <label className="block text-[10px] font-semibold text-zinc-300">Screenshot link
+                <input type="url" value={ticketScreenshot} onChange={(event) => setTicketScreenshot(event.target.value)} maxLength={2048} placeholder="https://..." className="mt-1 w-full rounded border border-white/10 bg-[#090d18] px-2 py-2 text-xs text-white" />
+              </label>
+              <label className="block text-[10px] font-semibold text-zinc-300">Details
+                <textarea value={ticketMessage} onChange={(event) => setTicketMessage(event.target.value)} maxLength={5000} rows={4} className="mt-1 w-full resize-none rounded border border-white/10 bg-[#090d18] px-2 py-2 text-xs text-white" />
+              </label>
+              <button type="submit" className="w-full rounded bg-cyan-300 px-3 py-2 text-xs font-bold text-[#06131a]">Submit missing-credit ticket</button>
+              {ticketStatus && <p role="status" className="text-[10px] leading-relaxed text-cyan-100">{ticketStatus}</p>}
+            </form>
+          ) : (
+          <>
           <div className="max-h-72 space-y-3 overflow-y-auto bg-[#141824] p-3">
             {messages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`rounded-lg px-3 py-2 text-xs leading-relaxed ${message.role === 'user' ? 'ml-6 bg-[#2dd4ee] text-[#06131a]' : 'mr-6 bg-[#0e121a] text-zinc-200'}`}>
@@ -94,6 +155,8 @@ export const SupportBot: React.FC = () => {
               <Send className="h-3.5 w-3.5" />
             </button>
           </form>
+          </>
+          )}
         </section>
       )}
       <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#2dd4ee]/70 bg-[#0d1724] p-1 shadow-xl transition-transform hover:scale-105" aria-label="Open S4FC customer support">

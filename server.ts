@@ -1,14 +1,19 @@
 import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
 import { readFile } from 'node:fs/promises';
 import path from 'path';
-import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'crypto';
+import { createServer as createHttpServer, type IncomingMessage } from 'node:http';
 import { isIP } from 'net';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { compare as comparePassword, hash as hashPassword } from 'bcryptjs';
 import { Pool, type PoolClient } from 'pg';
+import { WebSocket, WebSocketServer } from 'ws';
 import { SITE_OFFER_CATALOG as PUBLIC_OFFERS } from './src/data/offerCatalog';
-import { DEFAULT_SITE_SETTINGS, Offer, SiteSettings } from './src/types';
+import { DEFAULT_SITE_SETTINGS, Offer, OfferCampaign, OfferCategory, OfferMilestone, SiteSettings } from './src/types';
 
 dotenv.config({ path: '.env.local' });
 
@@ -21,8 +26,23 @@ const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
 const MEMBER_REFERRALS_ENABLED = false;
 const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
 const REFERRAL_MIN_NET_REVENUE = 10;
+const AUTH_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const AUTH_USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/;
+const AUTH_PASSWORD_MIN_LENGTH = 12;
+const AUTH_PASSWORD_MAX_BYTES = 72;
+const DUMMY_PASSWORD_HASH = '$2b$12$97DZEvxYA7xIfIXOZWSupOWT8ymgLKculOOCpkPsxWFcLDr609yk6';
 const cpxAppId = env.CPX_APP_ID || '36089';
 const cpxSecureHash = env.CPX_SECURE_HASH;
+const milestoneCallbackSecret = env.MILESTONE_CALLBACK_SECRET;
+const postbackSecret = env.POSTBACK_SECRET?.trim();
+const referralCommissionPercent = (() => {
+  const configured = Number(env.REFERRAL_COMMISSION_PERCENT || 10);
+  return Number.isFinite(configured) && configured >= 0 && configured <= 100 ? configured : 10;
+})();
+const offerHousePayoutMultiplier = (() => {
+  const configured = Number(env.OFFER_HOUSE_PAYOUT_MULTIPLIER || 0.85);
+  return Number.isFinite(configured) && configured > 0 && configured <= 1 ? configured : 0.85;
+})();
 const googleClientId = env.GOOGLE_CLIENT_ID;
 const googleClientSecret = env.GOOGLE_CLIENT_SECRET;
 const ownerEmails = new Set(
@@ -159,14 +179,91 @@ function getApproximateLocation(req: express.Request) {
 const adminTokens = new Map<string, { expiresAt: number; role: 'owner' | 'delegated' }>();
 const adminUnlockAttempts = new Map<string, { count: number; resetAt: number }>();
 const authSessions = new Map<string, { userId: string; expiresAt: number }>();
-const authUsers = new Map<string, { id: string; googleSub: string; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null; accountStatus: 'active' | 'blocked'; lastLoginAt: string | null }>();
+const authUsers = new Map<string, { id: string; googleSub: string | null; email: string; username: string | null; avatarUrl: string | null; paypalEmail: string | null; dateOfBirth: string | null; sex: string | null; state: string | null; accountStatus: 'active' | 'blocked'; lastLoginAt: string | null }>();
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
-const cpxTransactions = new Set<string>();
+const blockedIpCache = new Map<string, number>();
+const memoryDeviceOwners = new Map<string, string>();
+export type LiveActivityEvent = {
+  id: string;
+  type: 'offer_credit' | 'withdrawal' | 'mock';
+  handle: string;
+  amount: number;
+  amountText: string;
+  method: string;
+  tag: string;
+  timestamp: string;
+};
+
+export type PlatformNotification = {
+  id: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  type: 'CREDIT_ALERT' | 'PVP_ALERT' | 'SYSTEM';
+  created_at: string;
+};
+
+export type LiveOfferCredit = {
+  id: string;
+  username: string;
+  offerwall: string;
+  offer: string;
+  payoutAmount: number;
+  creditedAt: string;
+};
+
+let liveActivitySocketServer: WebSocketServer | null = null;
+let notificationSocketServer: WebSocketServer | null = null;
+const notificationSocketsByUser = new Map<string, Set<WebSocket>>();
+const liveOfferCreditsMemory = new Map<string, LiveOfferCredit>();
+let lastLiveTransactionAt = 0;
+const cpxTransactions = new Map<string, { status: number; rewardPoints: number; userId: string }>();
 const cpxBalances = new Map<string, number>();
 const completionReports = new Map<string, { id: string; offerId: string; reportedAt: string }>();
+const analyticsSecurityFailures = new Map<string, { signatureMismatch: number; chargebacks: number; securityFailures: number }>();
 const SURVEY_POINTS_PER_DOLLAR = 100;
 const SURVEY_MINIMUM_PAYOUT_POINTS = 500;
+const RPS_DEFAULT_ENTRY_CENTS = 50;
+const RPS_WIN_POT_CENTS = 100;
+const RPS_PVP_MIN_WAGER_UNITS = 50;
+const RPS_PVP_RAKE_RATE_BPS = 300;
+const RPS_ACTIVE_MATCH_TIMEOUT_MINUTES = 5;
+const RPS_WAITING_LOBBY_TIMEOUT_HOURS = 24;
+const RPS_MAX_CASH_BALANCE_CENTS = 999_999_999_999;
+const RPS_MAX_POINTS_BALANCE = 2_147_483_647;
+const RPS_OPPONENT_NAME_PARTS = ['NeonFox', 'PixelPanda', 'LuckyLynx', 'MoonMoth', 'TurboTiger', 'CosmicKoala'];
+const RPS_CHOICES = ['rock', 'paper', 'scissors'] as const;
+type RpsChoice = typeof RPS_CHOICES[number];
+type RpsOutcome = 'win' | 'loss' | 'draw';
+type RpsWagerCurrency = 'points' | 'cash';
+type RpsWager = { currency: RpsWagerCurrency; amount: number; units: number };
+type RpsLobbyRow = {
+  id: string;
+  player1_id: string;
+  player2_id: string | null;
+  wager_amount: string;
+  wager_currency: RpsWagerCurrency;
+  state: 'waiting' | 'active' | 'completed';
+  ended_reason: 'settled' | 'expired' | null;
+  created_at: Date;
+};
+type RpsSettlement = {
+  matchId: string;
+  outcome: 'player1' | 'player2' | 'draw';
+  winnerId: string | null;
+  poolUnits: number;
+  rakeUnits: number;
+  notifications: Array<{ userId: string; notification: PlatformNotification }>;
+};
+const EARNX_MILESTONE_TIERS = [
+  { stage: 1, level: 5, rewardPoints: 200, description: 'Reach level 5' },
+  { stage: 2, level: 10, rewardPoints: 750, description: 'Reach level 10' },
+  { stage: 3, level: 20, rewardPoints: 2500, description: 'Reach level 20' },
+] as const;
 const SURVEY_PAYOUT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const WITHDRAWAL_MINIMUM_CENTS = 500;
+const LEADERBOARD_PRIZE_POOL_CENTS = 5000;
+const LEADERBOARD_PRIZE_CENTS_BY_RANK = [1500, 1000, 700, 500, 300, 200, 200, 200, 200, 200];
 const delegatedAdminUsernames = new Set<string>();
 const permanentlyRemovedOfferIds = new Set([
   'offer-era-referral',
@@ -317,6 +414,185 @@ function isPublishableOffer(offer: Record<string, unknown>) {
   );
 }
 
+type OfferCampaignValidation =
+  | { campaign: OfferCampaign }
+  | { error: string; field: string };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function validateOfferCampaign(input: unknown, id: string, createdAt: string, updatedAt: string): OfferCampaignValidation {
+  if (!isRecord(input)) return { field: 'campaign', error: 'Campaign details are required.' };
+  if (!/^[a-z0-9][a-z0-9_-]{0,99}$/.test(id)) {
+    return { field: 'id', error: 'Campaign ID must use lowercase letters, numbers, hyphens, or underscores.' };
+  }
+  const title = typeof input.title === 'string' ? input.title.trim() : '';
+  if (!title || title.length > 160) return { field: 'title', error: 'Title must be 1-160 characters.' };
+  const description = typeof input.description === 'string' ? input.description.trim() : '';
+  if (!description || description.length > 5000) return { field: 'description', error: 'Description must be 1-5000 characters.' };
+  const category = typeof input.category === 'string' ? input.category.trim().toLowerCase() : '';
+  const allowedCategories = new Set(['fintech', 'brokerage', 'cashback', 'apps', 'crypto', 'gaming']);
+  if (!allowedCategories.has(category)) return { field: 'category', error: 'Choose a supported campaign category.' };
+  if (!Array.isArray(input.milestones) || input.milestones.length === 0) {
+    return { field: 'milestones', error: 'Add at least one milestone.' };
+  }
+
+  const milestones: OfferMilestone[] = [];
+  const stepNumbers = new Set<number>();
+  const levels = new Set<number>();
+  let totalPayoutCents = 0;
+  for (const [index, rawMilestone] of input.milestones.entries()) {
+    if (!isRecord(rawMilestone)) {
+      return { field: 'milestones', error: `Milestone ${index + 1} must be an object.` };
+    }
+    const stepNumber = rawMilestone.step_number;
+    const level = rawMilestone.level === undefined ? stepNumber : rawMilestone.level;
+    const milestoneDescription = typeof rawMilestone.description === 'string' ? rawMilestone.description.trim() : '';
+    const payoutAmount = rawMilestone.payout_amount;
+    if (typeof stepNumber !== 'number' || !Number.isSafeInteger(stepNumber) || stepNumber < 1 || stepNumber > 2147483647) {
+      return { field: 'milestones', error: `Milestone ${index + 1} needs a positive step_number.` };
+    }
+    if (typeof level !== 'number' || !Number.isSafeInteger(level) || level < 1 || level > 1000000) {
+      return { field: 'milestones', error: `Milestone ${index + 1} needs a level from 1 to 1,000,000.` };
+    }
+    if (stepNumbers.has(stepNumber) || levels.has(level)) {
+      return { field: 'milestones', error: 'Milestone step numbers and levels must be unique.' };
+    }
+    if (!milestoneDescription || milestoneDescription.length > 500) {
+      return { field: 'milestones', error: `Milestone ${index + 1} description must be 1-500 characters.` };
+    }
+    if (typeof payoutAmount !== 'number' || !Number.isFinite(payoutAmount) || payoutAmount <= 0) {
+      return { field: 'milestones', error: `Milestone ${index + 1} payout_amount must be positive.` };
+    }
+    const payoutCents = Math.round(payoutAmount * 100);
+    if (Math.abs(payoutAmount * 100 - payoutCents) > 1e-7 || payoutCents > 2147483647) {
+      return { field: 'milestones', error: `Milestone ${index + 1} payout_amount must use cents and fit the wallet ledger.` };
+    }
+    totalPayoutCents += payoutCents;
+    if (!Number.isSafeInteger(totalPayoutCents) || totalPayoutCents > 2147483647) {
+      return { field: 'total_value', error: 'Combined campaign rewards exceed the wallet limit.' };
+    }
+    stepNumbers.add(stepNumber);
+    levels.add(level);
+    milestones.push({
+      step_number: stepNumber,
+      level,
+      description: milestoneDescription,
+      payout_amount: payoutCents / 100,
+    });
+  }
+  milestones.sort((left, right) => left.step_number - right.step_number);
+
+  const totalValue = input.total_value === undefined ? totalPayoutCents / 100 : input.total_value;
+  if (typeof totalValue !== 'number' || !Number.isFinite(totalValue) || totalValue < 0) {
+    return { field: 'total_value', error: 'total_value must be a non-negative amount in dollars.' };
+  }
+  const totalValueCents = Math.round(totalValue * 100);
+  if (Math.abs(totalValue * 100 - totalValueCents) > 1e-7 || totalValueCents !== totalPayoutCents) {
+    return { field: 'total_value', error: 'total_value must equal the sum of all milestone payouts.' };
+  }
+
+  const trackingParameters: Record<string, string> = {};
+  if (input.tracking_parameters !== undefined) {
+    if (!isRecord(input.tracking_parameters)) {
+      return { field: 'tracking_parameters', error: 'tracking_parameters must be an object of text values.' };
+    }
+    for (const [key, value] of Object.entries(input.tracking_parameters)) {
+      if (!/^[A-Za-z0-9_.-]{1,64}$/.test(key) || typeof value !== 'string' || value.length > 500) {
+        return { field: 'tracking_parameters', error: 'Tracking keys must be short identifiers with text values up to 500 characters.' };
+      }
+      trackingParameters[key] = value;
+    }
+  }
+
+  return {
+    campaign: {
+      id,
+      title,
+      description,
+      category: category as OfferCategory,
+      total_value: totalValueCents / 100,
+      milestones,
+      tracking_parameters: trackingParameters,
+      active: true,
+      created_at: createdAt,
+      updated_at: updatedAt,
+    },
+  };
+}
+
+async function persistOfferCampaign(campaign: OfferCampaign, create: boolean, replaceMilestones: boolean) {
+  if (!database) throw new Error('Persistent campaign storage is not configured.');
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    if (create) {
+      await client.query(
+        `INSERT INTO offer_campaigns
+          (id, title, description, category, total_value, milestones, tracking_parameters, active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10)`,
+        [
+          campaign.id,
+          campaign.title,
+          campaign.description,
+          campaign.category,
+          campaign.total_value,
+          JSON.stringify(campaign.milestones),
+          JSON.stringify(campaign.tracking_parameters),
+          campaign.active,
+          campaign.created_at,
+          campaign.updated_at,
+        ],
+      );
+    } else {
+      const updated = await client.query(
+        `UPDATE offer_campaigns
+         SET title = $2, description = $3, category = $4, total_value = $5,
+             milestones = $6::jsonb, tracking_parameters = $7::jsonb,
+             active = $8, updated_at = $9
+         WHERE id = $1`,
+        [
+          campaign.id,
+          campaign.title,
+          campaign.description,
+          campaign.category,
+          campaign.total_value,
+          JSON.stringify(campaign.milestones),
+          JSON.stringify(campaign.tracking_parameters),
+          campaign.active,
+          campaign.updated_at,
+        ],
+      );
+      if (updated.rowCount !== 1) throw new Error('Offer campaign was not found.');
+    }
+
+    if (replaceMilestones) {
+      await client.query('DELETE FROM offer_milestone_tiers WHERE offer_id = $1', [campaign.id]);
+      for (const tier of campaign.milestones) {
+        await client.query(
+          `INSERT INTO offer_milestone_tiers (offer_id, stage, level, reward_points, description, active)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            campaign.id,
+            tier.step_number,
+            tier.level,
+            Math.round(tier.payout_amount * SURVEY_POINTS_PER_DOLLAR),
+            tier.description,
+            campaign.active,
+          ],
+        );
+      }
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 function isVerificationCurrent(offer: { verificationExpiresAt?: string }) {
   return !offer.verificationExpiresAt || Date.parse(offer.verificationExpiresAt) > Date.now();
 }
@@ -354,7 +630,44 @@ export function resolveUpdatedOfferStatus(existingStatus: string, requestedStatu
     : existingStatus;
 }
 
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
+}));
+
+const configuredCorsOrigins = (env.CORS_ORIGINS || env.APP_URL || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+app.use(cors({
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-token', 'x-request-id', 'Idempotency-Key', 'X-Postback-Signature', 'X-Milestone-Signature', 'X-Milestone-Timestamp', 'X-Milestone-Event-Id'],
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/+$/, '');
+    if (env.NODE_ENV !== 'production' || configuredCorsOrigins.includes(normalized)) return callback(null, true);
+    return callback(new Error('Origin is not allowed.'));
+  },
+}));
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/auth')) return next();
+  const ip = getClientIp(req);
+  const ipHash = ip ? hashFraudIdentifier(ip) : '';
+  const proxyHeaderBlocked =
+    req.header('x-sfc-proxy-blocked') === '1' ||
+    req.header('x-vpn-blocked') === '1' ||
+    req.header('x-tor-exit') === '1';
+  if (ipIsBlocked(ip) || proxyHeaderBlocked) {
+    res.setHeader('x-fraud-check', ipHash ? 'blocked' : 'blocked');
+    return res.status(403).json({ error: 'Proxy, VPN, or Tor access is not permitted.' });
+  }
+  next();
+});
 app.use((req, res, next) => {
   const requestId = req.header('x-request-id')?.trim() || randomUUID();
   res.setHeader('x-request-id', requestId);
@@ -373,11 +686,107 @@ app.use((req, res, next) => {
   next();
 });
 
+function legalCompliancePage(title: string, description: string, sections: Array<{ heading: string; paragraphs: string[] }>) {
+  const sectionHtml = sections.map((section) => `
+    <section>
+      <h2>${section.heading}</h2>
+      ${section.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('')}
+    </section>
+  `).join('');
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title} | Signups4FastCash.com</title>
+  <meta name="description" content="${description}">
+  <meta name="robots" content="index, follow">
+  <style>
+    :root{color-scheme:dark;--bg:#02070d;--panel:#0b1520;--text:#ededed;--muted:#a1a1aa;--accent:#2dd4ee}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:780px;margin:0 auto;padding:48px 20px 72px}
+    a{color:var(--accent)}
+    section{margin-top:28px;padding:24px;border:1px solid #ffffff1f;border-radius:16px;background:var(--panel)}
+    h1{margin:0;font-size:clamp(32px,7vw,52px);line-height:1.1}
+    h2{margin:0 0 10px;font-size:20px}
+    p{margin:10px 0;color:#d4d4d8}
+    footer{margin-top:32px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body><main>
+  <h1>${title}</h1>
+  <p style="color:var(--muted)">${description}</p>
+  ${sectionHtml}
+  <footer>&copy; ${new Date().getFullYear()} Signups4FastCash.com — All rights reserved. Support: <a href="mailto:support@signups4fastcash.com">support@signups4fastcash.com</a></footer>
+</main></body>
+</html>`;
+}
+
+app.get('/terms', (req, res) => {
+  res.type('html').send(legalCompliancePage('Terms of Service', 'Rules for using Signups4FastCash.com and the platform economy.', [
+    { heading: 'Accounts and acceptable use', paragraphs: [
+      'Only one account is allowed per person, household, and network boundary unless S4FC explicitly approves separate accounts.',
+      'Proxy, VPN, Tor, emulator, automated emulator, device-spoofing, duplicate-registration, and tracking-concealment tools may not be used to create accounts or manipulate offer tracking.',
+      'Violations may result in immediate account termination, cancelled pending payouts, and forfeiture of balances or rewards confirmed to involve abuse.',
+    ] },
+    { heading: 'Rewards and balances', paragraphs: [
+      'S4FC does not control third-party merchant approval or payout decisions. Rewards, eligibility, fees, taxes, and timing are subject to the official merchant terms.',
+      'Automated tracking spoofing, falsified completions, duplicate registrations, and balance exploitation are prohibited. Confirmed fraud may trigger balance forfeiture and manual review.',
+    ] },
+    { heading: 'Disclaimers', paragraphs: [
+      'The platform provides informational and comparison tools, not financial, tax, legal, investment, or gambling advice.',
+      'External websites are operated by third parties. Their terms, security, privacy practices, and decisions control.',
+    ] },
+  ]));
+});
+
+app.get(['/privacy', '/privacy-policy'], (req, res) => {
+  res.type('html').send(legalCompliancePage('Privacy Policy', 'How S4FC handles account, device, network, cookie, and analytics data.', [
+    { heading: 'Device and network security', paragraphs: [
+      'S4FC may generate a browser device fingerprint from canvas output, screen dimensions, language settings, platform, time zone, and hardware concurrency. IP-derived and network signals may be used to detect proxy, VPN, Tor, hosting, or shared-connection abuse.',
+      'Fingerprint and IP-derived identifiers are handled as security data and stored as hashes where practical. They are not public account profiles.',
+    ] },
+    { heading: 'Cookies and browser storage', paragraphs: [
+      'Essential first-party cookies support authentication, OAuth state, consent and preferences, and temporary browser tests. Browser storage may preserve account and offer state.',
+      'You can clear or block cookies in your browser. Blocking essential cookies may prevent sign-in or account features from working.',
+    ] },
+    { heading: 'Analytics and control', paragraphs: [
+      'The site uses aggregate page and offer event counters for operational reporting. Offer-click records do not include public visitor location or public IP addresses.',
+      'To request access, correction, or deletion of information associated with you, or to withdraw newsletter consent, contact support@signups4fastcash.com.',
+    ] },
+  ]));
+});
+
+app.get(['/cookies', '/cookie-policy'], (req, res) => {
+  res.type('html').send(legalCompliancePage('Cookie Policy', 'Essential first-party cookies and browser storage used by S4FC.', [
+    { heading: 'Essential cookies', paragraphs: [
+      'sfc_session maintains authenticated sessions as an HTTP-only cookie. sfc_oauth_state protects Google OAuth sign-in. sfc_device_fingerprint is a privacy-preserving browser fingerprint cookie used for account-security checks.',
+      'Admin unlock cookies and temporary tracking-check cookies support security and diagnostics only.',
+    ] },
+    { heading: 'Browser storage', paragraphs: [
+      'Local storage may retain offer selections, preferences, and saved dashboard state. Session storage may maintain temporary UI state. Data is not sold.',
+    ] },
+  ]));
+});
+
+app.get('/affiliate-disclosure', (req, res) => {
+  res.type('html').send(legalCompliancePage('Affiliate Disclosure', 'How referral compensation works at Signups4FastCash.com.', [
+    { heading: 'Referral compensation', paragraphs: [
+      'Some offer links are referral or affiliate links. A merchant may compensate S4FC if you use a qualifying link, with no additional cost to you.',
+      'Compensation does not change merchant eligibility decisions or guarantee reward issuance. Every offer is subject to the official merchant terms.',
+    ] },
+  ]));
+});
+
 // API: XML Sitemap for search engines (must be before static middleware)
 app.get('/sitemap.xml', (req, res) => {
   const baseUrl = getOAuthAppUrl(req);
   const urls: { loc: string; changefreq: string; priority: string }[] = [
     { loc: `${baseUrl}/`, changefreq: 'daily', priority: '1.0' },
+    { loc: `${baseUrl}/terms`, changefreq: 'monthly', priority: '0.4' },
+    { loc: `${baseUrl}/privacy`, changefreq: 'monthly', priority: '0.4' },
+    { loc: `${baseUrl}/cookies`, changefreq: 'monthly', priority: '0.3' },
+    { loc: `${baseUrl}/affiliate-disclosure`, changefreq: 'monthly', priority: '0.3' },
   ];
   const seen = new Set(urls.map((url) => url.loc));
   Object.keys(seoPageRoutes).forEach((route) => {
@@ -480,23 +889,60 @@ function getSessionToken(req: express.Request) {
   return cookie?.split('=')[1] || null;
 }
 
+function getCookieValue(req: express.Request, name: string) {
+  const cookie = req.headers.cookie?.split(';').map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+  if (!cookie) return '';
+  try {
+    return decodeURIComponent(cookie.slice(name.length + 1));
+  } catch {
+    return '';
+  }
+}
+
+async function createAuthSession(userId: string) {
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + AUTH_SESSION_MAX_AGE_SECONDS * 1000;
+  if (database) {
+    await database.query(
+      `INSERT INTO auth_sessions (token, user_id, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
+      [token, userId],
+    );
+  }
+  authSessions.set(token, { userId, expiresAt });
+  return token;
+}
+
+function setAuthSessionCookie(res: express.Response, token: string) {
+  res.cookie('sfc_session', token, {
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS * 1000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: env.NODE_ENV === 'production',
+    path: '/',
+  });
+}
+
 async function getAuthenticatedUser(req: express.Request) {
   const token = getSessionToken(req);
   if (!token) return null;
-  const session = authSessions.get(token);
-  if (session && session.expiresAt > Date.now()) {
+  if (!database) {
+    const session = authSessions.get(token);
+    if (!session || session.expiresAt <= Date.now()) {
+      if (session) authSessions.delete(token);
+      return null;
+    }
     const memoryUser = authUsers.get(session.userId);
     return memoryUser?.accountStatus === 'blocked' ? null : memoryUser || null;
   }
-  if (session) authSessions.delete(token);
-  if (!database) return null;
-  const result = await database.query<{ id: string; google_sub: string; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null; account_status: 'active' | 'blocked' }>(
-    `SELECT users.id, users.google_sub, users.email, users.username, users.avatar_url, users.paypal_email, users.date_of_birth, users.sex, users.state, users.account_status
+  const result = await database.query<{ id: string; google_sub: string | null; email: string; username: string | null; avatar_url: string | null; paypal_email: string | null; date_of_birth: string | null; sex: string | null; state: string | null; account_status: 'active' | 'blocked'; is_banned: boolean }>(
+    `SELECT users.id, users.google_sub, users.email, users.username, users.avatar_url, users.paypal_email, users.date_of_birth, users.sex, users.state, users.account_status, users.is_banned
      FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.token = $1 AND auth_sessions.expires_at > NOW()`,
     [token],
   );
-  if (result.rows[0]?.account_status === 'blocked') return null;
+  if (!result.rows[0] || result.rows[0].account_status === 'blocked' || result.rows[0].is_banned) return null;
   return result.rows[0]
     ? { id: result.rows[0].id, googleSub: result.rows[0].google_sub, email: result.rows[0].email, username: result.rows[0].username, avatarUrl: result.rows[0].avatar_url, paypalEmail: result.rows[0].paypal_email, dateOfBirth: result.rows[0].date_of_birth, sex: result.rows[0].sex, state: result.rows[0].state }
     : null;
@@ -511,8 +957,357 @@ function hashReferralValue(value: string) {
   return createHmac('sha256', referralHashSecret).update(value).digest('hex');
 }
 
+export function hashFraudIdentifier(value: string) {
+  const secret = env.FRAUD_SECRET || referralHashSecret || googleClientSecret;
+  if (secret) return createHmac('sha256', secret).update(value.trim().toLowerCase()).digest('hex');
+  return createHash('sha256').update(value.trim().toLowerCase()).digest('hex');
+}
+
+function getClientIp(req: express.Request) {
+  const socketIp = req.socket.remoteAddress || '';
+  const forwarded = req.headers['cf-connecting-ip'] || req.headers['x-real-ip'];
+  if (typeof forwarded === 'string' && forwarded.trim()) return forwarded.trim();
+  return socketIp;
+}
+
+function ipIsBlocked(ip: string) {
+  if (!ip) return false;
+  if (blockedIpCache.has(ip)) return blockedIpCache.get(ip)! > Date.now();
+  const denyList = (env.FRAUD_DENY_IPS || '').split(',').map((value) => value.trim()).filter(Boolean);
+  if (denyList.includes(ip)) {
+    blockedIpCache.set(ip, Date.now() + 24 * 60 * 60 * 1000);
+    return true;
+  }
+  return false;
+}
+
+export function isValidDeviceFingerprint(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+}
+
 export function canApproveReferralPayout(verifiedNetRevenue: number) {
   return Number.isFinite(verifiedNetRevenue) && verifiedNetRevenue >= REFERRAL_MIN_NET_REVENUE;
+}
+
+export function calculateReferralCommissionCents(payoutCents: number, percent = referralCommissionPercent) {
+  if (!Number.isSafeInteger(payoutCents) || payoutCents < 0) return 0;
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) return 0;
+  return Math.round(payoutCents * percent / 100);
+}
+
+export function isOfferAvailableInUs(record: Record<string, unknown>) {
+  const locationValues = [
+    record.country,
+    record.countries,
+    record.geo,
+    record.regions,
+    record.availability,
+  ].filter((value) => value !== undefined && value !== null);
+  if (!locationValues.length) return true;
+  const text = locationValues.flatMap((value) =>
+    Array.isArray(value) ? value : [value],
+  ).map((value) => String(value).toLowerCase()).join(',');
+  if (!text.trim()) return true;
+  return /(^|[^a-z])(us|usa|united states|america|all)([^a-z]|$)/.test(text)
+    || text.includes('international');
+}
+
+export function normalizeOfferFeedPayload(payload: unknown, networkName: string) {
+  let records: unknown[] = [];
+  if (Array.isArray(payload)) records = payload;
+  else if (isRecord(payload)) {
+    for (const key of ['offers', 'items', 'data', 'campaigns']) {
+      if (Array.isArray(payload[key])) {
+        records = payload[key] as unknown[];
+        break;
+      }
+    }
+  }
+  const now = new Date().toISOString();
+  return records.flatMap((raw) => {
+    if (!isRecord(raw) || !isOfferAvailableInUs(raw)) return [];
+    const externalId = [raw.id, raw.offer_id, raw.offerId, raw.campaign_id, raw.uuid]
+      .find((value) => typeof value === 'string' && value.trim()) as string | undefined;
+    const title = [raw.title, raw.name, raw.offer_name]
+      .find((value) => typeof value === 'string' && value.trim()) as string | undefined;
+    if (!externalId || !title) return [];
+    const rawPayout = [raw.payout_usd, raw.payout, raw.reward, raw.amount, raw.incentive]
+      .find((value) => typeof value === 'number' || (typeof value === 'string' && Number(value) > 0));
+    const payout = typeof rawPayout === 'number' ? rawPayout : Number(rawPayout || 0);
+    if (!Number.isFinite(payout) || payout <= 0) return [];
+    const housePayout = Math.round(payout * offerHousePayoutMultiplier * 100) / 100;
+    const urlCandidate = [raw.referralUrl, raw.referral_url, raw.url, raw.click_url, raw.tracking_url]
+      .find((value) => typeof value === 'string' && /^https?:\/\//i.test(value)) as string | undefined;
+    if (!urlCandidate) return [];
+    const categoryValue = String(raw.category || 'apps').toLowerCase();
+    const category: OfferCategory = (['fintech', 'brokerage', 'cashback', 'apps', 'crypto', 'gaming'].includes(categoryValue)
+      ? categoryValue
+      : 'apps') as OfferCategory;
+    const id = `feed-${networkName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${externalId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const company = String(raw.advertiser || raw.company || networkName).slice(0, 160);
+    const offer: Offer = {
+      id,
+      company,
+      companySlug: company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'feed-offer',
+      title: title.slice(0, 160),
+      category,
+      incentiveAmount: `$${housePayout.toFixed(2)} reward`,
+      incentiveValue: housePayout,
+      payoutSpeed: String(raw.payout_speed || raw.payoutSpeed || 'Check provider terms'),
+      difficulty: 'Easy (2 min)',
+      depositRequired: String(raw.deposit_required || '$0 unless the provider states otherwise'),
+      availability: 'United States; verify current provider eligibility',
+      officialMerchantUrl: urlCandidate,
+      referralUrl: urlCandidate,
+      sourceUrl: urlCandidate,
+      verificationStatus: 'terms-vary',
+      honestTruth: {
+        summary: `Synced by ${networkName}. Review the provider’s current requirements before participating.`,
+        theCatch: 'Network availability and reward terms can change. S4FC does not guarantee approval or payout.',
+        minimumHoldTime: 'Per provider and network terms.',
+        idVerificationRequired: Boolean(raw.id_verification_required),
+        hiddenFeesWarning: 'Review purchases, subscriptions, playthrough, fees, and redemption terms before starting.',
+        trustScore: 50,
+      },
+      speedrunHints: [
+        { step: 1, instruction: 'Review the live provider terms and eligibility.' },
+        { step: 2, instruction: 'Complete only the required steps you understand.' },
+        { step: 3, instruction: 'Keep confirmation records and allow network processing time.' },
+      ],
+      status: 'live',
+      clicksCount: 0,
+      conversionsCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return [offer];
+  });
+}
+
+function getConfiguredOfferFeeds() {
+  const feeds: Array<{ name: string; url: string }> = [];
+  if (env.OFFER_FEEDS_JSON) {
+    try {
+      const parsed = JSON.parse(env.OFFER_FEEDS_JSON);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => {
+          if (isRecord(item) && typeof item.name === 'string' && typeof item.url === 'string') {
+            feeds.push({ name: item.name.trim().slice(0, 80), url: item.url.trim() });
+          }
+        });
+      } else if (isRecord(parsed)) {
+        Object.entries(parsed).forEach(([name, url]) => {
+          if (typeof url === 'string') feeds.push({ name: name.slice(0, 80), url: url.trim() });
+        });
+      }
+    } catch {
+      console.error('OFFER_FEEDS_JSON is invalid JSON.');
+    }
+  }
+  (env.OFFER_FEED_URLS || '').split(',').map((url) => url.trim()).filter(Boolean).forEach((url, index) => {
+    let name = `feed-${index + 1}`;
+    try {
+      name = new URL(url).hostname.replace(/[^a-z0-9]+/gi, '-') || name;
+    } catch {
+      return;
+    }
+    feeds.push({ name, url });
+  });
+  return feeds.filter((feed) => /^https?:\/\//i.test(feed.url)).filter((feed, index, all) =>
+    all.findIndex((candidate) => candidate.url === feed.url) === index,
+  );
+}
+
+export async function runOfferFeedSync() {
+  const feeds = getConfiguredOfferFeeds();
+  if (!database) return { status: 'skipped', reason: 'database_unavailable', feeds: feeds.length };
+  if (!feeds.length) return { status: 'skipped', reason: 'no_feeds_configured', feeds: 0 };
+
+  let fetchedCount = 0;
+  let upsertedCount = 0;
+  const feedResults: Array<{ name: string; fetched: number; upserted: number; status: string }> = [];
+  for (const feed of feeds) {
+    const runId = randomUUID();
+    await database.query(
+      `INSERT INTO offer_feed_sync_runs (id, feed_name, status, fetched_count, upserted_count)
+       VALUES ($1, $2, 'running', 0, 0)`,
+      [runId, feed.name],
+    );
+    try {
+      const response = await fetch(feed.url, {
+        method: 'GET',
+        headers: { Accept: 'application/json', 'User-Agent': 'Signups4FastCash-OfferSync/1.0' },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) throw new Error(`Feed returned HTTP ${response.status}`);
+      const payload = await response.json();
+      const offers = normalizeOfferFeedPayload(payload, feed.name);
+      let feedUpserted = 0;
+      for (const offer of offers) {
+        await database.query(
+          `INSERT INTO offers (id, status, offer, updated_at)
+           VALUES ($1, 'live', $2::jsonb, NOW())
+           ON CONFLICT (id) DO UPDATE SET
+             status = 'live',
+             offer = EXCLUDED.offer,
+             updated_at = NOW()`,
+          [offer.id, JSON.stringify(offer)],
+        );
+        feedUpserted += 1;
+      }
+      fetchedCount += offers.length;
+      upsertedCount += feedUpserted;
+      await database.query(
+        `UPDATE offer_feed_sync_runs
+         SET status = 'completed', fetched_count = $2, upserted_count = $3,
+             completed_at = NOW(), details = $4::jsonb
+         WHERE id = $1`,
+        [runId, offers.length, feedUpserted, JSON.stringify({ url: feed.url })],
+      );
+      feedResults.push({ name: feed.name, fetched: offers.length, upserted: feedUpserted, status: 'completed' });
+    } catch (error) {
+      await database.query(
+        `UPDATE offer_feed_sync_runs
+         SET status = 'failed', completed_at = NOW(),
+             details = $2::jsonb
+         WHERE id = $1`,
+        [runId, JSON.stringify({ error: error instanceof Error ? error.message : 'Feed sync failed' })],
+      ).catch(() => undefined);
+      feedResults.push({
+        name: feed.name,
+        fetched: 0,
+        upserted: 0,
+        status: error instanceof Error ? error.message : 'failed',
+      });
+    }
+  }
+  return { status: 'completed', feeds: feeds.length, fetchedCount, upsertedCount, results: feedResults };
+}
+
+async function recordOfferSecurityEvent(offerId: string, eventType: 'security_failure' | 'signature_mismatch' | 'chargeback') {
+  const current = analyticsSecurityFailures.get(offerId) || {
+    signatureMismatch: 0,
+    chargebacks: 0,
+    securityFailures: 0,
+  };
+  if (eventType === 'signature_mismatch') current.signatureMismatch += 1;
+  if (eventType === 'chargeback') current.chargebacks += 1;
+  if (eventType === 'security_failure') current.securityFailures += 1;
+  analyticsSecurityFailures.set(offerId, current);
+  if (database) {
+    await database.query(
+      'INSERT INTO offer_security_events (id, offer_id, event_type) VALUES ($1, $2, $3)',
+      [randomUUID(), offerId, eventType],
+    ).catch((error) => console.error('Could not record offer security event:', error));
+  }
+}
+
+export function evaluateRpsOutcome(playerChoice: RpsChoice, opponentChoice: RpsChoice): RpsOutcome {
+  if (playerChoice === opponentChoice) return 'draw';
+  return (
+    (playerChoice === 'rock' && opponentChoice === 'scissors') ||
+    (playerChoice === 'paper' && opponentChoice === 'rock') ||
+    (playerChoice === 'scissors' && opponentChoice === 'paper')
+  ) ? 'win' : 'loss';
+}
+
+export function parseRpsWager(amount: unknown, currency: unknown): RpsWager | null {
+  if (
+    (currency !== 'points' && currency !== 'cash') ||
+    typeof amount !== 'number' ||
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) return null;
+
+  const units = currency === 'cash' ? Math.round(amount * 100) : amount;
+  const maxUnits = currency === 'cash'
+    ? Math.floor(RPS_MAX_CASH_BALANCE_CENTS / 2)
+    : Math.floor(RPS_MAX_POINTS_BALANCE / 2);
+  if (
+    !Number.isSafeInteger(units) ||
+    units < RPS_PVP_MIN_WAGER_UNITS ||
+    units > maxUnits ||
+    (currency === 'cash' && Math.abs(amount * 100 - units) > 1e-7)
+  ) return null;
+  return {
+    currency,
+    amount: currency === 'cash' ? units / 100 : units,
+    units,
+  };
+}
+
+export function calculateRpsPvpRakeUnits(poolUnits: number) {
+  if (!Number.isSafeInteger(poolUnits) || poolUnits <= 0) {
+    throw new RangeError('The RPS wager pool must be a positive safe integer.');
+  }
+  return Math.round((poolUnits * RPS_PVP_RAKE_RATE_BPS) / 10_000);
+}
+
+function isRpsChoice(value: unknown): value is RpsChoice {
+  return typeof value === 'string' && RPS_CHOICES.includes(value as RpsChoice);
+}
+
+export type WithdrawalChannel = 'paypal' | 'venmo' | 'crypto';
+
+export function validateWithdrawalDestination(channel: unknown, destination: unknown):
+  | { channel: WithdrawalChannel; destination: string }
+  | { field: 'channel' | 'destination'; error: string } {
+  if (channel !== 'paypal' && channel !== 'venmo' && channel !== 'crypto') {
+    return { field: 'channel', error: 'Choose paypal, venmo, or crypto.' };
+  }
+  if (typeof destination !== 'string') {
+    return { field: 'destination', error: 'A payout destination is required.' };
+  }
+  const value = destination.trim();
+  if (channel === 'paypal') {
+    if (!SURVEY_PAYOUT_EMAIL_PATTERN.test(value) || value.length > 254) {
+      return { field: 'destination', error: 'Enter a valid PayPal email address.' };
+    }
+  } else if (channel === 'venmo') {
+    if (!/^@?[a-zA-Z0-9_-]{3,30}$/.test(value)) {
+      return { field: 'destination', error: 'Enter a valid Venmo handle.' };
+    }
+  } else if (!/^[a-zA-Z0-9_-]{26,128}$/.test(value)) {
+    return { field: 'destination', error: 'Enter a valid crypto address.' };
+  }
+  return { channel, destination: value };
+}
+
+function getRpsOpponentUsername() {
+  const name = RPS_OPPONENT_NAME_PARTS[randomInt(RPS_OPPONENT_NAME_PARTS.length)];
+  return `${name}${randomInt(1000, 10000)}`;
+}
+
+function isValidMilestoneSignature(timestamp: string, eventId: string, userId: string, offerId: string, level: number, signature: string) {
+  if (!milestoneCallbackSecret || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  const payload = `${timestamp}.${eventId}.${userId}.${offerId}.${level}`;
+  const expected = createHmac('sha256', milestoneCallbackSecret).update(payload).digest();
+  const supplied = Buffer.from(signature, 'hex');
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+export function buildPostbackSignaturePayload(clickId: string, userId: string, offerId: string, milestoneStep: number, payoutCents: number) {
+  return `${clickId}.${userId}.${offerId}.${milestoneStep}.${payoutCents}`;
+}
+
+export function compileOutboundTrackingUrl(baseUrl: string, userId: string, clickUuid: string) {
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set('subid1', userId);
+    url.searchParams.set('subid2', clickUuid);
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+function isValidPostbackSignature(clickId: string, userId: string, offerId: string, milestoneStep: number, payoutCents: number, signature: string) {
+  if (!postbackSecret || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  const expected = createHmac('sha256', postbackSecret)
+    .update(buildPostbackSignaturePayload(clickId, userId, offerId, milestoneStep, payoutCents))
+    .digest();
+  const supplied = Buffer.from(signature, 'hex');
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
 function createGoogleOAuthState(nonce: string, referralCode: string | null, issuedAt = Date.now()) {
@@ -553,6 +1348,221 @@ function readGoogleOAuthState(state: string, nonce: string) {
 
 app.get('/api/auth/me', async (req, res) => {
   res.json({ user: authUserResponse(await getAuthenticatedUser(req)) });
+});
+
+app.post('/api/auth/signup', async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const referralCode = (
+    typeof req.body?.ref === 'string' ? req.body.ref : getCookieValue(req, 'sfc_referral')
+  ).trim().toUpperCase();
+  const deviceFingerprint = typeof req.body?.deviceFingerprint === 'string' ? req.body.deviceFingerprint.trim().toLowerCase() : '';
+  if (deviceFingerprint && !isValidDeviceFingerprint(deviceFingerprint)) {
+    return res.status(400).json({ field: 'deviceFingerprint', error: 'Invalid device signature.' });
+  }
+  if (!AUTH_EMAIL_PATTERN.test(email) || email.length > 254) {
+    return res.status(400).json({ field: 'email', error: 'Enter a valid email address.' });
+  }
+  if (!AUTH_USERNAME_PATTERN.test(username)) {
+    return res.status(400).json({ field: 'username', error: 'Username must be 3-24 letters, numbers, or underscores.' });
+  }
+  if (Array.from(password).length < AUTH_PASSWORD_MIN_LENGTH || Buffer.byteLength(password, 'utf8') > AUTH_PASSWORD_MAX_BYTES) {
+    return res.status(400).json({ field: 'password', error: 'Password must be at least 12 characters and no more than 72 UTF-8 bytes.' });
+  }
+  if (!database) return res.status(503).json({ error: 'Account creation is temporarily unavailable.' });
+
+  try {
+    const passwordHash = await hashPassword(password, 12);
+    const existingDevice = deviceFingerprint
+      ? await database.query<{ user_id: string }>(
+          'SELECT user_id FROM account_devices WHERE fingerprint_hash = $1 LIMIT 1',
+          [deviceFingerprint],
+        )
+      : { rows: [] as { user_id: string }[] };
+    const result = await database.query<{
+      id: string;
+      email: string;
+      username: string;
+      avatar_url: string | null;
+      paypal_email: string | null;
+      date_of_birth: string | null;
+      sex: string | null;
+      state: string | null;
+    }>(
+      `INSERT INTO users (id, google_sub, email, username, password_hash, signup_ip_hash, last_login_at)
+       VALUES ($1, NULL, $2, $3, $4, $5, NOW())
+       RETURNING id, email, username, avatar_url, paypal_email, date_of_birth, sex, state`,
+      [randomUUID(), email, username, passwordHash, hashFraudIdentifier(getClientIp(req))],
+    );
+    const account = result.rows[0];
+    if (REFERRAL_CODE_PATTERN.test(referralCode)) {
+      const referrer = await database.query<{ user_id: string }>(
+        'SELECT user_id FROM referral_code_aliases WHERE code = $1 LIMIT 1',
+        [referralCode],
+      );
+      const referrerId = referrer.rows[0]?.user_id;
+      if (referrerId && referrerId !== account.id) {
+        await database.query(
+          `UPDATE users
+           SET referred_by = $1, referred_by_user_id = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [referrerId, account.id],
+        );
+      }
+    }
+    if (deviceFingerprint) {
+      await database.query(
+        `INSERT INTO account_devices (user_id, fingerprint_hash, ip_hash)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, fingerprint_hash) DO UPDATE SET
+           last_seen_at = NOW(), ip_hash = EXCLUDED.ip_hash`,
+        [account.id, deviceFingerprint, hashFraudIdentifier(getClientIp(req))],
+      );
+      const existingOwner = existingDevice.rows[0]?.user_id;
+      if (existingOwner && existingOwner !== account.id) {
+        await database.query(
+          `UPDATE users
+           SET fraud_status = 'suspicious', cashout_restricted = TRUE, updated_at = NOW()
+           WHERE id IN ($1, $2)`,
+          [existingOwner, account.id],
+        );
+        await database.query(
+          `INSERT INTO fraud_flags (id, user_id, fingerprint_hash, reason)
+           VALUES ($1, $2, $3, 'duplicate_device_registration'), ($4, $5, $3, 'duplicate_device_registration')
+           ON CONFLICT DO NOTHING`,
+          [randomUUID(), existingOwner, deviceFingerprint, randomUUID(), account.id],
+        );
+        return res.status(403).json({
+          error: 'This device is linked to an existing account. Contact support for review.',
+          suspicious: true,
+        });
+      }
+      memoryDeviceOwners.set(deviceFingerprint, account.id);
+    }
+    const sessionToken = await createAuthSession(account.id);
+    setAuthSessionCookie(res, sessionToken);
+    return res.status(201).json({
+      user: authUserResponse({
+        id: account.id,
+        email: account.email,
+        username: account.username,
+        avatarUrl: account.avatar_url,
+        paypalEmail: account.paypal_email,
+        dateOfBirth: account.date_of_birth,
+        sex: account.sex,
+        state: account.state,
+      }),
+    });
+  } catch (error) {
+    const databaseError = error as { code?: string; constraint?: string };
+    if (databaseError.code === '23505') {
+      if (databaseError.constraint === 'users_email_lower_unique') {
+        return res.status(409).json({ field: 'email', error: 'An account with this email already exists.' });
+      }
+      if (databaseError.constraint === 'users_username_lower_unique' || databaseError.constraint === 'users_username_key') {
+        return res.status(409).json({ field: 'username', error: 'That username is already taken.' });
+      }
+    }
+    console.error('Password sign-up failed:', error);
+    return res.status(500).json({ error: 'Could not create your account. Please try again.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const identifier = typeof req.body?.identifier === 'string' ? req.body.identifier.trim() : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const deviceFingerprint = typeof req.body?.deviceFingerprint === 'string' ? req.body.deviceFingerprint.trim().toLowerCase() : '';
+  if (deviceFingerprint && !isValidDeviceFingerprint(deviceFingerprint)) {
+    return res.status(400).json({ field: 'deviceFingerprint', error: 'Invalid device signature.' });
+  }
+  const isEmail = AUTH_EMAIL_PATTERN.test(identifier);
+  if ((!isEmail && !AUTH_USERNAME_PATTERN.test(identifier)) || identifier.length > 254) {
+    return res.status(400).json({ field: 'identifier', error: 'Enter a valid email address or username.' });
+  }
+  if (!password || Buffer.byteLength(password, 'utf8') > AUTH_PASSWORD_MAX_BYTES) {
+    return res.status(400).json({ field: 'password', error: 'Enter a valid password.' });
+  }
+  if (!database) return res.status(503).json({ error: 'Sign-in is temporarily unavailable.' });
+
+  try {
+    const result = await database.query<{
+      id: string;
+      email: string;
+      username: string | null;
+      password_hash: string | null;
+      avatar_url: string | null;
+      paypal_email: string | null;
+      date_of_birth: string | null;
+      sex: string | null;
+      state: string | null;
+      account_status: 'active' | 'blocked';
+      is_banned: boolean;
+    }>(
+      `SELECT id, email, username, password_hash, avatar_url, paypal_email, date_of_birth, sex, state, account_status, is_banned
+       FROM users
+       WHERE ${isEmail ? 'LOWER(email) = LOWER($1)' : 'LOWER(username) = LOWER($1)'}
+       LIMIT 1`,
+      [isEmail ? identifier.toLowerCase() : identifier],
+    );
+    const account = result.rows[0];
+    const passwordMatches = await comparePassword(password, account?.password_hash || DUMMY_PASSWORD_HASH);
+    if (!account || !account.password_hash || !passwordMatches || account.account_status !== 'active' || account.is_banned) {
+      return res.status(401).json({ error: 'The email or username and password do not match.' });
+    }
+
+    if (deviceFingerprint) {
+      const existingDevices = await database.query<{ user_id: string }>(
+        'SELECT user_id FROM account_devices WHERE fingerprint_hash = $1 AND user_id <> $2 LIMIT 1',
+        [deviceFingerprint, account.id],
+      );
+      if (existingDevices.rows[0]) {
+        const existingOwner = existingDevices.rows[0].user_id;
+        await database.query(
+          `UPDATE users
+           SET fraud_status = 'suspicious', cashout_restricted = TRUE, updated_at = NOW()
+           WHERE id IN ($1, $2)`,
+          [existingOwner, account.id],
+        );
+        await database.query(
+          `INSERT INTO fraud_flags (id, user_id, fingerprint_hash, reason)
+           VALUES ($1, $2, $3, 'duplicate_device_login'), ($4, $5, $3, 'duplicate_device_login')
+           ON CONFLICT DO NOTHING`,
+          [randomUUID(), existingOwner, deviceFingerprint, randomUUID(), account.id],
+        );
+        return res.status(403).json({
+          error: 'This device is linked to multiple accounts and requires manual review.',
+          suspicious: true,
+        });
+      }
+      await database.query(
+        `INSERT INTO account_devices (user_id, fingerprint_hash, ip_hash)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, fingerprint_hash) DO UPDATE SET
+           last_seen_at = NOW(), ip_hash = EXCLUDED.ip_hash`,
+        [account.id, deviceFingerprint, hashFraudIdentifier(getClientIp(req))],
+      );
+    }
+
+    await database.query('UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1', [account.id]);
+    const sessionToken = await createAuthSession(account.id);
+    setAuthSessionCookie(res, sessionToken);
+    return res.json({
+      user: authUserResponse({
+        id: account.id,
+        email: account.email,
+        username: account.username,
+        avatarUrl: account.avatar_url,
+        paypalEmail: account.paypal_email,
+        dateOfBirth: account.date_of_birth,
+        sex: account.sex,
+        state: account.state,
+      }),
+    });
+  } catch (error) {
+    console.error('Password sign-in failed:', error);
+    return res.status(500).json({ error: 'Could not sign in. Please try again.' });
+  }
 });
 
 app.get('/api/auth/google', (req, res) => {
@@ -630,7 +1640,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const accountReferralCode = MEMBER_REFERRALS_ENABLED ? randomBytes(6).toString('hex').toUpperCase() : null;
     type AuthAccountRow = {
       id: string;
-      google_sub: string;
+      google_sub: string | null;
       email: string;
       username: string | null;
       avatar_url: string | null;
@@ -639,22 +1649,44 @@ app.get('/api/auth/google/callback', async (req, res) => {
       sex: string | null;
       state: string | null;
       account_status: 'active' | 'blocked';
+      is_banned: boolean;
     };
     let user: AuthAccountRow | undefined;
+    let isNewAccount = false;
     if (database) {
       const client = await database.connect();
       try {
         await client.query('BEGIN');
-        const inserted = await client.query<AuthAccountRow>(
-          `INSERT INTO users (id, google_sub, email, referral_code, signup_ip_hash)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (google_sub) DO NOTHING
-           RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status`,
-          [userId, identity.sub, identity.email, accountReferralCode, signupIpHash],
+        const matchingEmail = await client.query<AuthAccountRow>(
+          `SELECT id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status, is_banned
+           FROM users WHERE LOWER(email) = LOWER($1) FOR UPDATE`,
+          [identity.email],
         );
-        user = inserted.rows[0];
+        if (matchingEmail.rows[0]) {
+          if (matchingEmail.rows[0].google_sub && matchingEmail.rows[0].google_sub !== identity.sub) {
+            throw new Error('AUTH_EMAIL_CONFLICT');
+          }
+          const linked = await client.query<AuthAccountRow>(
+            `UPDATE users
+             SET google_sub = $1, email = $2, updated_at = NOW()
+             WHERE id = $3
+             RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status, is_banned`,
+            [identity.sub, identity.email, matchingEmail.rows[0].id],
+          );
+          user = linked.rows[0];
+        } else {
+          const inserted = await client.query<AuthAccountRow>(
+            `INSERT INTO users (id, google_sub, email, referral_code, signup_ip_hash)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (google_sub) DO NOTHING
+             RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status, is_banned`,
+            [userId, identity.sub, identity.email, accountReferralCode, signupIpHash],
+          );
+          user = inserted.rows[0];
+          isNewAccount = Boolean(user);
+        }
 
-        if (user && accountReferralCode) {
+        if (isNewAccount && user && accountReferralCode) {
           await client.query(
             `INSERT INTO referral_code_aliases (code, user_id)
              VALUES ($1, $2)
@@ -663,7 +1695,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
           );
         }
 
-        if (MEMBER_REFERRALS_ENABLED && user && verifiedOAuthState.referralCode && signupIpHash && referralHashSecret) {
+        if (MEMBER_REFERRALS_ENABLED && isNewAccount && user && verifiedOAuthState.referralCode && signupIpHash && referralHashSecret) {
           const referrerResult = await client.query<{ id: string }>(
             'SELECT user_id AS id FROM referral_code_aliases WHERE code = $1 LIMIT 1',
             [verifiedOAuthState.referralCode],
@@ -713,7 +1745,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
             `UPDATE users
              SET email = $1, updated_at = NOW()
              WHERE google_sub = $2
-             RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status`,
+             RETURNING id, google_sub, email, username, avatar_url, paypal_email, date_of_birth, sex, state, account_status, is_banned`,
             [identity.email, identity.sub],
           );
           user = existing.rows[0];
@@ -728,7 +1760,39 @@ app.get('/api/auth/google/callback', async (req, res) => {
       }
     }
     if (database && !user) return res.status(500).send('Could not create your account.');
-    if (user?.account_status === 'blocked') return res.status(403).send('This account has been blocked. Please contact support.');
+    if (database && user) {
+      const deviceFingerprint = getCookieValue(req, 'sfc_device_fingerprint');
+      if (isValidDeviceFingerprint(deviceFingerprint)) {
+        const existingDevices = await database.query<{ user_id: string }>(
+          'SELECT user_id FROM account_devices WHERE fingerprint_hash = $1 AND user_id <> $2 LIMIT 1',
+          [deviceFingerprint, user.id],
+        );
+        if (existingDevices.rows[0]) {
+          const existingOwner = existingDevices.rows[0].user_id;
+          await database.query(
+            `UPDATE users
+             SET fraud_status = 'suspicious', cashout_restricted = TRUE, updated_at = NOW()
+             WHERE id IN ($1, $2)`,
+            [existingOwner, user.id],
+          );
+          await database.query(
+            `INSERT INTO fraud_flags (id, user_id, fingerprint_hash, reason)
+             VALUES ($1, $2, $3, 'duplicate_device_login'), ($4, $5, $3, 'duplicate_device_login')
+             ON CONFLICT DO NOTHING`,
+            [randomUUID(), existingOwner, deviceFingerprint, randomUUID(), user.id],
+          );
+          return res.status(403).send('This device is linked to multiple accounts and requires manual review.');
+        }
+        await database.query(
+          `INSERT INTO account_devices (user_id, fingerprint_hash, ip_hash)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, fingerprint_hash) DO UPDATE SET
+             last_seen_at = NOW(), ip_hash = EXCLUDED.ip_hash`,
+          [user.id, deviceFingerprint, hashFraudIdentifier(getClientIp(req))],
+        );
+      }
+    }
+    if (user?.account_status === 'blocked' || user?.is_banned) return res.status(403).send('This account has been blocked. Please contact support.');
     const memoryUser = user
       ? { id: user.id, googleSub: user.google_sub, email: user.email, username: user.username, avatarUrl: user.avatar_url, paypalEmail: user.paypal_email, dateOfBirth: user.date_of_birth, sex: user.sex, state: user.state, accountStatus: user.account_status, lastLoginAt: new Date().toISOString() }
       : [...authUsers.values()].find((entry) => entry.googleSub === identity.sub) || { id: userId, googleSub: identity.sub, email: identity.email, username: null, avatarUrl: null, paypalEmail: null, dateOfBirth: null, sex: null, state: null, accountStatus: 'active' as const, lastLoginAt: new Date().toISOString() };
@@ -737,23 +1801,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
       await database.query('UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1', [memoryUser.id]);
       await syncOwnerFriendListForUser(memoryUser.id);
     }
-    const sessionToken = randomBytes(32).toString('hex');
-    const expiresAt = Date.now() + AUTH_SESSION_MAX_AGE_SECONDS * 1000;
-    authSessions.set(sessionToken, { userId: memoryUser.id, expiresAt });
-    if (database) {
-      await database.query(
-        `INSERT INTO auth_sessions (token, user_id, expires_at)
-         VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
-        [sessionToken, memoryUser.id],
-      );
-    }
-    res.cookie('sfc_session', sessionToken, {
-      maxAge: AUTH_SESSION_MAX_AGE_SECONDS * 1000,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: env.NODE_ENV === 'production',
-      path: '/',
-    });
+    const sessionToken = await createAuthSession(memoryUser.id);
+    setAuthSessionCookie(res, sessionToken);
     res.clearCookie('sfc_oauth_state', {
       httpOnly: true,
       sameSite: 'lax',
@@ -763,6 +1812,13 @@ app.get('/api/auth/google/callback', async (req, res) => {
     res.type('html').send(`<!doctype html><title>Sign-in complete</title><script>if(window.opener){window.opener.location.replace(${JSON.stringify(requestAppUrl)});window.opener.postMessage({type:'sfc-auth-complete'}, '*');}window.close();</script><p>Sign-in complete. You can close this window.</p>`);
   } catch (error) {
     console.error('Google sign-in failed:', error);
+    const databaseError = error as { code?: string; constraint?: string };
+    if (
+      (error instanceof Error && error.message === 'AUTH_EMAIL_CONFLICT') ||
+      (databaseError.code === '23505' && databaseError.constraint === 'users_email_lower_unique')
+    ) {
+      return res.status(409).send('This email is already connected to another account. Sign in with the existing account instead.');
+    }
     res.status(500).send('Google sign-in could not be completed.');
   }
 });
@@ -1077,7 +2133,7 @@ app.post('/api/referrals/claim', requireMemberReferralsEnabled, async (req, res)
 app.post('/api/auth/username', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
-  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  if (!user) return res.status(401).json({ error: 'Sign in first.' });
   if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) {
     return res.status(400).json({ error: 'Username must be 3-24 letters, numbers, or underscores.' });
   }
@@ -1109,7 +2165,7 @@ app.post('/api/auth/username', async (req, res) => {
 
 app.put('/api/auth/profile', async (req, res) => {
   const user = await getAuthenticatedUser(req);
-  if (!user) return res.status(401).json({ error: 'Sign in with Google first.' });
+  if (!user) return res.status(401).json({ error: 'Sign in first.' });
   const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
   const paypalEmail = typeof req.body?.paypalEmail === 'string' ? req.body.paypalEmail.trim().toLowerCase() : '';
   const dateOfBirth = typeof req.body?.dateOfBirth === 'string' ? req.body.dateOfBirth : '';
@@ -1194,6 +2250,7 @@ function extractPublicUrl(value: string) {
 
 // In-memory / server state for demo & persistence
 let liveOffersStore: any[] = PUBLIC_OFFERS.filter((offer) => !isTemporarilyHiddenOffer(offer));
+const offerCampaignsStore = new Map<string, OfferCampaign>();
 let pendingOffersStore: any[] = [];
 let subscribersStore: { id: string; email: string; subscribedAt: string; frequency: string; verified: boolean; unsubscribedAt?: string | null }[] = [];
 const issueReportsStore: { id: string; offerId: string; issue: string; description: string; status: string; reportedAt: string }[] = [];
@@ -1302,6 +2359,17 @@ let visitorAnalyticsStore = {
 };
 let siteSettingsStore: SiteSettings = { ...DEFAULT_SITE_SETTINGS };
 const supportMemory = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
+const supportTicketsStore = new Map<string, {
+  id: string;
+  userId: string;
+  transactionReferenceId: string | null;
+  screenshotUrl: string | null;
+  subject: string;
+  message: string;
+  status: 'OPEN' | 'PENDING_NETWORK_REVIEW' | 'RESOLVED';
+  createdAt: string;
+  resolvedAt: string | null;
+}>();
 const communityMessages: Array<{ id: string; displayName: string; content: string; createdAt: string }> = [];
 const communityPresence = new Map<string, { lastSeen: number; displayName: string; userId?: string }>();
 const communityMessageRates = new Map<string, number[]>();
@@ -1391,6 +2459,57 @@ async function initializeOfferStore() {
       viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      google_sub TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL,
+      username TEXT UNIQUE,
+      paypal_email TEXT,
+      date_of_birth DATE,
+      sex TEXT,
+      state TEXT,
+      account_status TEXT NOT NULL DEFAULT 'active' CHECK (account_status IN ('active', 'blocked')),
+      last_login_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id UUID PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      is_read BOOLEAN NOT NULL DEFAULT FALSE,
+      type TEXT NOT NULL CHECK (type IN ('CREDIT_ALERT', 'PVP_ALERT', 'SYSTEM')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS notifications_user_created_at_idx
+    ON notifications (user_id, created_at DESC)
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS notifications_user_unread_idx
+    ON notifications (user_id, created_at DESC) WHERE is_read = FALSE
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS live_offer_credits (
+      id UUID PRIMARY KEY,
+      transaction_reference TEXT NOT NULL UNIQUE,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      masked_username TEXT NOT NULL,
+      offerwall_name TEXT NOT NULL,
+      offer_name TEXT NOT NULL,
+      payout_amount NUMERIC(12, 2) NOT NULL CHECK (payout_amount > 0),
+      credited_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS live_offer_credits_credited_at_idx
+    ON live_offer_credits (credited_at DESC)
+  `);
   const migrationClient = await database.connect();
   const migrations = [
     {
@@ -1401,6 +2520,95 @@ async function initializeOfferStore() {
         await migrationClient.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ');
         await migrationClient.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT \'Unknown\'');
         await migrationClient.query('ALTER TABLE visitor_events ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT \'Unknown\'');
+      },
+    },
+    {
+      version: 2,
+      apply: async () => {
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT \'active\'');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (balance >= 0)');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS affiliate_tracking_id TEXT');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ip_address TEXT');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE');
+        await migrationClient.query('UPDATE users SET is_banned = TRUE WHERE account_status = \'blocked\'');
+        await migrationClient.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique
+          ON users (LOWER(username)) WHERE username IS NOT NULL
+        `);
+        await migrationClient.query(`
+          CREATE INDEX IF NOT EXISTS users_affiliate_tracking_id_idx
+          ON users (affiliate_tracking_id) WHERE affiliate_tracking_id IS NOT NULL
+        `);
+        await migrationClient.query(`
+          DO $$
+          BEGIN
+            CREATE TYPE transaction_type AS ENUM ('OFFER_COMPLETION', 'PVP_WIN', 'PVP_LOSS', 'WITHDRAWAL');
+          EXCEPTION
+            WHEN duplicate_object THEN NULL;
+          END;
+          $$;
+        `);
+        await migrationClient.query(
+          `ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'PVP_DRAW'`,
+        );
+        await migrationClient.query(
+          `ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'LEADERBOARD_PRIZE'`,
+        );
+        await migrationClient.query(
+          `ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'REFERRAL_COMMISSION'`,
+        );
+        await migrationClient.query(`
+          CREATE TABLE IF NOT EXISTS transactions (
+            id UUID PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            amount NUMERIC(12, 2) NOT NULL,
+            type transaction_type NOT NULL,
+            reference_id TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        `);
+        await migrationClient.query(`
+          CREATE INDEX IF NOT EXISTS transactions_user_created_at_idx
+          ON transactions (user_id, created_at DESC)
+        `);
+        await migrationClient.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS transactions_reference_id_unique
+          ON transactions (reference_id) WHERE reference_id IS NOT NULL
+        `);
+      },
+    },
+    {
+      version: 3,
+      apply: async () => {
+        const duplicateEmails = await migrationClient.query(`
+          SELECT 1
+          FROM users
+          GROUP BY LOWER(email)
+          HAVING COUNT(*) > 1
+          LIMIT 1
+        `);
+        if (duplicateEmails.rowCount) {
+          throw new Error('Cannot enable password authentication until duplicate account emails are resolved.');
+        }
+        await migrationClient.query('ALTER TABLE users ALTER COLUMN google_sub DROP NOT NULL');
+        await migrationClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT');
+        await migrationClient.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique
+          ON users (LOWER(email))
+        `);
+      },
+    },
+    {
+      version: 4,
+      apply: async () => {
+        await migrationClient.query(
+          `ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'PVP_WAGER'`,
+        );
+        await migrationClient.query(
+          `ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'PVP_REFUND'`,
+        );
       },
     },
   ];
@@ -1423,6 +2631,78 @@ async function initializeOfferStore() {
     migrationClient.release();
   }
 
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS fraud_status TEXT NOT NULL DEFAULT 'clean'`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cashout_restricted BOOLEAN NOT NULL DEFAULT FALSE`);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS account_devices (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fingerprint_hash TEXT NOT NULL CHECK (char_length(fingerprint_hash) = 64),
+      ip_hash TEXT,
+      first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, fingerprint_hash)
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS account_devices_fingerprint_idx
+    ON account_devices (fingerprint_hash)
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS fraud_flags (
+      id UUID PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fingerprint_hash TEXT,
+      reason TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, fingerprint_hash, reason)
+    )
+  `);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_withdrawal NUMERIC(12, 2) NOT NULL DEFAULT 0.00`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_wheel_uses INTEGER NOT NULL DEFAULT 0`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_wheel_reset_at TIMESTAMPTZ`);
+  await database.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payout_status TEXT`);
+  await database.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payout_channel TEXT`);
+  await database.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tracking_id_hash TEXT`);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+      id UUID PRIMARY KEY,
+      idempotency_key TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 5.00),
+      channel TEXT NOT NULL CHECK (channel IN ('paypal', 'venmo', 'crypto')),
+      destination_hash TEXT NOT NULL,
+      destination_mask TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING'
+        CHECK (status IN ('PENDING', 'COMPLETED', 'REJECTED')),
+      tracking_id_hash TEXT NOT NULL,
+      provider_reference TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      processed_at TIMESTAMPTZ,
+      UNIQUE (user_id, idempotency_key)
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS background_worker_runs (
+      run_key TEXT PRIMARY KEY,
+      worker_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS weekly_leaderboard_entries (
+      race_key TEXT NOT NULL,
+      rank INTEGER NOT NULL CHECK (rank BETWEEN 1 AND 10),
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      earnings NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      prize NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (race_key, rank),
+      UNIQUE (race_key, user_id)
+    )
+  `);
   await database.query(`
     CREATE TABLE IF NOT EXISTS cpx_transactions (
       transaction_id TEXT PRIMARY KEY,
@@ -1442,23 +2722,199 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS game_rps_games (
+      id UUID PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      idempotency_key TEXT NOT NULL,
+      player_choice TEXT NOT NULL CHECK (player_choice IN ('rock', 'paper', 'scissors')),
+      opponent_choice TEXT NOT NULL CHECK (opponent_choice IN ('rock', 'paper', 'scissors')),
+      opponent_username TEXT NOT NULL,
+      outcome TEXT NOT NULL CHECK (outcome IN ('win', 'loss', 'draw')),
+      entry_points INTEGER NOT NULL CHECK (entry_points > 0),
+      payout_points INTEGER NOT NULL CHECK (payout_points >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, idempotency_key)
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS rps_lobbies (
+      id UUID PRIMARY KEY,
+      player1_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      player2_id TEXT REFERENCES users(id) ON DELETE RESTRICT,
+      wager_amount NUMERIC(12, 2) NOT NULL CHECK (wager_amount > 0),
+      wager_currency TEXT NOT NULL CHECK (wager_currency IN ('points', 'cash')),
+      state TEXT NOT NULL DEFAULT 'waiting' CHECK (state IN ('waiting', 'active', 'completed')),
+      ended_reason TEXT CHECK (ended_reason IN ('settled', 'expired') OR ended_reason IS NULL),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CHECK (wager_currency <> 'points' OR wager_amount = TRUNC(wager_amount)),
+      CHECK (player2_id IS NULL OR player2_id <> player1_id),
+      CHECK (state = 'waiting' OR player2_id IS NOT NULL),
+      UNIQUE (id, player1_id, player2_id)
+    )
+  `);
+  await database.query(`ALTER TABLE rps_lobbies ADD COLUMN IF NOT EXISTS ended_reason TEXT`);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS rps_lobby_moves (
+      lobby_id UUID NOT NULL REFERENCES rps_lobbies(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      choice TEXT NOT NULL CHECK (choice IN ('rock', 'paper', 'scissors')),
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (lobby_id, user_id)
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS rps_lobbies_open_created_at_idx
+    ON rps_lobbies (created_at DESC)
+    WHERE state = 'waiting'
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS rps_matches (
+      id UUID PRIMARY KEY,
+      lobby_id UUID NOT NULL UNIQUE,
+      player1_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      player2_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      player1_choice TEXT NOT NULL CHECK (player1_choice IN ('rock', 'paper', 'scissors')),
+      player2_choice TEXT NOT NULL CHECK (player2_choice IN ('rock', 'paper', 'scissors')),
+      winner_id TEXT REFERENCES users(id) ON DELETE RESTRICT,
+      outcome TEXT NOT NULL CHECK (outcome IN ('player1', 'player2', 'draw')),
+      completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CHECK (player1_id <> player2_id),
+      CHECK (
+        (outcome = 'player1' AND winner_id IS NOT NULL AND winner_id = player1_id) OR
+        (outcome = 'player2' AND winner_id IS NOT NULL AND winner_id = player2_id) OR
+        (outcome = 'draw' AND winner_id IS NULL)
+      ),
+      FOREIGN KEY (lobby_id, player1_id, player2_id)
+        REFERENCES rps_lobbies (id, player1_id, player2_id) ON DELETE RESTRICT,
+      UNIQUE (id, winner_id)
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS rps_matches_players_completed_at_idx
+    ON rps_matches (player1_id, player2_id, completed_at DESC)
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS rps_house_ledger (
+      id UUID PRIMARY KEY,
+      match_id UUID NOT NULL UNIQUE,
+      winner_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      currency TEXT NOT NULL CHECK (currency IN ('points', 'cash')),
+      pool_amount NUMERIC(12, 2) NOT NULL CHECK (pool_amount > 0),
+      rake_rate_bps INTEGER NOT NULL CHECK (rake_rate_bps BETWEEN 100 AND 300),
+      rake_amount NUMERIC(12, 2) NOT NULL CHECK (rake_amount > 0 AND rake_amount <= pool_amount),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      FOREIGN KEY (match_id, winner_id)
+        REFERENCES rps_matches (id, winner_id) ON DELETE RESTRICT
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS rps_house_ledger_created_at_idx
+    ON rps_house_ledger (created_at DESC)
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_milestone_tiers (
+      offer_id TEXT NOT NULL,
+      stage INTEGER NOT NULL CHECK (stage > 0),
+      level INTEGER NOT NULL CHECK (level > 0),
+      reward_points INTEGER NOT NULL CHECK (reward_points >= 0),
+      description TEXT NOT NULL DEFAULT '',
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      PRIMARY KEY (offer_id, stage),
+      UNIQUE (offer_id, level)
+    )
+  `);
+  await database.query(`ALTER TABLE offer_milestone_tiers ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''`);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_campaigns (
       id TEXT PRIMARY KEY,
-      google_sub TEXT NOT NULL UNIQUE,
-      email TEXT NOT NULL,
-      username TEXT UNIQUE,
-      paypal_email TEXT,
-      date_of_birth DATE,
-      sex TEXT,
-      state TEXT,
-      account_status TEXT NOT NULL DEFAULT 'active' CHECK (account_status IN ('active', 'blocked')),
-      last_login_at TIMESTAMPTZ,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL CHECK (category IN ('fintech', 'brokerage', 'cashback', 'apps', 'crypto', 'gaming')),
+      total_value NUMERIC(12, 2) NOT NULL CHECK (total_value >= 0),
+      milestones JSONB NOT NULL CHECK (jsonb_typeof(milestones) = 'array'),
+      tracking_parameters JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(tracking_parameters) = 'object'),
+      active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  const campaignRows = await database.query<{
+    id: string;
+    title: string;
+    description: string;
+    category: OfferCampaign['category'];
+    total_value: string;
+    milestones: OfferMilestone[];
+    tracking_parameters: Record<string, string>;
+    active: boolean;
+    created_at: Date;
+    updated_at: Date;
+  }>('SELECT id, title, description, category, total_value, milestones, tracking_parameters, active, created_at, updated_at FROM offer_campaigns');
+  offerCampaignsStore.clear();
+  for (const row of campaignRows.rows) {
+    offerCampaignsStore.set(row.id, {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      category: row.category,
+      total_value: Number(row.total_value),
+      milestones: row.milestones,
+      tracking_parameters: row.tracking_parameters,
+      active: row.active,
+      created_at: new Date(row.created_at).toISOString(),
+      updated_at: new Date(row.updated_at).toISOString(),
+    });
+  }
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_milestone_events (
+      event_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      level INTEGER NOT NULL CHECK (level > 0),
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS user_offer_milestone_progress (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      current_level INTEGER NOT NULL DEFAULT 0 CHECK (current_level >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, offer_id)
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS user_offer_milestone_claims (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      stage INTEGER NOT NULL,
+      level INTEGER NOT NULL,
+      reward_points INTEGER NOT NULL CHECK (reward_points >= 0),
+      event_id TEXT NOT NULL REFERENCES offer_milestone_events(event_id),
+      credited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, offer_id, stage)
+    )
+  `);
+  for (const tier of EARNX_MILESTONE_TIERS) {
+    await database.query(
+      `INSERT INTO offer_milestone_tiers (offer_id, stage, level, reward_points, description)
+       VALUES ('offer-earnx', $1, $2, $3, $4)
+       ON CONFLICT (offer_id, stage) DO UPDATE
+       SET description = EXCLUDED.description
+       WHERE offer_milestone_tiers.description = ''`,
+      [tier.stage, tier.level, tier.rewardPoints, tier.description],
+    );
+  }
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`);
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id TEXT REFERENCES users(id)`);
+  await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by TEXT REFERENCES users(id)`);
+  await database.query(`
+    UPDATE users
+    SET referred_by = referred_by_user_id
+    WHERE referred_by IS NULL AND referred_by_user_id IS NOT NULL
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS users_referred_by_idx ON users (referred_by)');
   await database.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_ip_hash TEXT`);
   await database.query(`
     UPDATE users
@@ -1496,6 +2952,16 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
+    CREATE TABLE IF NOT EXISTS referrals_ledger (
+      id UUID PRIMARY KEY,
+      referrer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referee_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      original_transaction_id TEXT NOT NULL UNIQUE,
+      commission_amount NUMERIC(12, 2) NOT NULL CHECK (commission_amount >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
     ALTER TABLE referrals
     ADD COLUMN IF NOT EXISTS verified_net_revenue NUMERIC(10,2) NOT NULL DEFAULT 0
     CHECK (verified_net_revenue >= 0)
@@ -1520,6 +2986,16 @@ async function initializeOfferStore() {
       expires_at TIMESTAMPTZ NOT NULL
     )
   `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS click_logs (
+      click_uuid TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offer_id TEXT NOT NULL,
+      ip_address TEXT,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS click_logs_user_offer_time_idx ON click_logs (user_id, offer_id, timestamp DESC)');
   await database.query(`
     CREATE TABLE IF NOT EXISTS user_offer_entries (
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1640,6 +3116,37 @@ async function initializeOfferStore() {
     )
   `);
   await database.query('CREATE INDEX IF NOT EXISTS offer_revenue_events_time_offer_idx ON offer_revenue_events (recorded_at, offer_id)');
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_security_events (
+      id UUID PRIMARY KEY,
+      offer_id TEXT NOT NULL,
+      event_type TEXT NOT NULL CHECK (event_type IN ('security_failure', 'signature_mismatch', 'chargeback')),
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query('CREATE INDEX IF NOT EXISTS offer_security_events_offer_time_idx ON offer_security_events (offer_id, occurred_at DESC)');
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS offer_feed_sync_runs (
+      id UUID PRIMARY KEY,
+      feed_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+      fetched_count INTEGER NOT NULL DEFAULT 0,
+      upserted_count INTEGER NOT NULL DEFAULT 0,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS ledger_integrity_runs (
+      id UUID PRIMARY KEY,
+      checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      transaction_credits NUMERIC(12, 2) NOT NULL,
+      live_user_balance NUMERIC(12, 2) NOT NULL,
+      difference NUMERIC(12, 2) NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('healthy', 'anomalous'))
+    )
+  `);
   await database.query("DELETE FROM offer_analytics_events WHERE occurred_at < NOW() - INTERVAL '365 days'");
   await database.query(`
     CREATE TABLE IF NOT EXISTS analytics_report_checkpoints (
@@ -1685,6 +3192,20 @@ async function initializeOfferStore() {
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
       content TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id UUID PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      transaction_reference_id TEXT,
+      screenshot_url TEXT,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN'
+        CHECK (status IN ('OPEN', 'PENDING_NETWORK_REVIEW', 'RESOLVED')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at TIMESTAMPTZ
     )
   `);
   await database.query(`
@@ -1867,7 +3388,35 @@ async function saveLiveOffers() {
   }
 }
 
-// API: Health check
+// API: Health checks
+app.get('/health', async (_req, res) => {
+  const uptimeSeconds = Math.floor(process.uptime());
+  if (!database) {
+    return res.json({
+      status: 'ok',
+      database: 'memory',
+      uptimeSeconds,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  try {
+    await database.query('SELECT 1');
+    return res.json({
+      status: 'ok',
+      database: 'connected',
+      uptimeSeconds,
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    return res.status(503).json({
+      status: 'degraded',
+      database: 'unavailable',
+      uptimeSeconds,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 app.get('/api/health', async (_req, res) => {
   const emailConfigured = Boolean(env.RESEND_API_KEY?.trim() && env.EMAIL_FROM?.trim());
   if (!database) {
@@ -1944,6 +3493,1484 @@ app.get('/api/cpx/balance', async (req, res) => {
   });
 });
 
+async function lockRpsPlayerBalances(
+  client: PoolClient,
+  userIds: string[],
+  currency: RpsWagerCurrency,
+  requireActiveAccounts = true,
+) {
+  const uniqueUserIds = [...new Set(userIds)].sort();
+  const accountResult = await client.query<{
+    id: string;
+    balance: string;
+    account_status: 'active' | 'blocked';
+    is_banned: boolean;
+  }>(
+    `SELECT id, balance, account_status, is_banned
+     FROM users
+     WHERE id = ANY($1::text[])
+     ORDER BY id
+     FOR UPDATE`,
+    [uniqueUserIds],
+  );
+  if (
+    accountResult.rowCount !== uniqueUserIds.length ||
+    (requireActiveAccounts && accountResult.rows.some((account) => account.account_status !== 'active' || account.is_banned))
+  ) return { balances: new Map<string, number>(), error: 'A player account is not eligible for this match.' };
+
+  if (currency === 'cash') {
+    const balances = new Map<string, number>();
+    for (const account of accountResult.rows) {
+      const units = Math.round(Number(account.balance) * 100);
+      if (!Number.isSafeInteger(units) || units < 0) {
+        return { balances: new Map<string, number>(), error: 'A player wallet balance is invalid.' };
+      }
+      balances.set(account.id, units);
+    }
+    return { balances, error: null };
+  }
+
+  await client.query(
+    `INSERT INTO survey_reward_balances (user_id, points)
+     SELECT UNNEST($1::text[]), 0
+     ON CONFLICT (user_id) DO NOTHING`,
+    [uniqueUserIds],
+  );
+  const pointResult = await client.query<{ user_id: string; points: number }>(
+    `SELECT user_id, points
+     FROM survey_reward_balances
+     WHERE user_id = ANY($1::text[])
+     ORDER BY user_id
+     FOR UPDATE`,
+    [uniqueUserIds],
+  );
+  if (pointResult.rowCount !== uniqueUserIds.length) {
+    return { balances: new Map<string, number>(), error: 'A player wallet balance is unavailable.' };
+  }
+  const balances = new Map<string, number>();
+  for (const wallet of pointResult.rows) {
+    const points = Number(wallet.points);
+    if (!Number.isSafeInteger(points) || points < 0) {
+      return { balances: new Map<string, number>(), error: 'A player wallet balance is invalid.' };
+    }
+    balances.set(wallet.user_id, points);
+  }
+  return { balances, error: null };
+}
+
+async function updateRpsWallet(
+  client: PoolClient,
+  userId: string,
+  currency: RpsWagerCurrency,
+  deltaUnits: number,
+) {
+  if (currency === 'cash') {
+    const deltaDollars = deltaUnits / 100;
+    const result = await client.query<{ balance: string }>(
+      `UPDATE users
+       SET balance = balance + $2, updated_at = NOW()
+       WHERE id = $1 AND balance + $2 >= 0 AND balance + $2 <= $3
+       RETURNING balance`,
+      [userId, deltaDollars, RPS_MAX_CASH_BALANCE_CENTS / 100],
+    );
+    if (!result.rows[0]) return null;
+    return Math.round(Number(result.rows[0].balance) * 100);
+  }
+
+  const result = await client.query<{ points: number }>(
+    `UPDATE survey_reward_balances
+     SET points = points + $2, updated_at = NOW()
+     WHERE user_id = $1 AND points + $2 BETWEEN 0 AND $3
+     RETURNING points`,
+    [userId, deltaUnits, RPS_MAX_POINTS_BALANCE],
+  );
+  return result.rows[0] ? Number(result.rows[0].points) : null;
+}
+
+async function insertRpsWalletTransaction(
+  client: PoolClient,
+  userId: string,
+  amountUnits: number,
+  type: 'PVP_WAGER' | 'PVP_WIN' | 'PVP_DRAW' | 'PVP_REFUND',
+  referenceId: string,
+) {
+  const result = await client.query(
+    `INSERT INTO transactions (id, user_id, amount, type, reference_id)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (reference_id) WHERE reference_id IS NOT NULL DO NOTHING
+     RETURNING id`,
+    [randomUUID(), userId, amountUnits / 100, type, referenceId],
+  );
+  if (result.rowCount !== 1) throw new Error(`Duplicate PvP wallet transaction reference: ${referenceId}`);
+}
+
+async function loadRpsLobbyState(client: PoolClient, lobbyId: string, userId: string) {
+  const lobbyResult = await client.query<RpsLobbyRow>(
+    `SELECT id, player1_id, player2_id, wager_amount, wager_currency, state, ended_reason, created_at
+     FROM rps_lobbies
+     WHERE id = $1`,
+    [lobbyId],
+  );
+  const lobby = lobbyResult.rows[0];
+  if (!lobby || (lobby.player1_id !== userId && lobby.player2_id !== userId)) return null;
+
+  const opponentId = lobby.player1_id === userId ? lobby.player2_id : lobby.player1_id;
+  const moves = await client.query<{ user_id: string; choice: RpsChoice }>(
+    'SELECT user_id, choice FROM rps_lobby_moves WHERE lobby_id = $1',
+    [lobbyId],
+  );
+  const ownMove = moves.rows.find((move) => move.user_id === userId);
+  const opponentMoveSubmitted = Boolean(opponentId && moves.rows.some((move) => move.user_id === opponentId));
+  const state = {
+    lobby: {
+      id: lobby.id,
+      state: lobby.state,
+      endedReason: lobby.ended_reason,
+      wagerAmount: Number(lobby.wager_amount),
+      currency: lobby.wager_currency,
+      createdAt: new Date(lobby.created_at).toISOString(),
+    },
+    yourChoice: ownMove?.choice || null,
+    opponentMoveSubmitted,
+  };
+  if (lobby.state !== 'completed') return state;
+
+  const matchResult = await client.query<{
+    id: string;
+    player1_choice: RpsChoice;
+    player2_choice: RpsChoice;
+    winner_id: string | null;
+    outcome: 'player1' | 'player2' | 'draw';
+    completed_at: Date;
+  }>(
+    `SELECT id, player1_choice, player2_choice, winner_id, outcome, completed_at
+     FROM rps_matches
+     WHERE lobby_id = $1`,
+    [lobbyId],
+  );
+  const match = matchResult.rows[0];
+  if (!match) return state;
+  const ledgerResult = await client.query<{ pool_amount: string; rake_amount: string }>(
+    'SELECT pool_amount, rake_amount FROM rps_house_ledger WHERE match_id = $1',
+    [match.id],
+  );
+  return {
+    ...state,
+    opponentMoveSubmitted: true,
+    match: {
+      id: match.id,
+      player1Choice: match.player1_choice,
+      player2Choice: match.player2_choice,
+      winnerId: match.winner_id,
+      outcome: match.outcome,
+      poolAmount: ledgerResult.rows[0]
+        ? Number(ledgerResult.rows[0].pool_amount)
+        : Number(lobby.wager_amount) * 2,
+      rakeAmount: ledgerResult.rows[0] ? Number(ledgerResult.rows[0].rake_amount) : 0,
+      completedAt: new Date(match.completed_at).toISOString(),
+    },
+  };
+}
+
+function formatRpsWalletUnits(currency: RpsWagerCurrency, units: number) {
+  return currency === 'cash'
+    ? `$${(units / 100).toFixed(2)}`
+    : `${units} points ($${(units / SURVEY_POINTS_PER_DOLLAR).toFixed(2)})`;
+}
+
+async function settleRpsLobbyMatch(
+  client: PoolClient,
+  lobby: RpsLobbyRow,
+  moves: Array<{ user_id: string; choice: RpsChoice }>,
+): Promise<{ settlement: RpsSettlement } | { error: string }> {
+  const player1Move = moves.find((move) => move.user_id === lobby.player1_id);
+  const player2Move = lobby.player2_id
+    ? moves.find((move) => move.user_id === lobby.player2_id)
+    : undefined;
+  if (!lobby.player2_id || !player1Move || !player2Move) {
+    return { error: 'Both players must submit a move before settlement.' };
+  }
+  const wager = parseRpsWager(Number(lobby.wager_amount), lobby.wager_currency);
+  if (!wager) throw new Error(`Invalid persisted RPS wager for lobby ${lobby.id}.`);
+
+  const player1Result = evaluateRpsOutcome(player1Move.choice, player2Move.choice);
+  const outcome = player1Result === 'draw'
+    ? 'draw'
+    : player1Result === 'win' ? 'player1' : 'player2';
+  const winnerId = outcome === 'player1'
+    ? lobby.player1_id
+    : outcome === 'player2' ? lobby.player2_id : null;
+  const poolUnits = wager.units * 2;
+  const rakeUnits = winnerId ? calculateRpsPvpRakeUnits(poolUnits) : 0;
+  const payoutUnits = winnerId ? poolUnits - rakeUnits : 0;
+  const userIds = [lobby.player1_id, lobby.player2_id];
+  const locked = await lockRpsPlayerBalances(client, userIds, wager.currency, false);
+  if (locked.error) return { error: locked.error };
+
+  if (winnerId) {
+    const winnerBalance = locked.balances.get(winnerId);
+    const maximum = wager.currency === 'cash' ? RPS_MAX_CASH_BALANCE_CENTS : RPS_MAX_POINTS_BALANCE;
+    if (winnerBalance === undefined || winnerBalance + payoutUnits > maximum) {
+      return { error: 'The winner wallet cannot accept the match payout yet.' };
+    }
+  }
+
+  const matchId = randomUUID();
+  await client.query(
+    `INSERT INTO rps_matches
+      (id, lobby_id, player1_id, player2_id, player1_choice, player2_choice, winner_id, outcome)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      matchId,
+      lobby.id,
+      lobby.player1_id,
+      lobby.player2_id,
+      player1Move.choice,
+      player2Move.choice,
+      winnerId,
+      outcome,
+    ],
+  );
+
+  for (const playerId of userIds) {
+    const isWinner = playerId === winnerId;
+    const adjustment = outcome === 'draw'
+      ? wager.units
+      : isWinner ? payoutUnits : 0;
+    if (!adjustment) continue;
+    const updatedBalance = await updateRpsWallet(client, playerId, wager.currency, adjustment);
+    if (updatedBalance === null) return { error: 'A player wallet cannot accept the match settlement.' };
+    const transactionType = outcome === 'draw' ? 'PVP_DRAW' : 'PVP_WIN';
+    const transactionPurpose = outcome === 'draw' ? 'refund' : 'payout';
+    await insertRpsWalletTransaction(
+      client,
+      playerId,
+      adjustment,
+      transactionType,
+      `pvp-rps:${lobby.id}:${transactionPurpose}:${playerId}`,
+    );
+  }
+
+  if (winnerId) {
+    await client.query(
+      `INSERT INTO rps_house_ledger
+        (id, match_id, winner_id, currency, pool_amount, rake_rate_bps, rake_amount)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        randomUUID(),
+        matchId,
+        winnerId,
+        wager.currency,
+        wager.currency === 'cash' ? poolUnits / 100 : poolUnits,
+        RPS_PVP_RAKE_RATE_BPS,
+        wager.currency === 'cash' ? rakeUnits / 100 : rakeUnits,
+      ],
+    );
+  }
+
+  const completed = await client.query(
+    `UPDATE rps_lobbies
+     SET state = 'completed', ended_reason = 'settled', updated_at = NOW()
+     WHERE id = $1 AND state = 'active'`,
+    [lobby.id],
+  );
+  if (completed.rowCount !== 1) throw new Error(`RPS lobby ${lobby.id} was not active during settlement.`);
+
+  const notifications: RpsSettlement['notifications'] = [];
+  for (const playerId of userIds) {
+    const isWinner = playerId === winnerId;
+    const isLoser = winnerId !== null && !isWinner;
+    const title = outcome === 'draw'
+      ? 'PvP RPS match tied'
+      : `PvP RPS match ${isWinner ? 'won' : 'lost'}`;
+    const message = outcome === 'draw'
+      ? `The match tied. Your ${formatRpsWalletUnits(wager.currency, wager.units)} wager was returned.`
+      : isWinner
+        ? `You won the match and received ${formatRpsWalletUnits(wager.currency, payoutUnits)} after the 3% house rake.`
+        : isLoser ? `You lost the match. Your ${formatRpsWalletUnits(wager.currency, wager.units)} wager was used.` : '';
+    notifications.push({
+      userId: playerId,
+      notification: await insertNotification(client, playerId, title, message, 'PVP_ALERT'),
+    });
+  }
+
+  return {
+    settlement: {
+      matchId,
+      outcome,
+      winnerId,
+      poolUnits,
+      rakeUnits,
+      notifications,
+    },
+  };
+}
+
+let rpsLobbySweepRunning = false;
+
+async function expireStaleRpsLobbies() {
+  if (!database || rpsLobbySweepRunning) return;
+  rpsLobbySweepRunning = true;
+  try {
+    const staleLobbies = await database.query<{ id: string }>(
+      `SELECT id
+       FROM rps_lobbies
+       WHERE (state = 'active' AND updated_at <= NOW() - INTERVAL '${RPS_ACTIVE_MATCH_TIMEOUT_MINUTES} minutes')
+          OR (state = 'waiting' AND created_at <= NOW() - INTERVAL '${RPS_WAITING_LOBBY_TIMEOUT_HOURS} hours')
+       ORDER BY updated_at ASC
+       LIMIT 50`,
+    );
+    for (const { id } of staleLobbies.rows) {
+      let client: PoolClient;
+      try {
+        client = await database.connect();
+      } catch (error) {
+        console.error('Could not connect to expire stale PvP RPS rooms:', error);
+        return;
+      }
+      try {
+        await client.query('BEGIN');
+        const lobbyResult = await client.query<RpsLobbyRow>(
+          `SELECT id, player1_id, player2_id, wager_amount, wager_currency, state, ended_reason, created_at
+           FROM rps_lobbies
+           WHERE id = $1
+             AND ((state = 'active' AND updated_at <= NOW() - INTERVAL '${RPS_ACTIVE_MATCH_TIMEOUT_MINUTES} minutes')
+               OR (state = 'waiting' AND created_at <= NOW() - INTERVAL '${RPS_WAITING_LOBBY_TIMEOUT_HOURS} hours'))
+           FOR UPDATE`,
+          [id],
+        );
+        const lobby = lobbyResult.rows[0];
+        if (!lobby) {
+          await client.query('ROLLBACK');
+          continue;
+        }
+
+        const notifications: Array<{ userId: string; notification: PlatformNotification }> = [];
+        if (lobby.state === 'active' && lobby.player2_id) {
+          const wager = parseRpsWager(Number(lobby.wager_amount), lobby.wager_currency);
+          if (!wager) throw new Error(`Invalid persisted RPS wager for lobby ${lobby.id}.`);
+          const userIds = [lobby.player1_id, lobby.player2_id];
+          const locked = await lockRpsPlayerBalances(client, userIds, wager.currency, false);
+          if (locked.error) throw new Error(locked.error);
+          for (const userId of userIds) {
+            const balance = await updateRpsWallet(client, userId, wager.currency, wager.units);
+            if (balance === null) throw new Error(`Could not refund timed-out PvP wager for ${userId}.`);
+            await insertRpsWalletTransaction(
+              client,
+              userId,
+              wager.units,
+              'PVP_REFUND',
+              `pvp-rps:${lobby.id}:timeout-refund:${userId}`,
+            );
+            notifications.push({
+              userId,
+              notification: await insertNotification(
+                client,
+                userId,
+                'PvP RPS match expired',
+                `The match timed out. Your ${formatRpsWalletUnits(wager.currency, wager.units)} wager was returned.`,
+                'PVP_ALERT',
+              ),
+            });
+          }
+          await client.query(
+            `UPDATE rps_lobbies
+             SET state = 'completed', ended_reason = 'expired', updated_at = NOW()
+             WHERE id = $1`,
+            [lobby.id],
+          );
+          await client.query('DELETE FROM rps_lobby_moves WHERE lobby_id = $1', [lobby.id]);
+        } else {
+          notifications.push({
+            userId: lobby.player1_id,
+            notification: await insertNotification(
+              client,
+              lobby.player1_id,
+              'PvP RPS room expired',
+              'The room was not matched within 24 hours and has been closed.',
+              'SYSTEM',
+            ),
+          });
+          await client.query(
+            'DELETE FROM rps_lobbies WHERE id = $1 AND state = \'waiting\'',
+            [lobby.id],
+          );
+        }
+
+        await client.query('COMMIT');
+        notifications.forEach(({ userId, notification }) => {
+          broadcastUserNotification(userId, notification);
+        });
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        console.error(`Could not expire PvP RPS room ${id}:`, error);
+      } finally {
+        client.release();
+      }
+    }
+  } catch (error) {
+    console.error('Could not scan for stale PvP RPS rooms:', error);
+  } finally {
+    rpsLobbySweepRunning = false;
+  }
+}
+
+function startRpsLobbyTimeoutWorker() {
+  if (!database) return;
+  const timer = setInterval(() => {
+    void expireStaleRpsLobbies();
+  }, 30_000);
+  timer.unref();
+  void expireStaleRpsLobbies();
+}
+
+app.post('/api/games/rps/play', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in before playing.' });
+  if (!database) return res.status(503).json({ error: 'Games require the production account database.' });
+
+  const playerChoice = req.body?.choice;
+  const entryBet = req.body?.entryBet === undefined ? RPS_DEFAULT_ENTRY_CENTS / 100 : req.body.entryBet;
+  if (!isRpsChoice(playerChoice)) {
+    return res.status(400).json({ error: 'Choose rock, paper, or scissors.' });
+  }
+  if (typeof entryBet !== 'number' || !Number.isFinite(entryBet) || entryBet <= 0) {
+    return res.status(400).json({ error: 'Entry bet must be a positive amount in dollars.' });
+  }
+  const entryCents = Math.round(entryBet * 100);
+  const entryPoints = Math.round((entryCents * SURVEY_POINTS_PER_DOLLAR) / 100);
+  if (
+    Math.abs(entryBet * 100 - entryCents) > 1e-7 ||
+    !Number.isSafeInteger(entryPoints) ||
+    entryPoints <= 0 ||
+    entryPoints > Math.floor(2147483647 / 2)
+  ) {
+    return res.status(400).json({ error: 'Entry bet must be a valid amount to the nearest cent.' });
+  }
+
+  const suppliedIdempotencyKey = req.header('Idempotency-Key')?.trim();
+  if (!suppliedIdempotencyKey || !/^[A-Za-z0-9._:-]{1,200}$/.test(suppliedIdempotencyKey)) {
+    return res.status(400).json({ error: 'Provide an Idempotency-Key of 1–200 letters, numbers, dots, underscores, colons, or hyphens.' });
+  }
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the wallet database for RPS:', error);
+    return res.status(500).json({ error: 'Could not process the game.' });
+  }
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO survey_reward_balances (user_id, points)
+       VALUES ($1, 0)
+       ON CONFLICT (user_id) DO NOTHING`,
+      [user.id],
+    );
+    const balanceResult = await client.query<{ points: number }>(
+      'SELECT points FROM survey_reward_balances WHERE user_id = $1 FOR UPDATE',
+      [user.id],
+    );
+    const points = Number(balanceResult.rows[0]?.points || 0);
+    const existingGame = await client.query<{
+      id: string;
+      player_choice: RpsChoice;
+      opponent_choice: RpsChoice;
+      opponent_username: string;
+      outcome: RpsOutcome;
+      entry_points: number;
+      payout_points: number;
+    }>(
+      `SELECT id, player_choice, opponent_choice, opponent_username, outcome, entry_points, payout_points
+       FROM game_rps_games
+       WHERE user_id = $1 AND idempotency_key = $2`,
+      [user.id, suppliedIdempotencyKey],
+    );
+    if (existingGame.rows[0]) {
+      const game = existingGame.rows[0];
+      if (game.player_choice !== playerChoice || Number(game.entry_points) !== entryPoints) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Idempotency-Key was already used for a different game request.' });
+      }
+      await client.query('COMMIT');
+      return res.json({
+        gameId: game.id,
+        choice: game.player_choice,
+        opponent: { username: game.opponent_username, choice: game.opponent_choice },
+        outcome: game.outcome,
+        entryBet: Number(game.entry_points) / SURVEY_POINTS_PER_DOLLAR,
+        payout: Number(game.payout_points) / SURVEY_POINTS_PER_DOLLAR,
+        balancePoints: points,
+        balanceDollars: points / SURVEY_POINTS_PER_DOLLAR,
+      });
+    }
+    if (points < entryPoints) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Insufficient wallet balance.',
+        balancePoints: points,
+        balanceDollars: points / SURVEY_POINTS_PER_DOLLAR,
+      });
+    }
+
+    const opponentChoice = RPS_CHOICES[randomInt(RPS_CHOICES.length)];
+    const opponentUsername = getRpsOpponentUsername();
+    const outcome = evaluateRpsOutcome(playerChoice, opponentChoice);
+    const winPotPoints = (RPS_WIN_POT_CENTS * SURVEY_POINTS_PER_DOLLAR) / 100;
+    const payoutPoints = outcome === 'win'
+      ? winPotPoints
+      : outcome === 'draw'
+        ? entryPoints
+        : 0;
+    const updatedBalance = points - entryPoints + payoutPoints;
+    if (updatedBalance > 2147483647) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Payout exceeds the wallet balance limit.' });
+    }
+
+    const gameId = randomUUID();
+    await client.query(
+      `INSERT INTO game_rps_games
+        (id, user_id, idempotency_key, player_choice, opponent_choice, opponent_username, outcome, entry_points, payout_points)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [gameId, user.id, suppliedIdempotencyKey, playerChoice, opponentChoice, opponentUsername, outcome, entryPoints, payoutPoints],
+    );
+    const ledgerAmount = outcome === 'win'
+      ? RPS_WIN_POT_CENTS / 100
+      : outcome === 'draw'
+        ? 0
+        : -entryCents / 100;
+    const ledgerType = outcome === 'win' ? 'PVP_WIN' : outcome === 'draw' ? 'PVP_DRAW' : 'PVP_LOSS';
+    await client.query(
+      `INSERT INTO transactions (id, user_id, amount, type, reference_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [randomUUID(), user.id, ledgerAmount, ledgerType, `rps-game:${gameId}`],
+    );
+    const updated = await client.query<{ points: number }>(
+      `UPDATE survey_reward_balances
+       SET points = $2, updated_at = NOW()
+       WHERE user_id = $1
+       RETURNING points`,
+      [user.id, updatedBalance],
+    );
+    const outcomeLabel = outcome === 'win' ? 'won' : outcome === 'draw' ? 'drew' : 'lost';
+    const notification = await insertNotification(
+      client,
+      user.id,
+      `RPS match ${outcomeLabel}`,
+      `You ${outcomeLabel} against ${opponentUsername}. ${outcome === 'win'
+        ? `You received $${(payoutPoints / SURVEY_POINTS_PER_DOLLAR).toFixed(2)}.`
+        : outcome === 'draw'
+          ? 'Your entry fee was returned.'
+          : `Your $${(entryPoints / SURVEY_POINTS_PER_DOLLAR).toFixed(2)} entry was used.`}`,
+      'PVP_ALERT',
+    );
+    await client.query('COMMIT');
+    broadcastUserNotification(user.id, notification);
+    return res.json({
+      gameId,
+      choice: playerChoice,
+      opponent: { username: opponentUsername, choice: opponentChoice },
+      outcome,
+      entryBet: entryPoints / SURVEY_POINTS_PER_DOLLAR,
+      payout: payoutPoints / SURVEY_POINTS_PER_DOLLAR,
+      balancePoints: updated.rows[0].points,
+      balanceDollars: updated.rows[0].points / SURVEY_POINTS_PER_DOLLAR,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not process RPS game:', error);
+    return res.status(500).json({ error: 'Could not process the game.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/v1/rps/lobbies', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in before creating a PvP room.' });
+  if (!database) return res.status(503).json({ error: 'PvP matchmaking requires the production account database.' });
+  const wager = parseRpsWager(req.body?.wagerAmount, req.body?.currency);
+  if (!wager) {
+    return res.status(400).json({
+      error: 'Enter a valid wager: at least $0.50 or 50 points, using cash or points.',
+    });
+  }
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the PvP wallet database:', error);
+    return res.status(503).json({ error: 'PvP matchmaking is temporarily unavailable.' });
+  }
+  try {
+    await client.query('BEGIN');
+    const locked = await lockRpsPlayerBalances(client, [user.id], wager.currency);
+    if (locked.error) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: locked.error });
+    }
+    const availableUnits = locked.balances.get(user.id) || 0;
+    if (availableUnits < wager.units) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Insufficient balance for this wager.',
+        currency: wager.currency,
+        balance: wager.currency === 'cash' ? availableUnits / 100 : availableUnits,
+      });
+    }
+
+    const lobbyId = randomUUID();
+    const lobby = await client.query<RpsLobbyRow>(
+      `INSERT INTO rps_lobbies
+        (id, player1_id, wager_amount, wager_currency, state)
+       VALUES ($1, $2, $3, $4, 'waiting')
+       RETURNING id, player1_id, player2_id, wager_amount, wager_currency, state, ended_reason, created_at`,
+      [lobbyId, user.id, wager.amount, wager.currency],
+    );
+    await client.query('COMMIT');
+    return res.status(201).json({
+      lobby: {
+        id: lobby.rows[0].id,
+        state: lobby.rows[0].state,
+        wagerAmount: Number(lobby.rows[0].wager_amount),
+        currency: lobby.rows[0].wager_currency,
+        createdAt: new Date(lobby.rows[0].created_at).toISOString(),
+      },
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not create PvP RPS lobby:', error);
+    return res.status(500).json({ error: 'Could not create the PvP room.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/v1/rps/lobbies', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to browse PvP rooms.' });
+  if (!database) return res.status(503).json({ error: 'PvP matchmaking requires the production account database.' });
+  try {
+    const result = await database.query<{
+      id: string;
+      username: string | null;
+      wager_amount: string;
+      wager_currency: RpsWagerCurrency;
+      created_at: Date;
+    }>(
+      `SELECT lobbies.id, users.username, lobbies.wager_amount, lobbies.wager_currency, lobbies.created_at
+       FROM rps_lobbies AS lobbies
+       JOIN users ON users.id = lobbies.player1_id
+       WHERE lobbies.state = 'waiting' AND lobbies.player1_id <> $1
+       ORDER BY lobbies.created_at ASC
+       LIMIT 50`,
+      [user.id],
+    );
+    return res.json({
+      lobbies: result.rows.map((lobby) => ({
+        id: lobby.id,
+        player1Username: lobby.username || 'Player',
+        wagerAmount: Number(lobby.wager_amount),
+        currency: lobby.wager_currency,
+        createdAt: new Date(lobby.created_at).toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load open PvP RPS lobbies:', error);
+    return res.status(500).json({ error: 'Could not load open PvP rooms.' });
+  }
+});
+
+app.post('/api/v1/rps/lobbies/:id/join', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in before joining a PvP room.' });
+  if (!database) return res.status(503).json({ error: 'PvP matchmaking requires the production account database.' });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ error: 'Provide a valid PvP room ID.' });
+  }
+  const requestedWager = parseRpsWager(req.body?.wagerAmount, req.body?.currency);
+  if (!requestedWager) {
+    return res.status(400).json({ error: 'Provide the room wager using a valid amount and currency.' });
+  }
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the PvP wallet database:', error);
+    return res.status(503).json({ error: 'PvP matchmaking is temporarily unavailable.' });
+  }
+  try {
+    await client.query('BEGIN');
+    const lobbyResult = await client.query<RpsLobbyRow>(
+      `SELECT id, player1_id, player2_id, wager_amount, wager_currency, state, ended_reason, created_at
+       FROM rps_lobbies
+       WHERE id = $1
+       FOR UPDATE`,
+      [req.params.id],
+    );
+    const lobby = lobbyResult.rows[0];
+    if (!lobby) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'PvP room not found.' });
+    }
+    if (lobby.state === 'active' && lobby.player2_id === user.id) {
+      await client.query('COMMIT');
+      const state = await loadRpsLobbyState(client, lobby.id, user.id);
+      return res.json(state);
+    }
+    if (lobby.state !== 'waiting') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This PvP room is no longer open.' });
+    }
+    if (lobby.player1_id === user.id) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'You cannot join your own PvP room.' });
+    }
+    const lobbyWager = parseRpsWager(Number(lobby.wager_amount), lobby.wager_currency);
+    if (!lobbyWager) throw new Error(`Invalid persisted RPS wager for lobby ${lobby.id}.`);
+    if (requestedWager.currency !== lobbyWager.currency || requestedWager.units !== lobbyWager.units) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The requested wager does not match this room.' });
+    }
+
+    const playerIds = [lobby.player1_id, user.id];
+    const locked = await lockRpsPlayerBalances(client, playerIds, lobbyWager.currency);
+    if (locked.error) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: locked.error });
+    }
+    const playerBalances = playerIds.map((playerId) => locked.balances.get(playerId) || 0);
+    if (playerBalances.some((balance) => balance < lobbyWager.units)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Both players must still have enough balance to start this match.' });
+    }
+
+    const poolUnits = lobbyWager.units * 2;
+    const rakeUnits = calculateRpsPvpRakeUnits(poolUnits);
+    const winningPayoutUnits = poolUnits - rakeUnits;
+    const maximum = lobbyWager.currency === 'cash' ? RPS_MAX_CASH_BALANCE_CENTS : RPS_MAX_POINTS_BALANCE;
+    if (playerBalances.some((balance) => balance - lobbyWager.units + winningPayoutUnits > maximum)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'A player wallet cannot accept the possible match payout.' });
+    }
+
+    for (const playerId of playerIds) {
+      const balance = await updateRpsWallet(client, playerId, lobbyWager.currency, -lobbyWager.units);
+      if (balance === null) throw new Error(`Could not reserve PvP wager for ${playerId}.`);
+      await insertRpsWalletTransaction(
+        client,
+        playerId,
+        -lobbyWager.units,
+        'PVP_WAGER',
+        `pvp-rps:${lobby.id}:wager:${playerId}`,
+      );
+    }
+    await client.query(
+      `UPDATE rps_lobbies
+       SET player2_id = $2, state = 'active', updated_at = NOW()
+       WHERE id = $1`,
+      [lobby.id, user.id],
+    );
+    await client.query('COMMIT');
+    const state = await loadRpsLobbyState(client, lobby.id, user.id);
+    return res.status(200).json(state);
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not join PvP RPS lobby:', error);
+    return res.status(500).json({ error: 'Could not join the PvP room.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/v1/rps/lobbies/:id', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view this PvP room.' });
+  if (!database) return res.status(503).json({ error: 'PvP matchmaking requires the production account database.' });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ error: 'Provide a valid PvP room ID.' });
+  }
+  try {
+    const client = await database.connect();
+    try {
+      const state = await loadRpsLobbyState(client, req.params.id, user.id);
+      if (!state) return res.status(404).json({ error: 'PvP room not found.' });
+      return res.json(state);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Could not load PvP RPS lobby state:', error);
+    return res.status(500).json({ error: 'Could not load the PvP room.' });
+  }
+});
+
+app.post('/api/v1/rps/lobbies/:id/moves', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in before submitting a PvP move.' });
+  if (!database) return res.status(503).json({ error: 'PvP matchmaking requires the production account database.' });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ error: 'Provide a valid PvP room ID.' });
+  }
+  if (!isRpsChoice(req.body?.choice)) {
+    return res.status(400).json({ error: 'Choose rock, paper, or scissors.' });
+  }
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the PvP game database:', error);
+    return res.status(503).json({ error: 'PvP matchmaking is temporarily unavailable.' });
+  }
+  try {
+    await client.query('BEGIN');
+    const lobbyResult = await client.query<RpsLobbyRow>(
+      `SELECT id, player1_id, player2_id, wager_amount, wager_currency, state, ended_reason, created_at
+       FROM rps_lobbies
+       WHERE id = $1
+       FOR UPDATE`,
+      [req.params.id],
+    );
+    const lobby = lobbyResult.rows[0];
+    if (!lobby || (lobby.player1_id !== user.id && lobby.player2_id !== user.id)) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'PvP room not found.' });
+    }
+    if (lobby.state === 'completed') {
+      await client.query('COMMIT');
+      return res.json(await loadRpsLobbyState(client, lobby.id, user.id));
+    }
+    if (lobby.state !== 'active' || !lobby.player2_id) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Wait for another player to join before submitting a move.' });
+    }
+
+    const inserted = await client.query<{ choice: RpsChoice }>(
+      `INSERT INTO rps_lobby_moves (lobby_id, user_id, choice)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (lobby_id, user_id) DO NOTHING
+       RETURNING choice`,
+      [lobby.id, user.id, req.body.choice],
+    );
+    if (!inserted.rowCount) {
+      const priorMove = await client.query<{ choice: RpsChoice }>(
+        'SELECT choice FROM rps_lobby_moves WHERE lobby_id = $1 AND user_id = $2',
+        [lobby.id, user.id],
+      );
+      if (priorMove.rows[0]?.choice !== req.body.choice) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Your move is already locked and cannot be changed.' });
+      }
+    } else {
+      await client.query(
+        'UPDATE rps_lobbies SET updated_at = NOW() WHERE id = $1 AND state = \'active\'',
+        [lobby.id],
+      );
+    }
+
+    const moves = await client.query<{ user_id: string; choice: RpsChoice }>(
+      'SELECT user_id, choice FROM rps_lobby_moves WHERE lobby_id = $1',
+      [lobby.id],
+    );
+    if (moves.rowCount < 2) {
+      await client.query('COMMIT');
+      return res.status(202).json(await loadRpsLobbyState(client, lobby.id, user.id));
+    }
+    const result = await settleRpsLobbyMatch(client, lobby, moves.rows);
+    if ('error' in result) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: result.error });
+    }
+    await client.query('COMMIT');
+    result.settlement.notifications.forEach(({ userId, notification }) => {
+      broadcastUserNotification(userId, notification);
+    });
+    return res.json(await loadRpsLobbyState(client, lobby.id, user.id));
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not submit PvP RPS move:', error);
+    return res.status(500).json({ error: 'Could not submit your move.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/v1/notifications', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view notifications.' });
+  if (!database) return res.status(503).json({ error: 'Notifications require the production account database.' });
+  try {
+    const result = await database.query<PlatformNotification>(
+      `SELECT id, title, message, is_read, type, created_at
+       FROM notifications
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [user.id],
+    );
+    return res.json({
+      notifications: result.rows.map((notification) => ({
+        ...notification,
+        created_at: new Date(notification.created_at).toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load user notifications:', error);
+    return res.status(500).json({ error: 'Could not load notifications.' });
+  }
+});
+
+app.patch('/api/v1/notifications/:id', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update notifications.' });
+  if (!database) return res.status(503).json({ error: 'Notifications require the production account database.' });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ error: 'Provide a valid notification ID.' });
+  }
+  if (typeof req.body?.is_read !== 'boolean') {
+    return res.status(400).json({ error: 'is_read must be a boolean.' });
+  }
+  try {
+    const result = await database.query<PlatformNotification>(
+      `UPDATE notifications
+       SET is_read = $3
+       WHERE id = $1 AND user_id = $2 AND created_at >= NOW() - INTERVAL '30 days'
+       RETURNING id, title, message, is_read, type, created_at`,
+      [req.params.id, user.id, req.body.is_read],
+    );
+    const notification = result.rows[0];
+    if (!notification) return res.status(404).json({ error: 'Notification not found.' });
+    return res.json({
+      notification: {
+        ...notification,
+        created_at: new Date(notification.created_at).toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Could not update user notification:', error);
+    return res.status(500).json({ error: 'Could not update notification.' });
+  }
+});
+
+app.get('/api/offers/milestones', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view offer milestones.' });
+  if (!database) return res.status(503).json({ error: 'Milestones require the production account database.' });
+  try {
+    const result = await database.query<{
+      offer_id: string;
+      stage: number;
+      level: number;
+      reward_points: number;
+      description: string;
+      current_level: number;
+      claimed: boolean;
+    }>(
+      `SELECT tiers.offer_id, tiers.stage, tiers.level, tiers.reward_points, tiers.description,
+              COALESCE(progress.current_level, 0) AS current_level,
+              (claims.stage IS NOT NULL) AS claimed
+       FROM offer_milestone_tiers AS tiers
+       LEFT JOIN user_offer_milestone_progress AS progress
+         ON progress.user_id = $1 AND progress.offer_id = tiers.offer_id
+       LEFT JOIN user_offer_milestone_claims AS claims
+         ON claims.user_id = $1 AND claims.offer_id = tiers.offer_id AND claims.stage = tiers.stage
+       WHERE tiers.active = TRUE
+       ORDER BY tiers.offer_id, tiers.stage`,
+      [user.id],
+    );
+    const campaignResult = await database.query<{
+      id: string;
+      title: string;
+      description: string;
+      category: OfferCampaign['category'];
+      total_value: string;
+      milestones: OfferMilestone[];
+      tracking_parameters: Record<string, string>;
+      active: boolean;
+      created_at: Date;
+      updated_at: Date;
+    }>(
+      `SELECT id, title, description, category, total_value, milestones, tracking_parameters, active, created_at, updated_at
+       FROM offer_campaigns
+       WHERE active = TRUE
+       ORDER BY updated_at DESC`,
+    );
+    const progressByTier = new Map(result.rows.map((tier) => [`${tier.offer_id}:${tier.stage}`, tier]));
+    return res.json({
+      milestones: result.rows.map((tier) => ({
+        offerId: tier.offer_id,
+        stage: tier.stage,
+        level: tier.level,
+        description: tier.description,
+        rewardPoints: Number(tier.reward_points),
+        rewardDollars: Number(tier.reward_points) / SURVEY_POINTS_PER_DOLLAR,
+        currentLevel: Number(tier.current_level),
+        claimed: tier.claimed,
+      })),
+      campaigns: campaignResult.rows.map((row) => {
+        const campaign: OfferCampaign = {
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          category: row.category,
+          total_value: Number(row.total_value),
+          milestones: row.milestones,
+          tracking_parameters: row.tracking_parameters,
+          active: row.active,
+          created_at: new Date(row.created_at).toISOString(),
+          updated_at: new Date(row.updated_at).toISOString(),
+        };
+        return {
+          id: campaign.id,
+          title: campaign.title,
+          description: campaign.description,
+          category: campaign.category,
+          total_value: campaign.total_value,
+          active: campaign.active,
+          created_at: campaign.created_at,
+          updated_at: campaign.updated_at,
+          milestones: campaign.milestones.map((tier) => {
+            const progress = progressByTier.get(`${campaign.id}:${tier.step_number}`);
+            return {
+              ...tier,
+              current_level: Number(progress?.current_level || 0),
+              claimed: Boolean(progress?.claimed),
+            };
+          }),
+        };
+      }),
+    });
+  } catch (error) {
+    console.error('Could not load offer milestones:', error);
+    return res.status(500).json({ error: 'Could not load offer milestones.' });
+  }
+});
+
+app.post('/api/offers/milestones', async (req, res) => {
+  if (!milestoneCallbackSecret) {
+    return res.status(503).json({ error: 'Milestone callbacks are not configured.' });
+  }
+  if (!database) return res.status(503).json({ error: 'Milestone callbacks require the production account database.' });
+
+  const timestamp = req.header('X-Milestone-Timestamp') || '';
+  const eventId = req.header('X-Milestone-Event-Id') || '';
+  const signature = req.header('X-Milestone-Signature') || '';
+  const userId = req.body?.userId;
+  const offerId = req.body?.offerId;
+  const level = req.body?.level;
+  const timestampMs = /^\d{13}$/.test(timestamp) ? Number(timestamp) : Number.NaN;
+  if (
+    !/^[A-Za-z0-9._:-]{1,128}$/.test(eventId) ||
+    typeof userId !== 'string' || !/^[A-Za-z0-9_-]{1,255}$/.test(userId) ||
+    typeof offerId !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,99}$/.test(offerId) ||
+    typeof level !== 'number' || !Number.isSafeInteger(level) || level < 1 || level > 1000000 ||
+    !Number.isSafeInteger(timestampMs) ||
+    Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000 ||
+    !isValidMilestoneSignature(timestamp, eventId, userId, offerId, level, signature)
+  ) {
+    return res.status(401).json({ error: 'Invalid or expired milestone callback.' });
+  }
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the wallet database for milestone callback:', error);
+    return res.status(500).json({ error: 'Could not apply offer milestone.' });
+  }
+  try {
+    await client.query('BEGIN');
+    const userResult = await client.query<{ account_status: string }>(
+      'SELECT account_status FROM users WHERE id = $1',
+      [userId],
+    );
+    if (!userResult.rows[0] || userResult.rows[0].account_status !== 'active') {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Milestone account was not found.' });
+    }
+    const tiersResult = await client.query<{
+      stage: number;
+      level: number;
+      reward_points: number;
+    }>(
+      `SELECT stage, level, reward_points
+       FROM offer_milestone_tiers
+       WHERE offer_id = $1 AND active = TRUE
+       ORDER BY level`,
+      [offerId],
+    );
+    if (!tiersResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Milestone offer was not found.' });
+    }
+
+    await client.query(
+      `INSERT INTO user_offer_milestone_progress (user_id, offer_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, offer_id) DO NOTHING`,
+      [userId, offerId],
+    );
+    const progressResult = await client.query<{ current_level: number }>(
+      `SELECT current_level FROM user_offer_milestone_progress
+       WHERE user_id = $1 AND offer_id = $2
+       FOR UPDATE`,
+      [userId, offerId],
+    );
+    const currentLevel = Number(progressResult.rows[0].current_level);
+    const recordedEvent = await client.query(
+      `INSERT INTO offer_milestone_events (event_id, user_id, offer_id, level)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (event_id) DO NOTHING
+       RETURNING event_id`,
+      [eventId, userId, offerId, level],
+    );
+    if (!recordedEvent.rowCount) {
+      await client.query('ROLLBACK');
+      return res.json({ duplicate: true, eventId });
+    }
+
+    const credited = [];
+    let rewardPoints = 0;
+    if (level > currentLevel) {
+      for (const tier of tiersResult.rows) {
+        if (Number(tier.level) <= currentLevel || Number(tier.level) > level) continue;
+        const insertedClaim = await client.query(
+          `INSERT INTO user_offer_milestone_claims
+            (user_id, offer_id, stage, level, reward_points, event_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (user_id, offer_id, stage) DO NOTHING
+           RETURNING stage`,
+          [userId, offerId, tier.stage, tier.level, tier.reward_points, eventId],
+        );
+        if (insertedClaim.rowCount) {
+          const points = Number(tier.reward_points);
+          rewardPoints += points;
+          credited.push({
+            stage: Number(tier.stage),
+            level: Number(tier.level),
+            rewardPoints: points,
+            rewardDollars: points / SURVEY_POINTS_PER_DOLLAR,
+          });
+        }
+      }
+      await client.query(
+        `UPDATE user_offer_milestone_progress
+         SET current_level = $3, updated_at = NOW()
+         WHERE user_id = $1 AND offer_id = $2`,
+        [userId, offerId, level],
+      );
+    }
+
+    let balancePoints: number | null = null;
+    let notification: PlatformNotification | null = null;
+    if (rewardPoints > 0) {
+      await client.query(
+        `INSERT INTO survey_reward_balances (user_id, points)
+         VALUES ($1, 0)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId],
+      );
+      const balanceResult = await client.query<{ points: number }>(
+        `UPDATE survey_reward_balances
+         SET points = points + $2, updated_at = NOW()
+         WHERE user_id = $1
+         RETURNING points`,
+        [userId, rewardPoints],
+      );
+      balancePoints = Number(balanceResult.rows[0].points);
+      notification = await insertNotification(
+        client,
+        userId,
+        'Offer milestone credited',
+        `You earned $${(rewardPoints / SURVEY_POINTS_PER_DOLLAR).toFixed(2)} from ${offerId} milestones.`,
+        'CREDIT_ALERT',
+      );
+    }
+    await client.query('COMMIT');
+    if (notification) broadcastUserNotification(userId, notification);
+    return res.json({
+      eventId,
+      currentLevel: Math.max(currentLevel, level),
+      credited,
+      creditedPoints: rewardPoints,
+      creditedDollars: rewardPoints / SURVEY_POINTS_PER_DOLLAR,
+      ...(balancePoints === null ? {} : { balancePoints, balanceDollars: balancePoints / SURVEY_POINTS_PER_DOLLAR }),
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not apply offer milestone callback:', error);
+    return res.status(500).json({ error: 'Could not apply offer milestone.' });
+  } finally {
+    client.release();
+  }
+});
+
+async function handleAffiliatePostback(req: express.Request, res: express.Response) {
+  if (!postbackSecret) return res.status(503).type('text').send('Postback is not configured');
+  const params = req.method === 'GET' ? req.query : req.body;
+  if (!isRecord(params)) return res.status(400).type('text').send('Invalid postback');
+
+  const clickId = typeof params.click_id === 'string' ? params.click_id.trim() : '';
+  const userId = typeof params.user_id === 'string' ? params.user_id.trim() : '';
+  const offerId = typeof params.offer_id === 'string' ? params.offer_id.trim() : '';
+  const subId1 = typeof params.subid1 === 'string' ? params.subid1.trim() : '';
+  const subId2 = typeof params.subid2 === 'string' ? params.subid2.trim() : '';
+  const stepValue = params.milestone_step;
+  const stepText = typeof stepValue === 'number' ? String(stepValue) : typeof stepValue === 'string' ? stepValue.trim() : '';
+  const payoutValue = params.payout;
+  const payoutText = typeof payoutValue === 'number' ? String(payoutValue) : typeof payoutValue === 'string' ? payoutValue.trim() : '';
+  const signature = typeof params.signature === 'string'
+    ? params.signature.trim()
+    : req.header('X-Postback-Signature')?.trim() || '';
+  if (
+    !/^[A-Za-z0-9._:-]{1,128}$/.test(clickId) ||
+    !/^[A-Za-z0-9_-]{1,255}$/.test(userId) ||
+    !/^[a-z0-9][a-z0-9_-]{0,99}$/.test(offerId) ||
+    !/^\d{1,10}$/.test(stepText) ||
+    !/^\d+(?:\.\d{1,2})?$/.test(payoutText)
+  ) {
+    return res.status(400).type('text').send('Invalid postback');
+  }
+
+  const milestoneStep = Number(stepText);
+  const payoutAmount = Number(payoutText);
+  const payoutCents = Math.round(payoutAmount * 100);
+  if (
+    !Number.isSafeInteger(milestoneStep) || milestoneStep < 1 || milestoneStep > 2147483647 ||
+    !Number.isFinite(payoutAmount) || payoutCents < 1 || payoutCents > 2147483647 ||
+    Math.abs(payoutAmount * 100 - payoutCents) > 1e-7
+  ) {
+    return res.status(400).type('text').send('Invalid postback');
+  }
+  if (!isValidPostbackSignature(clickId, userId, offerId, milestoneStep, payoutCents, signature)) {
+    await recordOfferSecurityEvent(offerId, 'signature_mismatch');
+    return res.status(403).type('text').send('Invalid postback signature');
+  }
+  if (!database) return res.status(503).type('text').send('Postback storage is unavailable');
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the postback database:', error);
+    return res.status(503).type('text').send('Postback storage is unavailable');
+  }
+
+  const referenceId = `postback:${clickId}:${offerId}:${milestoneStep}`;
+  let liveOfferCredit: LiveOfferCredit | null = null;
+  try {
+    await client.query('BEGIN');
+    if (!subId1 || !subId2 || subId1 !== userId || subId2 !== clickId) {
+      await client.query('ROLLBACK');
+      return res.status(403).type('text').send('Postback Sub-ID sequence is missing or mismatched');
+    }
+    const clickSequence = await client.query<{ click_uuid: string }>(
+      `SELECT click_uuid
+       FROM click_logs
+       WHERE click_uuid = $1 AND user_id = $2 AND offer_id = $3
+       LIMIT 1`,
+      [subId2, subId1, offerId],
+    );
+    if (!clickSequence.rows[0]) {
+      await client.query('ROLLBACK');
+      await recordOfferSecurityEvent(offerId, 'security_failure');
+      return res.status(403).type('text').send('Postback click sequence is not active');
+    }
+    const previousTransaction = await client.query<{ user_id: string; amount: string; type: string }>(
+      'SELECT user_id, amount, type FROM transactions WHERE reference_id = $1 FOR UPDATE',
+      [referenceId],
+    );
+    if (previousTransaction.rows[0]) {
+      const previous = previousTransaction.rows[0];
+      if (previous.user_id !== userId || previous.type !== 'OFFER_COMPLETION' || Math.round(Number(previous.amount) * 100) !== payoutCents) {
+        await client.query('ROLLBACK');
+        return res.status(403).type('text').send('Postback reference conflicts with a prior transaction');
+      }
+      await client.query('COMMIT');
+      return res.status(200).type('text').send('1');
+    }
+
+    const userResult = await client.query<{
+      balance: string;
+      username: string | null;
+      account_status: 'active' | 'blocked';
+      is_banned: boolean;
+    }>(
+      'SELECT balance, username, account_status, is_banned FROM users WHERE id = $1 FOR UPDATE',
+      [userId],
+    );
+    const user = userResult.rows[0];
+    if (!user || user.account_status !== 'active' || user.is_banned) {
+      await client.query('ROLLBACK');
+      return res.status(403).type('text').send('Postback account is not eligible');
+    }
+
+    const tierResult = await client.query<{ reward_points: number; active: boolean }>(
+      `SELECT reward_points, active
+       FROM offer_milestone_tiers
+       WHERE offer_id = $1 AND stage = $2
+       FOR SHARE`,
+      [offerId, milestoneStep],
+    );
+    const tier = tierResult.rows[0];
+    if (!tier || !tier.active || Number(tier.reward_points) !== payoutCents) {
+      await client.query('ROLLBACK');
+      return res.status(403).type('text').send('Postback milestone is not eligible');
+    }
+
+    const currentBalanceCents = Math.round(Number(user.balance) * 100);
+    if (!Number.isSafeInteger(currentBalanceCents) || currentBalanceCents < 0 || currentBalanceCents + payoutCents > 999999999999) {
+      await client.query('ROLLBACK');
+      return res.status(400).type('text').send('Postback payout exceeds the wallet limit');
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO transactions (id, user_id, amount, type, reference_id)
+       VALUES ($1, $2, $3, 'OFFER_COMPLETION', $4)
+       ON CONFLICT (reference_id) WHERE reference_id IS NOT NULL DO NOTHING
+       RETURNING id`,
+      [randomUUID(), userId, payoutCents / 100, referenceId],
+    );
+    if (!inserted.rowCount) {
+      const conflictingTransaction = await client.query<{ user_id: string; amount: string; type: string }>(
+        'SELECT user_id, amount, type FROM transactions WHERE reference_id = $1',
+        [referenceId],
+      );
+      const previous = conflictingTransaction.rows[0];
+      if (!previous || previous.user_id !== userId || previous.type !== 'OFFER_COMPLETION' || Math.round(Number(previous.amount) * 100) !== payoutCents) {
+        await client.query('ROLLBACK');
+        return res.status(403).type('text').send('Postback reference conflicts with a prior transaction');
+      }
+      await client.query('COMMIT');
+      return res.status(200).type('text').send('1');
+    }
+
+    const updatedUser = await client.query(
+      `UPDATE users
+       SET balance = balance + $2, updated_at = NOW()
+       WHERE id = $1 AND account_status = 'active' AND is_banned = FALSE
+       RETURNING id`,
+      [userId, payoutCents / 100],
+    );
+    if (updatedUser.rowCount !== 1) throw new Error('Postback account became ineligible during credit.');
+    const notification = await insertNotification(
+      client,
+      userId,
+      'Offer reward credited',
+      `You earned $${(payoutCents / 100).toFixed(2)} from ${offerId}.`,
+      'CREDIT_ALERT',
+    );
+    const offerName = await getLiveOfferName(client, offerId, offerId);
+    liveOfferCredit = await insertLiveOfferCredit(client, {
+      reference: referenceId,
+      userId,
+      username: user.username,
+      offerwall: 'Affiliate network',
+      offer: offerName,
+      payoutAmount: payoutCents / 100,
+    });
+    const referee = await client.query<{ referred_by: string | null; referred_by_user_id: string | null }>(
+      'SELECT referred_by, referred_by_user_id FROM users WHERE id = $1',
+      [userId],
+    );
+    const referrerId = referee.rows[0]?.referred_by || referee.rows[0]?.referred_by_user_id || null;
+    if (referrerId) {
+      const commissionCents = Math.round(payoutCents * referralCommissionPercent / 100);
+      if (commissionCents > 0) {
+        const commissionAmount = commissionCents / 100;
+        const ledgerInsert = await client.query(
+          `INSERT INTO referrals_ledger
+            (id, referrer_id, referee_id, original_transaction_id, commission_amount)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (original_transaction_id) DO NOTHING
+           RETURNING id`,
+          [randomUUID(), referrerId, userId, referenceId, commissionAmount],
+        );
+        if (ledgerInsert.rowCount) {
+          await client.query(
+            `UPDATE users
+             SET balance = balance + $2, updated_at = NOW()
+             WHERE id = $1 AND account_status = 'active' AND is_banned = FALSE`,
+            [referrerId, commissionAmount],
+          );
+          await client.query(
+            `INSERT INTO transactions
+              (id, user_id, amount, type, reference_id)
+             VALUES ($1, $2, $3, 'REFERRAL_COMMISSION', $4)
+             ON CONFLICT (reference_id) WHERE reference_id IS NOT NULL DO NOTHING`,
+            [randomUUID(), referrerId, commissionAmount, `referral:${referenceId}:${referrerId}`],
+          );
+        }
+      }
+    }
+    await client.query('COMMIT');
+    broadcastUserNotification(userId, notification);
+    if (liveOfferCredit) broadcastLiveOfferCredit(liveOfferCredit);
+    broadcastLiveActivity({
+      id: randomUUID(),
+      type: 'offer_credit',
+      handle: `m_${userId.slice(-4).replace(/[^a-z0-9]/gi, '*')}***`,
+      amount: payoutCents / 100,
+      amountText: `$${(payoutCents / 100).toFixed(2)}`,
+      method: 'Offer reward',
+      tag: offerId.slice(0, 24),
+      timestamp: new Date().toISOString(),
+    });
+    return res.status(200).type('text').send('1');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not process affiliate postback:', error);
+    return res.status(500).type('text').send('Postback could not be processed');
+  } finally {
+    client.release();
+  }
+}
+
+app.get('/api/v1/callbacks/postback', handleAffiliatePostback);
+app.post('/api/v1/callbacks/postback', handleAffiliatePostback);
+
+app.get('/api/live-offers', async (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=5, stale-while-revalidate=15');
+  if (!database) {
+    const offers = [...liveOfferCreditsMemory.values()]
+      .sort((left, right) => Date.parse(right.creditedAt) - Date.parse(left.creditedAt))
+      .slice(0, 15);
+    return res.json({ offers });
+  }
+  try {
+    const result = await database.query<{
+      id: string;
+      masked_username: string;
+      offerwall_name: string;
+      offer_name: string;
+      payout_amount: string;
+      credited_at: Date;
+    }>(
+      `SELECT id, masked_username, offerwall_name, offer_name, payout_amount, credited_at
+       FROM live_offer_credits
+       ORDER BY credited_at DESC
+       LIMIT 15`,
+    );
+    return res.json({
+      offers: result.rows.map((row) => ({
+        id: row.id,
+        username: row.masked_username,
+        offerwall: row.offerwall_name,
+        offer: row.offer_name,
+        payoutAmount: Number(row.payout_amount),
+        creditedAt: new Date(row.credited_at).toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load the public live-offer feed:', error);
+    return res.status(503).json({ error: 'The live-offer feed is temporarily unavailable.' });
+  }
+});
+
 app.post('/api/rewards/cashout', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google before requesting a payout.' });
@@ -1956,6 +4983,14 @@ app.post('/api/rewards/cashout', async (req, res) => {
   const client = await database.connect();
   try {
     await client.query('BEGIN');
+    const restricted = await client.query<{ cashout_restricted: boolean; fraud_status: string }>(
+      'SELECT cashout_restricted, fraud_status FROM users WHERE id = $1 FOR UPDATE',
+      [user.id],
+    );
+    if (restricted.rows[0]?.cashout_restricted || restricted.rows[0]?.fraud_status === 'suspicious') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Cash-outs are restricted while this account is under manual review.' });
+    }
     const balance = await client.query<{ points: number }>(
       'SELECT points FROM survey_reward_balances WHERE user_id = $1 FOR UPDATE',
       [user.id],
@@ -2004,6 +5039,777 @@ app.post('/api/rewards/cashout', async (req, res) => {
       return res.status(409).json({ error: 'You already have a payout request being processed.' });
     }
     throw error;
+  } finally {
+    client.release();
+  }
+});
+
+export function createWithdrawalTrackingHash(withdrawalId: string) {
+  return createHash('sha256').update(`s4fc-withdrawal:${withdrawalId}`).digest('hex');
+}
+
+export function hashWithdrawalDestination(destination: string) {
+  const secret = env.FRAUD_SECRET || referralHashSecret || googleClientSecret || 'local-withdrawal-secret';
+  return createHmac('sha256', secret).update(destination.trim().toLowerCase()).digest('hex');
+}
+
+export function maskWithdrawalDestination(channel: WithdrawalChannel, destination: string) {
+  if (channel === 'paypal') {
+    const [name, domain] = destination.split('@');
+    return `${name ? `${name.slice(0, 1)}***` : '***'}@${domain || 'hidden'}`;
+  }
+  if (channel === 'venmo') return `@***${destination.replace(/^@/, '').slice(-3)}`;
+  return `${destination.slice(0, 6)}...${destination.slice(-4)}`;
+}
+
+async function fireWithdrawalWebhook(payload: Record<string, unknown>) {
+  const webhookUrl = env.WITHDRAWAL_WEBHOOK_URL?.trim();
+  if (!webhookUrl) return { delivered: false as const, reason: 'not_configured' as const };
+  const secret = env.WITHDRAWAL_WEBHOOK_SECRET || referralHashSecret || googleClientSecret;
+  if (!secret) return { delivered: false as const, reason: 'secret_not_configured' as const };
+  const body = JSON.stringify(payload);
+  const signature = createHmac('sha256', secret).update(body).digest('hex');
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Withdrawal-Signature': signature,
+      },
+      body,
+      signal: AbortSignal.timeout(5000),
+    });
+    return { delivered: response.ok as boolean, reason: response.ok ? 'delivered' : 'provider_rejected' as const };
+  } catch {
+    return { delivered: false as const, reason: 'delivery_failed' as const };
+  }
+}
+
+export function createMockCashoutEvent(): LiveActivityEvent {
+  const handles = ['m_win', 'cash_jay', 'sunnydeal', 'quickdrop', 'pixelpay', 'greenvault'];
+  const tags = ['PayPal', 'USDC', 'Bank', 'Cash App', 'Venmo'];
+  const offers = ['Top offer', 'Survey', 'Game', 'Referral', 'Cashback'];
+  const handle = handles[randomInt(handles.length)];
+  const cents = randomInt(50, 2501);
+  const amount = cents / 100;
+  const method = tags[randomInt(tags.length)];
+  return {
+    id: randomUUID(),
+    type: 'mock',
+    handle: `${handle}${randomInt(10, 99)}***`,
+    amount,
+    amountText: `$${amount.toFixed(2)}`,
+    method,
+    tag: offers[randomInt(offers.length)],
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function broadcastLiveActivity(event: LiveActivityEvent) {
+  if (event.type !== 'mock') lastLiveTransactionAt = Date.now();
+  if (!liveActivitySocketServer) return 0;
+  const payload = JSON.stringify({ event: 'cashout.activity', data: event });
+  let sent = 0;
+  liveActivitySocketServer.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+      sent += 1;
+    }
+  });
+  return sent;
+}
+
+export function maskPublicOfferUsername(username: unknown) {
+  if (typeof username !== 'string' || !username.trim()) return 'Member';
+  const cleanedUsername = username.trim();
+  if (cleanedUsername.toLowerCase() === 'member') return 'Member';
+  const words = cleanedUsername
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 3);
+  if (!words.length) return 'Member';
+  return words.map((word) => {
+    const characters = Array.from(word.toLowerCase());
+    const visible = characters.slice(0, 2).join('');
+    return `${visible.charAt(0).toUpperCase()}${visible.slice(1)}***`;
+  }).join('_');
+}
+
+function cleanLiveOfferLabel(value: string, fallback: string) {
+  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 160);
+  return cleaned || fallback;
+}
+
+async function getLiveOfferName(client: PoolClient, offerId: string, fallback: string) {
+  const result = await client.query<{ offer: unknown }>(
+    'SELECT offer FROM offers WHERE id = $1 LIMIT 1',
+    [offerId],
+  );
+  const offer = result.rows[0]?.offer;
+  if (isRecord(offer)) {
+    const title = typeof offer.title === 'string' ? offer.title.trim() : '';
+    const company = typeof offer.company === 'string' ? offer.company.trim() : '';
+    if (title && company && title.toLowerCase() !== company.toLowerCase()) {
+      return cleanLiveOfferLabel(`${company} - ${title}`, fallback);
+    }
+    if (title || company) return cleanLiveOfferLabel(title || company, fallback);
+  }
+  return cleanLiveOfferLabel(fallback, 'Offer reward');
+}
+
+function rememberLiveOfferCredit(reference: string, credit: LiveOfferCredit) {
+  liveOfferCreditsMemory.delete(reference);
+  liveOfferCreditsMemory.set(reference, credit);
+  while (liveOfferCreditsMemory.size > 30) {
+    const oldestReference = liveOfferCreditsMemory.keys().next().value;
+    if (oldestReference === undefined) break;
+    liveOfferCreditsMemory.delete(oldestReference);
+  }
+}
+
+function forgetLiveOfferCredit(reference: string) {
+  liveOfferCreditsMemory.delete(reference);
+}
+
+async function insertLiveOfferCredit(
+  client: PoolClient,
+  input: {
+    reference: string;
+    userId: string | null;
+    username: unknown;
+    offerwall: string;
+    offer: string;
+    payoutAmount: number;
+  },
+) {
+  const result = await client.query<{ id: string; credited_at: Date }>(
+    `INSERT INTO live_offer_credits
+      (id, transaction_reference, user_id, masked_username, offerwall_name, offer_name, payout_amount)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (transaction_reference) DO NOTHING
+     RETURNING id, credited_at`,
+    [
+      randomUUID(),
+      input.reference,
+      input.userId,
+      maskPublicOfferUsername(input.username),
+      cleanLiveOfferLabel(input.offerwall, 'Offerwall'),
+      cleanLiveOfferLabel(input.offer, 'Offer reward'),
+      input.payoutAmount,
+    ],
+  );
+  if (!result.rows[0]) return null;
+  const credit: LiveOfferCredit = {
+    id: result.rows[0].id,
+    username: maskPublicOfferUsername(input.username),
+    offerwall: cleanLiveOfferLabel(input.offerwall, 'Offerwall'),
+    offer: cleanLiveOfferLabel(input.offer, 'Offer reward'),
+    payoutAmount: input.payoutAmount,
+    creditedAt: new Date(result.rows[0].credited_at).toISOString(),
+  };
+  rememberLiveOfferCredit(input.reference, credit);
+  return credit;
+}
+
+function broadcastLiveOfferCredit(credit: LiveOfferCredit) {
+  if (!liveActivitySocketServer) return 0;
+  const payload = JSON.stringify({ event: 'offers.credit', data: credit });
+  let sent = 0;
+  liveActivitySocketServer.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+      sent += 1;
+    }
+  });
+  return sent;
+}
+
+async function insertNotification(
+  client: PoolClient,
+  userId: string,
+  title: string,
+  message: string,
+  type: PlatformNotification['type'],
+) {
+  const result = await client.query<{
+    id: string;
+    title: string;
+    message: string;
+    is_read: boolean;
+    type: PlatformNotification['type'];
+    created_at: Date;
+  }>(
+    `INSERT INTO notifications (id, user_id, title, message, type)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, title, message, is_read, type, created_at`,
+    [randomUUID(), userId, title, message, type],
+  );
+  const notification = result.rows[0];
+  return {
+    ...notification,
+    created_at: new Date(notification.created_at).toISOString(),
+  } satisfies PlatformNotification;
+}
+
+function broadcastUserNotification(userId: string, notification: PlatformNotification) {
+  const sockets = notificationSocketsByUser.get(userId);
+  if (!sockets) return 0;
+  const payload = JSON.stringify({ event: 'notification.created', data: notification });
+  let sent = 0;
+  sockets.forEach((socket) => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(payload);
+      sent += 1;
+    } else {
+      sockets.delete(socket);
+    }
+  });
+  if (!sockets.size) notificationSocketsByUser.delete(userId);
+  return sent;
+}
+
+async function getNotificationSocketUserId(request: IncomingMessage) {
+  const sessionCookie = request.headers.cookie?.split(';').map((part) => part.trim())
+    .find((part) => part.startsWith('sfc_session='));
+  const token = sessionCookie?.slice('sfc_session='.length) || '';
+  if (!/^[a-f0-9]{64}$/i.test(token)) return null;
+  if (database) {
+    const result = await database.query<{ id: string }>(
+      `SELECT users.id
+       FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id
+       WHERE auth_sessions.token = $1 AND auth_sessions.expires_at > NOW()
+         AND users.account_status = 'active' AND users.is_banned = FALSE`,
+      [token],
+    );
+    return result.rows[0]?.id || null;
+  }
+  const session = authSessions.get(token);
+  if (!session || session.expiresAt <= Date.now()) return null;
+  const user = authUsers.get(session.userId);
+  return user && user.accountStatus !== 'blocked' ? user.id : null;
+}
+
+function startMockActivityWorker() {
+  const schedule = () => {
+    const delay = randomInt(12_000, 45_001);
+    setTimeout(() => {
+      const stale = !lastLiveTransactionAt || Date.now() - lastLiveTransactionAt >= 45_000;
+      if (stale) broadcastLiveActivity(createMockCashoutEvent());
+      schedule();
+    }, delay).unref();
+  };
+  schedule();
+}
+
+export function getUtcRaceKey(now = new Date()) {
+  const sunday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  sunday.setUTCDate(sunday.getUTCDate() - sunday.getUTCDay());
+  return sunday.toISOString().slice(0, 10);
+}
+
+export function getUtcDailyKey(now = new Date()) {
+  return now.toISOString().slice(0, 10);
+}
+
+export async function runDailyResetWorker(now = new Date()) {
+  if (!database) return { status: 'skipped', reason: 'database_unavailable' };
+  const runKey = `daily-reset:${getUtcDailyKey(now)}`;
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const claimed = await client.query<{ run_key: string }>(
+      `INSERT INTO background_worker_runs (run_key, worker_name, status, details)
+       VALUES ($1, 'daily-reset', 'running', '{}'::jsonb)
+       ON CONFLICT (run_key) DO NOTHING
+       RETURNING run_key`,
+      [runKey],
+    );
+    if (!claimed.rows[0]) {
+      await client.query('ROLLBACK');
+      return { status: 'already_completed', runKey };
+    }
+    await client.query(
+      `UPDATE users
+       SET daily_wheel_uses = 0,
+           daily_wheel_reset_at = NOW(),
+           updated_at = NOW()
+       WHERE daily_wheel_uses <> 0 OR daily_wheel_reset_at IS NULL`,
+    );
+    await client.query("DELETE FROM referral_offer_clicks WHERE clicked_at < NOW() - INTERVAL '48 hours'");
+    await client.query("DELETE FROM offer_analytics_events WHERE occurred_at < NOW() - INTERVAL '48 hours' AND event_type = 'click'");
+    await client.query(
+      `UPDATE background_worker_runs
+       SET status = 'completed', completed_at = NOW(), details = '{"reset":"daily"}'::jsonb
+       WHERE run_key = $1`,
+      [runKey],
+    );
+    await client.query('COMMIT');
+    return { status: 'completed', runKey };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    await database.query(
+      `INSERT INTO background_worker_runs (run_key, worker_name, status, details)
+       VALUES ($1, 'daily-reset', 'failed', $2::jsonb)
+       ON CONFLICT (run_key) DO UPDATE SET status = 'failed', details = EXCLUDED.details`,
+      [runKey, JSON.stringify({ error: error instanceof Error ? error.message : 'unknown' })],
+    ).catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function runWeeklyLeaderboardWorker(now = new Date()) {
+  if (!database) return { status: 'skipped', reason: 'database_unavailable' };
+  const raceKey = getUtcRaceKey(now);
+  const runKey = `weekly-leaderboard:${raceKey}`;
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const claimed = await client.query<{ run_key: string }>(
+      `INSERT INTO background_worker_runs (run_key, worker_name, status, details)
+       VALUES ($1, 'weekly-leaderboard', 'running', '{}'::jsonb)
+       ON CONFLICT (run_key) DO NOTHING
+       RETURNING run_key`,
+      [runKey],
+    );
+    if (!claimed.rows[0]) {
+      await client.query('ROLLBACK');
+      return { status: 'already_completed', runKey };
+    }
+
+    const earnings = await client.query<{ user_id: string; earnings: string }>(
+      `SELECT user_id, SUM(amount)::text AS earnings
+       FROM transactions
+       WHERE created_at >= $1::timestamptz
+         AND created_at < $2::timestamptz
+         AND amount > 0
+       GROUP BY user_id
+       ORDER BY SUM(amount) DESC, user_id ASC
+       LIMIT 10`,
+      [new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), now.toISOString()],
+    );
+
+    let credited = 0;
+    for (const [index, row] of earnings.rows.entries()) {
+      const rank = index + 1;
+      const prizeCents = LEADERBOARD_PRIZE_CENTS_BY_RANK[index] || 0;
+      if (prizeCents <= 0) continue;
+      await client.query(
+        `INSERT INTO weekly_leaderboard_entries
+          (race_key, rank, user_id, earnings, prize)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (race_key, rank) DO NOTHING`,
+        [raceKey, rank, row.user_id, Number(row.earnings), prizeCents / 100],
+      );
+      await client.query(
+        `INSERT INTO survey_reward_balances (user_id, points)
+         VALUES ($1, 0)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [row.user_id],
+      );
+      await client.query(
+        `UPDATE survey_reward_balances
+         SET points = points + $2, updated_at = NOW()
+         WHERE user_id = $1`,
+        [row.user_id, prizeCents],
+      );
+      await client.query(
+        `INSERT INTO transactions
+          (id, user_id, amount, type, reference_id)
+         VALUES ($1, $2, $3, 'LEADERBOARD_PRIZE', $4)
+         ON CONFLICT (reference_id) WHERE reference_id IS NOT NULL DO NOTHING`,
+        [randomUUID(), row.user_id, prizeCents / 100, `leaderboard:${raceKey}:${rank}:${row.user_id}`],
+      );
+      credited += prizeCents;
+    }
+
+    await client.query(
+      `UPDATE background_worker_runs
+       SET status = 'completed', completed_at = NOW(),
+           details = $2::jsonb
+       WHERE run_key = $1`,
+      [runKey, JSON.stringify({ raceKey, entries: earnings.rows.length, prizePoolCents: credited })],
+    );
+    await client.query('COMMIT');
+    return { status: 'completed', runKey, raceKey, entries: earnings.rows.length, prizePoolCents: credited };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    await database.query(
+      `INSERT INTO background_worker_runs (run_key, worker_name, status, details)
+       VALUES ($1, 'weekly-leaderboard', 'failed', $2::jsonb)
+       ON CONFLICT (run_key) DO UPDATE SET status = 'failed', details = EXCLUDED.details`,
+      [runKey, JSON.stringify({ error: error instanceof Error ? error.message : 'unknown' })],
+    ).catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function startScheduledWorkers() {
+  let lastDailyKey = '';
+  let lastWeeklyKey = '';
+  const poll = setInterval(() => {
+    if (!database) return;
+    const now = new Date();
+    const dailyKey = getUtcDailyKey(now);
+    if (now.getUTCHours() === 0 && now.getUTCMinutes() === 0 && lastDailyKey !== dailyKey) {
+      lastDailyKey = dailyKey;
+      void runDailyResetWorker(now).catch((error) => console.error('Daily reset worker failed:', error));
+    }
+    if (
+      now.getUTCDay() === 0 &&
+      now.getUTCHours() === 23 &&
+      now.getUTCMinutes() === 59 &&
+      lastWeeklyKey !== getUtcRaceKey(now)
+    ) {
+      lastWeeklyKey = getUtcRaceKey(now);
+      void runWeeklyLeaderboardWorker(now).catch((error) => console.error('Weekly leaderboard worker failed:', error));
+    }
+  }, 30_000);
+  poll.unref();
+}
+
+function startOfferFeedWorker() {
+  const poll = setInterval(() => {
+    void runOfferFeedSync().catch((error) => console.error('Offer feed sync worker failed:', error));
+  }, 60 * 60 * 1000);
+  poll.unref();
+}
+
+app.get('/api/v1/leaderboard', async (_req, res) => {
+  if (!database) return res.status(503).json({ error: 'Leaderboard storage is unavailable.' });
+  try {
+    const raceKey = getUtcRaceKey();
+    const result = await database.query<{
+      rank: number;
+      earnings: string;
+      prize: string;
+      username: string | null;
+    }>(
+      `SELECT entries.rank, entries.earnings, entries.prize, users.username
+       FROM weekly_leaderboard_entries AS entries
+       JOIN users ON users.id = entries.user_id
+       WHERE entries.race_key = $1
+       ORDER BY entries.rank`,
+      [raceKey],
+    );
+    return res.json({
+      raceKey,
+      prizePool: LEADERBOARD_PRIZE_POOL_CENTS / 100,
+      entries: result.rows.map((row) => ({
+        rank: row.rank,
+        handle: row.username ? `@${row.username.slice(0, 3)}***` : '***',
+        earnings: Number(row.earnings),
+        prize: Number(row.prize),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load leaderboard:', error);
+    return res.status(500).json({ error: 'Could not load the leaderboard.' });
+  }
+});
+
+app.post('/api/v1/admin/workers/daily-reset', requireOwnerAdmin, async (_req, res) => {
+  try {
+    return res.json(await runDailyResetWorker());
+  } catch (error) {
+    console.error('Manual daily reset failed:', error);
+    return res.status(500).json({ error: 'Daily reset failed.' });
+  }
+});
+
+app.post('/api/v1/admin/workers/weekly-leaderboard', requireOwnerAdmin, async (_req, res) => {
+  try {
+    return res.json(await runWeeklyLeaderboardWorker());
+  } catch (error) {
+    console.error('Manual leaderboard compilation failed:', error);
+    return res.status(500).json({ error: 'Leaderboard compilation failed.' });
+  }
+});
+
+app.post('/api/v1/withdrawals/request', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in before requesting a withdrawal.' });
+  if (!database) return res.status(503).json({ error: 'Withdrawal storage requires the production account database.' });
+
+  const amount = req.body?.amount;
+  const destinationValidation = validateWithdrawalDestination(req.body?.channel, req.body?.destination);
+  const idempotencyKey = req.header('Idempotency-Key')?.trim();
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    return res.status(400).json({ field: 'amount', error: 'Amount must be a dollar value.' });
+  }
+  const amountCents = Math.round(amount * 100);
+  if (Math.abs(amount * 100 - amountCents) > 1e-7 || amountCents < WITHDRAWAL_MINIMUM_CENTS) {
+    return res.status(400).json({ field: 'amount', error: 'Minimum withdrawal is $5.00.' });
+  }
+  if ('field' in destinationValidation) return res.status(400).json(destinationValidation);
+  if (!idempotencyKey || !/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey)) {
+    return res.status(400).json({ error: 'Provide an Idempotency-Key of 1–200 letters, numbers, dots, underscores, colons, or hyphens.' });
+  }
+
+  let client: PoolClient;
+  try {
+    client = await database.connect();
+  } catch (error) {
+    console.error('Could not connect to the withdrawal database:', error);
+    return res.status(500).json({ error: 'Could not process the withdrawal.' });
+  }
+  try {
+    await client.query('BEGIN');
+    const existing = await client.query<{
+      id: string;
+      amount: string;
+      channel: WithdrawalChannel;
+      destination_hash: string;
+      status: 'PENDING' | 'COMPLETED' | 'REJECTED';
+      tracking_id_hash: string;
+    }>(
+      `SELECT id, amount, channel, destination_hash, status, tracking_id_hash
+       FROM withdrawal_requests
+       WHERE user_id = $1 AND idempotency_key = $2
+       FOR UPDATE`,
+      [user.id, idempotencyKey],
+    );
+    const destinationHash = hashWithdrawalDestination(destinationValidation.destination);
+    if (existing.rows[0]) {
+      const prior = existing.rows[0];
+      if (
+        Math.round(Number(prior.amount) * 100) !== amountCents ||
+        prior.channel !== destinationValidation.channel ||
+        prior.destination_hash !== destinationHash
+      ) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Idempotency-Key was already used for a different withdrawal.' });
+      }
+      await client.query('COMMIT');
+      return res.status(200).json({
+        requestId: prior.id,
+        status: prior.status,
+        amount: amountCents / 100,
+        channel: prior.channel,
+        trackingIdHash: prior.tracking_id_hash,
+      });
+    }
+
+    const account = await client.query<{
+      balance: string;
+      pending_withdrawal: string;
+      cashout_restricted: boolean;
+      fraud_status: string;
+    }>(
+      'SELECT balance, pending_withdrawal, cashout_restricted, fraud_status FROM users WHERE id = $1 FOR UPDATE',
+      [user.id],
+    );
+    const accountRow = account.rows[0];
+    if (!accountRow || accountRow.cashout_restricted || accountRow.fraud_status === 'suspicious') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Cash-outs are restricted while this account is under manual review.' });
+    }
+    const balanceCents = Math.round(Number(accountRow.balance) * 100);
+    if (!Number.isSafeInteger(balanceCents) || balanceCents < amountCents) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Insufficient wallet balance.',
+        balance: balanceCents / 100,
+        requestedAmount: amountCents / 100,
+      });
+    }
+
+    const withdrawalId = randomUUID();
+    const trackingIdHash = createWithdrawalTrackingHash(withdrawalId);
+    const destinationMask = maskWithdrawalDestination(destinationValidation.channel, destinationValidation.destination);
+    await client.query(
+      `UPDATE users
+       SET balance = balance - $2,
+           pending_withdrawal = pending_withdrawal + $2,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [user.id, amountCents / 100],
+    );
+    await client.query(
+      `INSERT INTO withdrawal_requests
+        (id, idempotency_key, user_id, amount, channel, destination_hash, destination_mask, status, tracking_id_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING', $8)`,
+      [
+        withdrawalId,
+        idempotencyKey,
+        user.id,
+        amountCents / 100,
+        destinationValidation.channel,
+        destinationHash,
+        destinationMask,
+        trackingIdHash,
+      ],
+    );
+    await client.query(
+      `INSERT INTO transactions
+        (id, user_id, amount, type, reference_id, payout_status, payout_channel, tracking_id_hash)
+       VALUES ($1, $2, $3, 'WITHDRAWAL', $4, 'PENDING', $5, $6)`,
+      [randomUUID(), user.id, -(amountCents / 100), `withdrawal:${withdrawalId}`, destinationValidation.channel, trackingIdHash],
+    );
+    await client.query('COMMIT');
+
+    const webhook = await fireWithdrawalWebhook({
+      event: 'withdrawal.requested',
+      requestId: withdrawalId,
+      trackingIdHash,
+      amountCents,
+      channel: destinationValidation.channel,
+    });
+    return res.status(201).json({
+      requestId: withdrawalId,
+      status: 'PENDING',
+      amount: amountCents / 100,
+      channel: destinationValidation.channel,
+      destinationMask,
+      trackingIdHash,
+      webhook,
+      balance: (balanceCents - amountCents) / 100,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not create withdrawal request:', error);
+    return res.status(500).json({ error: 'Could not process the withdrawal.' });
+  } finally {
+    client.release();
+  }
+});
+
+export async function mockWithdrawalProvider(request: {
+  requestId: string;
+  channel: WithdrawalChannel;
+  amountCents: number;
+}) {
+  return {
+    providerReference: `mock-${request.requestId.slice(0, 8)}`,
+    channel: request.channel,
+    amountCents: request.amountCents,
+    status: 'COMPLETED' as const,
+  };
+}
+
+app.post('/api/v1/admin/withdrawals/:id/complete', requireOwnerAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Withdrawal storage is unavailable.' });
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const request = await client.query<{ user_id: string; amount: string; channel: WithdrawalChannel; status: string }>(
+      'SELECT user_id, amount, channel, status FROM withdrawal_requests WHERE id = $1 FOR UPDATE',
+      [req.params.id],
+    );
+    const row = request.rows[0];
+    if (!row) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Withdrawal request not found.' });
+    }
+    if (row.status !== 'PENDING') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Withdrawal has already been processed.' });
+    }
+    const amountCents = Math.round(Number(row.amount) * 100);
+    const provider = await mockWithdrawalProvider({
+      requestId: req.params.id,
+      channel: row.channel,
+      amountCents,
+    });
+    await client.query(
+      `UPDATE withdrawal_requests
+       SET status = 'COMPLETED', provider_reference = $2, processed_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, provider.providerReference],
+    );
+    await client.query(
+      `UPDATE users
+       SET pending_withdrawal = GREATEST(0, pending_withdrawal - $2), updated_at = NOW()
+       WHERE id = $1`,
+      [row.user_id, amountCents / 100],
+    );
+    await client.query(
+      `UPDATE transactions
+       SET payout_status = 'COMPLETED'
+       WHERE reference_id = $1`,
+      [`withdrawal:${req.params.id}`],
+    );
+    await client.query('COMMIT');
+    broadcastLiveActivity({
+      id: randomUUID(),
+      type: 'withdrawal',
+      handle: `c_${row.user_id.slice(-4).replace(/[^a-z0-9]/gi, '*')}***`,
+      amount: amountCents / 100,
+      amountText: `$${(amountCents / 100).toFixed(2)}`,
+      method: row.channel === 'crypto' ? 'USDC' : row.channel === 'paypal' ? 'PayPal' : 'Venmo',
+      tag: 'Cash-out',
+      timestamp: new Date().toISOString(),
+    });
+    await fireWithdrawalWebhook({
+      event: 'withdrawal.completed',
+      requestId: req.params.id,
+      providerReference: provider.providerReference,
+      status: 'COMPLETED',
+    });
+    return res.json({ status: 'COMPLETED', providerReference: provider.providerReference });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not complete withdrawal:', error);
+    return res.status(500).json({ error: 'Could not complete the withdrawal.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/v1/admin/withdrawals/:id/reject', requireOwnerAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Withdrawal storage is unavailable.' });
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const request = await client.query<{ user_id: string; amount: string; status: string }>(
+      'SELECT user_id, amount, status FROM withdrawal_requests WHERE id = $1 FOR UPDATE',
+      [req.params.id],
+    );
+    const row = request.rows[0];
+    if (!row) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Withdrawal request not found.' });
+    }
+    if (row.status !== 'PENDING') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Withdrawal has already been processed.' });
+    }
+    const amountCents = Math.round(Number(row.amount) * 100);
+    await client.query(
+      `UPDATE withdrawal_requests
+       SET status = 'REJECTED', processed_at = NOW()
+       WHERE id = $1`,
+      [req.params.id],
+    );
+    await client.query(
+      `UPDATE users
+       SET balance = balance + $2,
+           pending_withdrawal = GREATEST(0, pending_withdrawal - $2),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [row.user_id, amountCents / 100],
+    );
+    await client.query(
+      `UPDATE transactions
+       SET payout_status = 'REJECTED'
+       WHERE reference_id = $1`,
+      [`withdrawal:${req.params.id}`],
+    );
+    await client.query('COMMIT');
+    await fireWithdrawalWebhook({
+      event: 'withdrawal.rejected',
+      requestId: req.params.id,
+      status: 'REJECTED',
+    });
+    return res.json({ status: 'REJECTED', restoredAmount: amountCents / 100 });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not reject withdrawal:', error);
+    return res.status(500).json({ error: 'Could not reject the withdrawal.' });
   } finally {
     client.release();
   }
@@ -2070,21 +5876,40 @@ app.get('/api/cpx/postback', async (req, res) => {
   }
   const rewardPoints = Math.max(0, Math.round((typeof amountUsd === 'string' ? Number(amountUsd) : 0) * SURVEY_POINTS_PER_DOLLAR));
   if (database) {
+    let notification: PlatformNotification | null = null;
+    let liveOfferCredit: LiveOfferCredit | null = null;
+    const liveCreditReference = `cpx:${transactionId}`;
+    let removeLiveOfferCredit = false;
+    let client: PoolClient;
     try {
-      await database.query('BEGIN');
-      const existing = await database.query<{ status: number; amount_usd: number }>(
-        'SELECT status, amount_usd FROM cpx_transactions WHERE transaction_id = $1 FOR UPDATE',
+      client = await database.connect();
+    } catch (error) {
+      console.error('Could not connect to the CPX postback database:', error);
+      return res.status(500).send('Could not record CPX postback');
+    }
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query<{ status: number; amount_usd: number; user_id: string }>(
+        'SELECT status, amount_usd, user_id FROM cpx_transactions WHERE transaction_id = $1 FOR UPDATE',
         [transactionId],
       );
+      if (existing.rows[0] && existing.rows[0].user_id !== userId.slice(0, 255)) {
+        await client.query('ROLLBACK');
+        return res.status(403).send('CPX transaction belongs to another user');
+      }
       if (existing.rows[0]?.status === Number(status)) {
-        await database.query('ROLLBACK');
+        await client.query('ROLLBACK');
         return res.status(200).send('OK');
       }
-      await database.query(
+      await client.query(
         `INSERT INTO cpx_transactions
           (transaction_id, status, user_id, amount_local, amount_usd, offer_id)
          VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (transaction_id) DO UPDATE SET status = EXCLUDED.status`,
+         ON CONFLICT (transaction_id) DO UPDATE SET
+           status = EXCLUDED.status,
+           amount_local = EXCLUDED.amount_local,
+           amount_usd = EXCLUDED.amount_usd,
+           offer_id = EXCLUDED.offer_id`,
         [
           transactionId,
           Number(status),
@@ -2095,10 +5920,11 @@ app.get('/api/cpx/postback', async (req, res) => {
         ],
       );
       const previousPoints = existing.rows[0]
+        && Number(existing.rows[0].status) === 1
         ? Math.max(0, Math.round(Number(existing.rows[0].amount_usd || 0) * SURVEY_POINTS_PER_DOLLAR))
         : 0;
       const delta = Number(status) === 1 ? rewardPoints - previousPoints : -previousPoints;
-      await database.query(
+      await client.query(
         `INSERT INTO survey_reward_balances (user_id, points)
          VALUES ($1, $2)
          ON CONFLICT (user_id) DO UPDATE SET
@@ -2106,16 +5932,80 @@ app.get('/api/cpx/postback', async (req, res) => {
            updated_at = NOW()`,
         [userId.slice(0, 255), delta],
       );
-      await database.query('COMMIT');
-    } catch {
-      await database.query('ROLLBACK').catch(() => undefined);
+      if (delta > 0) {
+        notification = await insertNotification(
+          client,
+          userId.slice(0, 255),
+          'Survey reward credited',
+          `You earned $${(delta / SURVEY_POINTS_PER_DOLLAR).toFixed(2)}${typeof offerId === 'string' && offerId ? ` from ${offerId.slice(0, 80)}` : ''}.`,
+          'CREDIT_ALERT',
+        );
+        const account = await client.query<{ id: string; username: string | null }>(
+          'SELECT id, username FROM users WHERE id = $1',
+          [userId.slice(0, 255)],
+        );
+        const fallbackOfferName = typeof offerId === 'string' && offerId.trim()
+          ? `Survey ${offerId.trim().slice(0, 120)}`
+          : 'CPX Research survey';
+        const offerName = await getLiveOfferName(
+          client,
+          typeof offerId === 'string' ? offerId.slice(0, 255) : '',
+          fallbackOfferName,
+        );
+        liveOfferCredit = await insertLiveOfferCredit(client, {
+          reference: liveCreditReference,
+          userId: account.rows[0]?.id || null,
+          username: account.rows[0]?.username || 'Member',
+          offerwall: 'CPX Research',
+          offer: offerName,
+          payoutAmount: delta / SURVEY_POINTS_PER_DOLLAR,
+        });
+      }
+      if (Number(status) === 2) {
+        await client.query(
+          'DELETE FROM live_offer_credits WHERE transaction_reference = $1',
+          [liveCreditReference],
+        );
+        removeLiveOfferCredit = true;
+      }
+      await client.query('COMMIT');
+      if (notification) broadcastUserNotification(userId.slice(0, 255), notification);
+      if (liveOfferCredit) broadcastLiveOfferCredit(liveOfferCredit);
+      if (removeLiveOfferCredit) forgetLiveOfferCredit(liveCreditReference);
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      console.error('Could not record CPX postback:', error);
       return res.status(500).send('Could not record CPX postback');
+    } finally {
+      client.release();
     }
   } else {
-    cpxTransactions.add(transactionId);
-    const previousPoints = 0;
-    const delta = Number(status) === 1 ? rewardPoints : -previousPoints;
+    const previous = cpxTransactions.get(transactionId);
+    if (previous && previous.userId !== userId) return res.status(403).send('CPX transaction belongs to another user');
+    if (previous?.status === Number(status)) return res.status(200).send('OK');
+    const previousPoints = previous?.status === 1 ? previous.rewardPoints : 0;
+    const delta = Number(status) === 1 ? rewardPoints - previousPoints : -previousPoints;
+    cpxTransactions.set(transactionId, { status: Number(status), rewardPoints, userId });
     cpxBalances.set(userId, Math.max(0, (cpxBalances.get(userId) || 0) + delta));
+    const liveCreditReference = `cpx:${transactionId}`;
+    if (delta > 0) {
+      const account = authUsers.get(userId);
+      const fallbackOfferName = typeof offerId === 'string' && offerId.trim()
+        ? `Survey ${offerId.trim().slice(0, 120)}`
+        : 'CPX Research survey';
+      const credit: LiveOfferCredit = {
+        id: randomUUID(),
+        username: maskPublicOfferUsername(account?.username || 'Member'),
+        offerwall: 'CPX Research',
+        offer: cleanLiveOfferLabel(fallbackOfferName, 'CPX Research survey'),
+        payoutAmount: delta / SURVEY_POINTS_PER_DOLLAR,
+        creditedAt: new Date().toISOString(),
+      };
+      rememberLiveOfferCredit(liveCreditReference, credit);
+      broadcastLiveOfferCredit(credit);
+    } else if (Number(status) === 2) {
+      forgetLiveOfferCredit(liveCreditReference);
+    }
   }
   res.status(200).send('OK');
 });
@@ -2193,10 +6083,19 @@ app.get('/go/:id', async (req, res) => {
     console.error('Could not record outbound offer click:', error);
     return res.status(503).send('We could not record this offer click. Please try again shortly.');
   }
+  let trackedDestination = destination;
   if (database) {
     try {
       const user = await getAuthenticatedUser(req);
       if (user) {
+        const clickUuid = randomUUID();
+        await database.query(
+          `INSERT INTO click_logs (click_uuid, user_id, offer_id, ip_address)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (click_uuid) DO NOTHING`,
+          [clickUuid, user.id, offer.id, hashFraudIdentifier(getClientIp(req))],
+        );
+        trackedDestination = compileOutboundTrackingUrl(destination, user.id, clickUuid) || destination;
         await database.query(
           `INSERT INTO referral_offer_clicks (id, referral_id, referred_user_id, offer_id)
            SELECT $1, referrals.id, referrals.referred_user_id, $2
@@ -2210,11 +6109,212 @@ app.get('/go/:id', async (req, res) => {
       console.error('Could not record referred-member offer attribution:', error);
     }
   }
-  return res.redirect(302, destination);
+  return res.redirect(302, trackedDestination);
 });
 
-app.get('/api/admin/offers', requireAdmin, (_req, res) => {
-  res.json({ offers: liveOffersStore });
+app.get('/api/admin/offers', requireAdmin, async (_req, res) => {
+  try {
+    let campaigns = [...offerCampaignsStore.values()];
+    if (database) {
+      const result = await database.query<{
+        id: string;
+        title: string;
+        description: string;
+        category: OfferCampaign['category'];
+        total_value: string;
+        milestones: OfferMilestone[];
+        tracking_parameters: Record<string, string>;
+        active: boolean;
+        created_at: Date;
+        updated_at: Date;
+      }>(
+        `SELECT id, title, description, category, total_value, milestones, tracking_parameters, active, created_at, updated_at
+         FROM offer_campaigns
+         ORDER BY updated_at DESC`,
+      );
+      campaigns = result.rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        total_value: Number(row.total_value),
+        milestones: row.milestones,
+        tracking_parameters: row.tracking_parameters,
+        active: row.active,
+        created_at: new Date(row.created_at).toISOString(),
+        updated_at: new Date(row.updated_at).toISOString(),
+      }));
+    }
+    return res.json({ offers: liveOffersStore, campaigns });
+  } catch (error) {
+    console.error('Could not load admin offer campaigns:', error);
+    return res.status(500).json({ error: 'Could not load offer campaigns.' });
+  }
+});
+
+app.post('/api/v1/admin/offers/sync', requireOwnerAdmin, async (_req, res) => {
+  try {
+    return res.json(await runOfferFeedSync());
+  } catch (error) {
+    console.error('Offer feed sync failed:', error);
+    return res.status(500).json({ error: 'Offer feed sync failed.' });
+  }
+});
+
+app.get('/api/v1/admin/offers/sync', requireOwnerAdmin, async (_req, res) => {
+  if (!database) return res.json({ feeds: getConfiguredOfferFeeds(), runs: [] });
+  try {
+    const result = await database.query<{
+      id: string;
+      feed_name: string;
+      status: 'running' | 'completed' | 'failed';
+      fetched_count: number;
+      upserted_count: number;
+      started_at: Date;
+      completed_at: Date | null;
+      details: Record<string, unknown>;
+    }>(
+      `SELECT id, feed_name, status, fetched_count, upserted_count, started_at, completed_at, details
+       FROM offer_feed_sync_runs
+       ORDER BY started_at DESC
+       LIMIT 50`,
+    );
+    return res.json({
+      feeds: getConfiguredOfferFeeds().map((feed) => ({ name: feed.name, urlConfigured: true })),
+      runs: result.rows.map((row) => ({
+        id: row.id,
+        feedName: row.feed_name,
+        status: row.status,
+        fetchedCount: row.fetched_count,
+        upsertedCount: row.upserted_count,
+        startedAt: row.started_at.toISOString(),
+        completedAt: row.completed_at?.toISOString() || null,
+        details: row.details,
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load offer feed sync status:', error);
+    return res.status(500).json({ error: 'Could not load offer feed sync status.' });
+  }
+});
+
+app.post('/api/admin/offers', requireAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Campaign management requires persistent database storage.' });
+  if (!isRecord(req.body)) return res.status(400).json({ error: 'Campaign details are required.' });
+  const allowedFields = new Set(['id', 'title', 'description', 'category', 'total_value', 'milestones', 'tracking_parameters']);
+  const unexpectedField = Object.keys(req.body).find((field) => !allowedFields.has(field));
+  if (unexpectedField) return res.status(400).json({ field: unexpectedField, error: 'This campaign field cannot be set.' });
+  if (req.body.id !== undefined && typeof req.body.id !== 'string') {
+    return res.status(400).json({ field: 'id', error: 'Campaign ID must be text.' });
+  }
+  const id = typeof req.body.id === 'string' ? req.body.id.trim() : `campaign-${randomUUID()}`;
+  if (offerCampaignsStore.has(id) || liveOffersStore.some((offer) => offer.id === id)) {
+    return res.status(409).json({ field: 'id', error: 'This campaign ID is already in use.' });
+  }
+  const now = new Date().toISOString();
+  const validation = validateOfferCampaign(req.body, id, now, now);
+  if ('error' in validation) return res.status(400).json({ field: validation.field, error: validation.error });
+
+  try {
+    const existingMilestones = await database.query(
+      'SELECT 1 FROM offer_milestone_tiers WHERE offer_id = $1 LIMIT 1',
+      [id],
+    );
+    if (existingMilestones.rowCount) {
+      return res.status(409).json({ field: 'id', error: 'This ID already has milestone history and cannot be reused.' });
+    }
+    await persistOfferCampaign(validation.campaign, true, true);
+    offerCampaignsStore.set(id, validation.campaign);
+    await auditAdminAction(req, 'offer_campaign_created', { campaignId: id });
+    return res.status(201).json({ campaign: validation.campaign });
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505') {
+      return res.status(409).json({ field: 'id', error: 'This campaign ID or milestone is already in use.' });
+    }
+    console.error('Could not create offer campaign:', error);
+    return res.status(500).json({ error: 'Could not create offer campaign.' });
+  }
+});
+
+app.put('/api/admin/offers/:id', requireAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Campaign management requires persistent database storage.' });
+  const existing = offerCampaignsStore.get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Offer campaign not found.' });
+  if (!isRecord(req.body)) return res.status(400).json({ error: 'Campaign updates are required.' });
+
+  const allowedFields = new Set(['title', 'description', 'category', 'total_value', 'milestones', 'tracking_parameters', 'milestone']);
+  const unexpectedField = Object.keys(req.body).find((field) => !allowedFields.has(field));
+  if (unexpectedField) return res.status(400).json({ field: unexpectedField, error: 'This campaign field cannot be updated.' });
+  if (Object.keys(req.body).length === 0) return res.status(400).json({ error: 'Provide at least one campaign field to update.' });
+  if (req.body.milestone !== undefined && req.body.milestones !== undefined) {
+    return res.status(400).json({ field: 'milestones', error: 'Update either one milestone or the complete milestone list.' });
+  }
+
+  const candidate: Record<string, unknown> = {
+    title: Object.prototype.hasOwnProperty.call(req.body, 'title') ? req.body.title : existing.title,
+    description: Object.prototype.hasOwnProperty.call(req.body, 'description') ? req.body.description : existing.description,
+    category: Object.prototype.hasOwnProperty.call(req.body, 'category') ? req.body.category : existing.category,
+    total_value: Object.prototype.hasOwnProperty.call(req.body, 'total_value') ? req.body.total_value : existing.total_value,
+    milestones: Object.prototype.hasOwnProperty.call(req.body, 'milestones') ? req.body.milestones : existing.milestones,
+    tracking_parameters: Object.prototype.hasOwnProperty.call(req.body, 'tracking_parameters') ? req.body.tracking_parameters : existing.tracking_parameters,
+  };
+  const replaceMilestones = req.body.milestones !== undefined || req.body.milestone !== undefined;
+  if (req.body.milestone !== undefined) {
+    if (!isRecord(req.body.milestone)) return res.status(400).json({ field: 'milestone', error: 'Milestone updates must be an object.' });
+    const milestoneFields = new Set(['step_number', 'description', 'payout_amount']);
+    if (Object.keys(req.body.milestone).some((field) => !milestoneFields.has(field))) {
+      return res.status(400).json({ field: 'milestone', error: 'Only step_number, description, and payout_amount can be updated.' });
+    }
+    const stepNumber = req.body.milestone.step_number;
+    if (typeof stepNumber !== 'number' || !Number.isSafeInteger(stepNumber)) {
+      return res.status(400).json({ field: 'milestone.step_number', error: 'Provide a valid step_number.' });
+    }
+    if (req.body.milestone.description === undefined && req.body.milestone.payout_amount === undefined) {
+      return res.status(400).json({ field: 'milestone', error: 'Provide a description or payout_amount to update.' });
+    }
+    const tierIndex = existing.milestones.findIndex((tier) => tier.step_number === stepNumber);
+    if (tierIndex < 0) return res.status(404).json({ field: 'milestone.step_number', error: 'Milestone step was not found.' });
+    const milestones = [...existing.milestones];
+    milestones[tierIndex] = { ...milestones[tierIndex], ...req.body.milestone };
+    candidate.milestones = milestones;
+  }
+  if (replaceMilestones && req.body.total_value === undefined) {
+    candidate.total_value = Array.isArray(candidate.milestones)
+      ? candidate.milestones.reduce((sum, tier) => sum + (isRecord(tier) && typeof tier.payout_amount === 'number' ? tier.payout_amount : 0), 0)
+      : existing.total_value;
+  }
+
+  const validation = validateOfferCampaign(candidate, existing.id, existing.created_at, new Date().toISOString());
+  if ('error' in validation) return res.status(400).json({ field: validation.field, error: validation.error });
+  validation.campaign.active = existing.active;
+  try {
+    await persistOfferCampaign(validation.campaign, false, replaceMilestones);
+    offerCampaignsStore.set(existing.id, validation.campaign);
+    await auditAdminAction(req, 'offer_campaign_updated', { campaignId: existing.id });
+    return res.json({ campaign: validation.campaign });
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505') {
+      return res.status(409).json({ field: 'milestones', error: 'Milestone steps or levels must be unique.' });
+    }
+    console.error('Could not update offer campaign:', error);
+    return res.status(500).json({ error: 'Could not update offer campaign.' });
+  }
+});
+
+app.delete('/api/admin/offers/:id', requireAdmin, async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Campaign management requires persistent database storage.' });
+  const existing = offerCampaignsStore.get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Offer campaign not found.' });
+  const campaign = { ...existing, active: false, updated_at: new Date().toISOString() };
+  try {
+    await persistOfferCampaign(campaign, false, true);
+    offerCampaignsStore.set(campaign.id, campaign);
+    await auditAdminAction(req, 'offer_campaign_deactivated', { campaignId: campaign.id });
+    return res.json({ campaign });
+  } catch (error) {
+    console.error('Could not deactivate offer campaign:', error);
+    return res.status(500).json({ error: 'Could not deactivate offer campaign.' });
+  }
 });
 
 async function saveUserOfferStatus(
@@ -2771,7 +6871,10 @@ app.patch('/api/admin/accounts/:id/status', requireOwnerAdmin, async (req, res) 
   const status = req.body?.status;
   if (status !== 'active' && status !== 'blocked') return res.status(400).json({ error: 'Invalid account status.' });
   if (database) {
-    const result = await database.query('UPDATE users SET account_status = $1, updated_at = NOW() WHERE id = $2 RETURNING id', [status, req.params.id]);
+    const result = await database.query(
+      'UPDATE users SET account_status = $1, is_banned = ($1 = \'blocked\'), updated_at = NOW() WHERE id = $2 RETURNING id',
+      [status, req.params.id],
+    );
     if (result.rowCount === 0) return res.status(404).json({ error: 'Account not found.' });
     if (status === 'blocked') await database.query('DELETE FROM auth_sessions WHERE user_id = $1', [req.params.id]);
   } else {
@@ -2873,6 +6976,218 @@ ${message}`,
       fallback: true,
     });
   }
+});
+
+app.post('/api/v1/support/tickets', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to submit a support ticket.' });
+  const subject = typeof req.body?.subject === 'string' ? req.body.subject.trim() : '';
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const transactionReferenceId = typeof req.body?.transactionReferenceId === 'string'
+    ? req.body.transactionReferenceId.trim()
+    : '';
+  const screenshotUrl = typeof req.body?.screenshotUrl === 'string' ? req.body.screenshotUrl.trim() : '';
+  if (subject.length < 3 || subject.length > 160) {
+    return res.status(400).json({ field: 'subject', error: 'Subject must be 3-160 characters.' });
+  }
+  if (message.length < 10 || message.length > 5000) {
+    return res.status(400).json({ field: 'message', error: 'Message must be 10-5,000 characters.' });
+  }
+  if (transactionReferenceId && !/^[A-Za-z0-9._:-]{1,255}$/.test(transactionReferenceId)) {
+    return res.status(400).json({ field: 'transactionReferenceId', error: 'Enter a valid transaction or click reference.' });
+  }
+  if (screenshotUrl && (!/^https?:\/\/[^\s]{8,2048}$/i.test(screenshotUrl))) {
+    return res.status(400).json({ field: 'screenshotUrl', error: 'Screenshot links must be public http(s) URLs.' });
+  }
+  const ticketId = randomUUID();
+  const now = new Date().toISOString();
+  const ticket = {
+    id: ticketId,
+    userId: user.id,
+    transactionReferenceId: transactionReferenceId || null,
+    screenshotUrl: screenshotUrl || null,
+    subject,
+    message,
+    status: 'OPEN' as const,
+    createdAt: now,
+    resolvedAt: null,
+  };
+  if (database) {
+    try {
+      await database.query(
+        `INSERT INTO support_tickets
+          (id, user_id, transaction_reference_id, screenshot_url, subject, message, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'OPEN')`,
+        [ticketId, user.id, transactionReferenceId || null, screenshotUrl || null, subject, message],
+      );
+    } catch (error) {
+      console.error('Could not create support ticket:', error);
+      return res.status(500).json({ error: 'Could not create the support ticket.' });
+    }
+  }
+  supportTicketsStore.set(ticketId, ticket);
+  return res.status(201).json({ ticket });
+});
+
+app.get('/api/v1/support/tickets', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view support tickets.' });
+  if (database) {
+    try {
+      const result = await database.query<{
+        id: string;
+        transaction_reference_id: string | null;
+        screenshot_url: string | null;
+        subject: string;
+        message: string;
+        status: 'OPEN' | 'PENDING_NETWORK_REVIEW' | 'RESOLVED';
+        created_at: Date;
+        resolved_at: Date | null;
+      }>(
+        `SELECT id, transaction_reference_id, screenshot_url, subject, message, status, created_at, resolved_at
+         FROM support_tickets
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 100`,
+        [user.id],
+      );
+      return res.json({
+        tickets: result.rows.map((row) => ({
+          id: row.id,
+          userId: user.id,
+          transactionReferenceId: row.transaction_reference_id,
+          screenshotUrl: row.screenshot_url,
+          subject: row.subject,
+          message: row.message,
+          status: row.status,
+          createdAt: row.created_at.toISOString(),
+          resolvedAt: row.resolved_at?.toISOString() || null,
+        })),
+      });
+    } catch (error) {
+      console.error('Could not load support tickets:', error);
+      return res.status(500).json({ error: 'Could not load support tickets.' });
+    }
+  }
+  return res.json({
+    tickets: [...supportTicketsStore.values()].filter((ticket) => ticket.userId === user.id),
+  });
+});
+
+app.get('/api/admin/support/tickets', requireOwnerAdmin, async (_req, res) => {
+  if (database) {
+    try {
+      const result = await database.query<{
+        id: string;
+        user_id: string;
+        transaction_reference_id: string | null;
+        screenshot_url: string | null;
+        subject: string;
+        message: string;
+        status: 'OPEN' | 'PENDING_NETWORK_REVIEW' | 'RESOLVED';
+        created_at: Date;
+        resolved_at: Date | null;
+      }>(
+        `SELECT id, user_id, transaction_reference_id, screenshot_url, subject, message, status, created_at, resolved_at
+         FROM support_tickets
+         ORDER BY created_at DESC
+         LIMIT 500`,
+      );
+      return res.json({
+        tickets: result.rows.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          transactionReferenceId: row.transaction_reference_id,
+          screenshotUrl: row.screenshot_url,
+          subject: row.subject,
+          message: row.message,
+          status: row.status,
+          createdAt: row.created_at.toISOString(),
+          resolvedAt: row.resolved_at?.toISOString() || null,
+        })),
+      });
+    } catch (error) {
+      console.error('Could not load admin support tickets:', error);
+      return res.status(500).json({ error: 'Could not load support tickets.' });
+    }
+  }
+  return res.json({ tickets: [...supportTicketsStore.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) });
+});
+
+app.patch('/api/admin/support/tickets/:id', requireOwnerAdmin, async (req, res) => {
+  const status = req.body?.status;
+  if (!['OPEN', 'PENDING_NETWORK_REVIEW', 'RESOLVED'].includes(status)) {
+    return res.status(400).json({ error: 'Choose OPEN, PENDING_NETWORK_REVIEW, or RESOLVED.' });
+  }
+  const creditAmount = req.body?.creditAmount;
+  const cents = typeof creditAmount === 'number' && Number.isFinite(creditAmount)
+    ? Math.round(creditAmount * 100)
+    : 0;
+  if (creditAmount !== undefined && (cents <= 0 || cents > 2147483647 || Math.abs(creditAmount * 100 - cents) > 1e-7)) {
+    return res.status(400).json({ error: 'Credit amount must be a positive dollar amount to the nearest cent.' });
+  }
+  if (database) {
+    const client = await database.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query<{ user_id: string; status: string }>(
+        'SELECT user_id, status FROM support_tickets WHERE id = $1 FOR UPDATE',
+        [req.params.id],
+      );
+      if (!existing.rows[0]) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Support ticket not found.' });
+      }
+      if (cents > 0) {
+        await client.query(
+          `INSERT INTO survey_reward_balances (user_id, points)
+           VALUES ($1, 0)
+           ON CONFLICT (user_id) DO NOTHING`,
+          [existing.rows[0].user_id],
+        );
+        await client.query(
+          `UPDATE survey_reward_balances
+           SET points = points + $2, updated_at = NOW()
+           WHERE user_id = $1`,
+          [existing.rows[0].user_id, cents],
+        );
+        await client.query(
+          `INSERT INTO transactions
+            (id, user_id, amount, type, reference_id)
+           VALUES ($1, $2, $3, 'OFFER_COMPLETION', $4)
+           ON CONFLICT (reference_id) WHERE reference_id IS NOT NULL DO NOTHING`,
+          [randomUUID(), existing.rows[0].user_id, cents / 100, `support-credit:${req.params.id}`],
+        );
+      }
+      const updated = await client.query(
+        `UPDATE support_tickets
+         SET status = $2, resolved_at = CASE WHEN $2 = 'RESOLVED' THEN NOW() ELSE NULL END
+         WHERE id = $1
+         RETURNING id, status, resolved_at`,
+        [req.params.id, status],
+      );
+      await client.query('COMMIT');
+      return res.json({
+        ticket: {
+          id: updated.rows[0].id,
+          status: updated.rows[0].status,
+          resolvedAt: updated.rows[0].resolved_at?.toISOString() || null,
+        },
+        creditedCents: cents,
+      });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      console.error('Could not update support ticket:', error);
+      return res.status(500).json({ error: 'Could not update the support ticket.' });
+    } finally {
+      client.release();
+    }
+  }
+  const ticket = supportTicketsStore.get(req.params.id);
+  if (!ticket) return res.status(404).json({ error: 'Support ticket not found.' });
+  ticket.status = status;
+  ticket.resolvedAt = status === 'RESOLVED' ? new Date().toISOString() : null;
+  return res.json({ ticket, creditedCents: cents });
 });
 
 app.post('/api/support-chat', async (req, res) => {
@@ -4271,6 +8586,138 @@ app.get('/api/admin/analytics/totals', requireOwnerAdmin, async (_req, res) => {
   });
 });
 
+app.get('/api/admin/analytics/summary', requireOwnerAdmin, async (_req, res) => {
+  if (!database) {
+    return res.json({
+      totalPaidToMembersCents: 0,
+      totalOffersCompleted: analyticsStore.totalConversions,
+      activeUsers24h: 0,
+      offerPerformance: [],
+      storage: 'memory',
+    });
+  }
+  try {
+    const paid = await database.query<{ cents: string }>(
+      `SELECT COALESCE(ROUND(SUM(amount) * 100), 0)::text AS cents
+       FROM transactions
+       WHERE type = 'WITHDRAWAL'
+         AND payout_status = 'COMPLETED'`,
+    );
+    const completed = await database.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM offer_analytics_events
+       WHERE event_type = 'conversion'
+         AND occurred_at >= NOW() - INTERVAL '24 hours'`,
+    );
+    const active = await database.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM users
+       WHERE last_login_at >= NOW() - INTERVAL '24 hours'`,
+    );
+    const offerRows = await database.query<{
+      offer_id: string;
+      conversions: string;
+      clicks: string;
+    }>(
+      `SELECT offer_id,
+              COUNT(*) FILTER (WHERE event_type = 'conversion')::text AS conversions,
+              COUNT(*) FILTER (WHERE event_type = 'click')::text AS clicks
+       FROM offer_analytics_events
+       WHERE occurred_at >= NOW() - INTERVAL '30 days'
+       GROUP BY offer_id
+       ORDER BY COUNT(*) FILTER (WHERE event_type = 'conversion') DESC`,
+    );
+    const securityRows = await database.query<{
+      offer_id: string;
+      security_failures: string;
+      signature_mismatches: string;
+      chargebacks: string;
+    }>(
+      `SELECT offer_id,
+              COUNT(*) FILTER (WHERE event_type = 'security_failure')::text AS security_failures,
+              COUNT(*) FILTER (WHERE event_type = 'signature_mismatch')::text AS signature_mismatches,
+              COUNT(*) FILTER (WHERE event_type = 'chargeback')::text AS chargebacks
+       FROM offer_security_events
+       WHERE occurred_at >= NOW() - INTERVAL '30 days'
+       GROUP BY offer_id`,
+    );
+    const securityByOffer = new Map(securityRows.rows.map((row) => [row.offer_id, row]));
+    const offers = offerRows.rows.map((row) => {
+      const clicks = Number(row.clicks);
+      const conversions = Number(row.conversions);
+      const security = securityByOffer.get(row.offer_id);
+      return {
+        offerId: row.offer_id,
+        clicks,
+        conversions,
+        conversionRate: clicks > 0 ? Number(((conversions / clicks) * 100).toFixed(2)) : 0,
+        securityFailures: security ? Number(security.security_failures) : 0,
+        signatureMismatches: security ? Number(security.signature_mismatches) : 0,
+        chargebacks: security ? Number(security.chargebacks) : 0,
+      };
+    });
+    return res.json({
+      totalPaidToMembersCents: Math.abs(Number(paid.rows[0]?.cents || 0)),
+      totalOffersCompleted: Number(completed.rows[0]?.count || 0),
+      activeUsers24h: Number(active.rows[0]?.count || 0),
+      offerPerformance: offers,
+      storage: 'database',
+    });
+  } catch (error) {
+    console.error('Could not load analytics summary:', error);
+    return res.status(500).json({ error: 'Could not load analytics summary.' });
+  }
+});
+
+app.get('/api/admin/analytics/ledger-integrity', requireOwnerAdmin, async (_req, res) => {
+  if (!database) {
+    return res.json({
+      status: 'not_applicable',
+      storage: 'memory',
+      checkedAt: new Date().toISOString(),
+      transactionCreditsCents: 0,
+      liveUserBalanceCents: 0,
+      differenceCents: 0,
+      note: 'Ledger integrity requires persistent database storage.',
+    });
+  }
+  try {
+    const aggregate = await database.query<{
+      transaction_credits: string;
+      live_user_balance: string;
+    }>(
+      `SELECT
+         (SELECT COALESCE(ROUND(SUM(amount) FILTER (WHERE amount > 0) * 100), 0)
+          FROM transactions)::text AS transaction_credits,
+         (SELECT COALESCE(ROUND(SUM(balance) * 100), 0)
+          FROM users)::text AS live_user_balance`,
+    );
+    const transactionCreditsCents = Math.round(Number(aggregate.rows[0]?.transaction_credits || 0));
+    const liveUserBalanceCents = Math.round(Number(aggregate.rows[0]?.live_user_balance || 0));
+    const differenceCents = transactionCreditsCents - liveUserBalanceCents;
+    const status = Math.abs(differenceCents) === 0 ? 'healthy' : 'anomalous';
+    const runId = randomUUID();
+    await database.query(
+      `INSERT INTO ledger_integrity_runs
+        (id, checked_at, transaction_credits, live_user_balance, difference, status)
+       VALUES ($1, NOW(), $2, $3, $4, $5)`,
+      [runId, transactionCreditsCents / 100, liveUserBalanceCents / 100, differenceCents / 100, status],
+    );
+    return res.json({
+      status,
+      storage: 'database',
+      checkedAt: new Date().toISOString(),
+      runId,
+      transactionCreditsCents,
+      liveUserBalanceCents,
+      differenceCents,
+    });
+  } catch (error) {
+    console.error('Could not run ledger integrity audit:', error);
+    return res.status(500).json({ error: 'Could not run ledger integrity audit.' });
+  }
+});
+
 app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
   const from = typeof req.query.from === 'string' ? new Date(`${req.query.from}T00:00:00.000Z`) : null;
   const to = typeof req.query.to === 'string' ? new Date(`${req.query.to}T23:59:59.999Z`) : null;
@@ -4791,7 +9238,86 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const httpServer = createHttpServer(app);
+  liveActivitySocketServer = new WebSocketServer({ noServer: true });
+  notificationSocketServer = new WebSocketServer({ noServer: true });
+  httpServer.on('upgrade', (request, socket, head) => {
+    let pathname: string;
+    try {
+      pathname = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`).pathname;
+    } catch {
+      socket.destroy();
+      return;
+    }
+    const target = pathname === '/ws/activity'
+      ? liveActivitySocketServer
+      : pathname === '/ws/notifications'
+        ? notificationSocketServer
+        : null;
+    if (!target) {
+      socket.destroy();
+      return;
+    }
+    target.handleUpgrade(request, socket, head, (webSocket) => {
+      target.emit('connection', webSocket, request);
+    });
+  });
+  liveActivitySocketServer.on('connection', (socket) => {
+    socket.send(JSON.stringify({
+      event: 'cashout.connected',
+      data: { timestamp: new Date().toISOString() },
+    }));
+  });
+  notificationSocketServer.on('connection', (socket, request) => {
+    void (async () => {
+      try {
+        const origin = request.headers.origin;
+        const host = request.headers.host;
+        if (!origin || !host || new URL(origin).host.toLowerCase() !== host.toLowerCase()) {
+          socket.close(1008, 'Same-origin connection required');
+          return;
+        }
+        const userId = await getNotificationSocketUserId(request);
+        if (!userId || socket.readyState !== WebSocket.OPEN) {
+          socket.close(1008, 'Authentication required');
+          return;
+        }
+        const sockets = notificationSocketsByUser.get(userId) || new Set<WebSocket>();
+        sockets.add(socket);
+        notificationSocketsByUser.set(userId, sockets);
+        socket.send(JSON.stringify({
+          event: 'notification.connected',
+          data: { timestamp: new Date().toISOString() },
+        }));
+        const removeSocket = () => {
+          sockets.delete(socket);
+          if (!sockets.size) notificationSocketsByUser.delete(userId);
+        };
+        socket.on('close', removeSocket);
+        socket.on('error', (error) => {
+          console.error('Notification WebSocket error:', error);
+          removeSocket();
+        });
+      } catch (error) {
+        console.error('Could not authenticate notification WebSocket:', error);
+        socket.close(1011, 'Could not authenticate connection');
+      }
+    })();
+  });
+  const pingTimer = setInterval(() => {
+    liveActivitySocketServer?.clients.forEach((socket) => {
+      if (socket.readyState === WebSocket.OPEN) socket.ping();
+    });
+    notificationSocketServer?.clients.forEach((socket) => {
+      if (socket.readyState === WebSocket.OPEN) socket.ping();
+    });
+  }, 30_000);
+  pingTimer.unref();
+  startMockActivityWorker();
+  startRpsLobbyTimeoutWorker();
+  startScheduledWorkers();
+  startOfferFeedWorker();
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`signups4fastcash.com server running on http://0.0.0.0:${PORT}`);
   });
 }

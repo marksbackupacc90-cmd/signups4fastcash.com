@@ -1,0 +1,61 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      APP_URL: "${APP_URL:-http://localhost:5000}"
+      DATABASE_URL: postgresql://s4fc:s4fc_dev_password@postgres:5432/s4fc
+      REDIS_URL: redis://redis:6379
+      POSTBACK_SECRET: "${POSTBACK_SECRET:-change-me-postback-secret}"
+      MILESTONE_CALLBACK_SECRET: "${MILESTONE_CALLBACK_SECRET:-change-me-milestone-secret}"
+      JWT_SECRET: "${JWT_SECRET:-change-me-jwt-secret}"
+      ADMIN_PASSCODE: "${ADMIN_PASSCODE:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - s4fc-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: s4fc
+      POSTGRES_USER: s4fc
+      POSTGRES_PASSWORD: s4fc_dev_password
+    volumes:
+      - s4fc-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U s4fc -d s4fc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - s4fc-network
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - s4fc-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - s4fc-network
+
+volumes:
+  s4fc-postgres-data:
+  s4fc-redis-data:
+
+networks:
+  s4fc-network:
+    driver: bridge

@@ -15,6 +15,8 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
       <>
         <p>S4FC collects information you choose to submit, such as your email address when you subscribe to alerts. S4FC uses it to provide the requested alerts and maintain the service.</p>
         <p>The site’s hosting provider may process basic technical information, such as request time, device type, and IP address, for security and reliability. The site counts page loads using a single aggregate total; it does not store a page-view visitor ID, page path, source, or location. No consent popup is used for this aggregate counter.</p>
+        <p>For security and fraud prevention, S4FC may read browser metadata and generate a device fingerprint, including canvas characteristics, screen dimensions, language settings, platform, time zone, and hardware concurrency. Network information may be used to detect proxy, VPN, Tor, hosting, or shared-connection abuse. Fingerprint and IP-derived values are stored as privacy-preserving hashes where practical, not as a public profile.</p>
+        <p>S4FC uses essential first-party cookies for sessions, OAuth state, preferences, and temporary browser checks. Optional cookies or tracking must not be used for a purpose that conflicts with this policy. Browser storage may also be used for account state and offer activity; it can be cleared through browser controls.</p>
         <p>When someone follows an offer link, S4FC records only the offer and event time so the site can show aggregate referral-click counts. These counts represent tracked clicks, not unique people, and click records do not include a visitor ID or location. Previously collected visitor analytics, if any, remain subject to the configured retention period (365 days by default). To request access to or deletion of information associated with you, or to withdraw newsletter consent, contact the site operator at the support address shown below.</p>
         <p>S4FC does not sell your personal information. Merchant websites have their own privacy policies, and you should review them before applying through an external link.</p>
         <p>To request removal of a newsletter address or ask a privacy question, contact the site operator through the email address listed in the deployment configuration.</p>
@@ -27,6 +29,9 @@ const CONTENT: Record<LegalSection, { title: string; body: React.ReactNode }> = 
       <>
         <p>This site provides promotional information and comparison tools. It is not financial, tax, legal, investment, credit, or gambling advice.</p>
         <p>Offers are controlled by third-party merchants. Eligibility, geographic availability, requirements, fees, taxes, payout timing, and expiration dates can change. Confirm the official merchant terms before applying.</p>
+        <p><strong>Account and network rules:</strong> no proxy, VPN, Tor, emulator, automated emulator, device-spoofing, or similar concealment may be used to create duplicate accounts or manipulate tracking. Use of these methods may result in immediate account termination and restricted or forfeited rewards and balances where abuse is confirmed.</p>
+        <p>One account is permitted per household and network boundary unless S4FC explicitly approves separate accounts. Accounts using the same IP address, device fingerprint, or suspicious tracking pattern may be linked and placed under manual review.</p>
+        <p>Automated tracking spoofing, falsified offer completions, duplicate registrations, and attempted balance exploitation can cause pending transactions to be cancelled and earned or deposited balances to be forfeited. Fraud findings are subject to review and applicable law.</p>
         <p>S4FC does not hold funds, complete applications, guarantee approval, or guarantee that a merchant will issue a reward. You are responsible for deciding whether an offer is appropriate for you.</p>
         <p>External links take you to third-party websites. S4FC is not responsible for their content, security, availability, or decisions.</p>
       </>
@@ -67,7 +72,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ section, onClose }) => {
         </button>
         <h2 className="pr-8 text-xl font-bold text-white">{content.title}</h2>
         <div className="mt-5 space-y-4">{content.body}</div>
-        <p className="mt-6 border-t border-white/[0.08] pt-4 text-[13px] text-zinc-300">Last reviewed: October 2, 2026. Offer-specific terms can change at any time; confirm them with the provider before proceeding.</p>
+        <p className="mt-6 border-t border-white/[0.08] pt-4 text-[13px] text-zinc-300">Last reviewed: November 24, 2026. Offer-specific terms can change at any time; confirm them with the provider before proceeding.</p>
       </div>
     </div>
   );

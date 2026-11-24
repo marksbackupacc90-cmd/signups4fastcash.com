@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+docker-compose.override.yml
+*.pid
+*.tmp
+tmp/
+.vscode/

@@ -54,7 +54,15 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
               <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                The company pays your reward
+                Offer provider pays rewards
+              </span>
+              <span className="inline-flex items-center gap-1 rounded border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-cyan-200">
+                <Lock className="h-3.5 w-3.5" />
+                HTTP-only session cookies
+              </span>
+              <span className="inline-flex items-center gap-1 rounded border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-violet-200">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Device and network abuse checks
               </span>
             </div>
           </div>
@@ -85,6 +93,11 @@ export const Footer: React.FC<FooterProps> = ({
                   Email Drop Alerts
                 </button>
               </li>
+              <li>
+                <a href="/support" className="inline-flex min-h-11 items-center gap-1.5 hover:text-white transition-colors">
+                  Help &amp; Support Desk
+                </a>
+              </li>
               {onTogglePush && (
                 <li>
                   <button onClick={onTogglePush} className="min-h-11 hover:text-white transition-colors text-left flex items-center gap-1">
@@ -109,8 +122,9 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             {onOpenLegal && (
               <div className="space-y-1.5 text-zinc-300">
-                <button onClick={() => onOpenLegal('privacy')} className="block min-h-11 hover:text-white transition-colors text-left">Privacy Policy</button>
-                <button onClick={() => onOpenLegal('terms')} className="block min-h-11 hover:text-white transition-colors text-left">Terms &amp; Disclaimer</button>
+                <a href="/privacy" className="flex min-h-11 items-center hover:text-white transition-colors">Privacy Policy</a>
+                <a href="/terms" className="flex min-h-11 items-center hover:text-white transition-colors">Terms of Service</a>
+                <a href="/cookies" className="flex min-h-11 items-center hover:text-white transition-colors">Cookie Disclosure</a>
                 <button onClick={() => onOpenLegal('affiliate')} className="block min-h-11 hover:text-white transition-colors text-left">Affiliate Disclosure</button>
                 <button onClick={() => onOpenLegal('methodology')} className="block min-h-11 hover:text-white transition-colors text-left">Editorial Methodology</button>
               </div>

@@ -17,6 +17,8 @@ Set these in the hosting panel:
 - `CPX_SECURE_HASH` — private CPX postback secret; set this in Render and never commit it
 - `GOOGLE_CLIENT_ID` — Google OAuth web application client ID
 - `GOOGLE_CLIENT_SECRET` — Google OAuth web application secret
+- `MILESTONE_CALLBACK_SECRET` — private HMAC-SHA256 secret shared with the trusted game provider for milestone callbacks
+- `POSTBACK_SECRET` — private HMAC-SHA256 secret shared with the trusted affiliate network
 - `RESEND_API_KEY` — Resend API key for confirmation and alert delivery
 - `EMAIL_FROM` — verified sender, for example `Signups4FastCash.com <alerts@your-domain.com>`
 - `NEWSLETTER_UNSUBSCRIBE_SECRET` — long random secret used to sign unsubscribe links
@@ -36,7 +38,7 @@ For local testing, also add:
 
 `http://localhost:3000/api/auth/google/callback`
 
-Set the resulting client ID and secret in Render. The first visit opens the sign-in modal; after Google authenticates, the user must choose a unique username. Account sessions and usernames are stored in PostgreSQL.
+Set the resulting client ID and secret in Render. The sign-in modal supports Google or email/username and password. Password registration requires PostgreSQL, uses bcrypt hashes, and applies migration 3; account sessions are stored in PostgreSQL and issued as HTTP-only cookies. A verified Google sign-in using an existing account's email links to that account.
 
 ## CPX publisher setup
 
@@ -56,6 +58,50 @@ The website code can load the CPX wall, but CPX controls approval, survey invent
 5. Complete one test survey and confirm the callback changes the balance shown in the Surveys & Rewards panel.
 
 The callback accepts CPX statuses `1` (credit) and `2` (reversal), validates the transaction hash, and stores balances in PostgreSQL when `DATABASE_URL` is configured. The site does not enable cash-out requests automatically; payout processing still requires authenticated accounts and a configured payout provider.
+
+## RPS games and verified milestones
+
+The RPS endpoint and milestone claims use the existing survey points wallet at
+100 points per dollar. They only operate with PostgreSQL and a signed-in user
+account. Configure `MILESTONE_CALLBACK_SECRET` to a long random value shared
+with the trusted game provider. The provider must send milestone progress to
+`POST /api/offers/milestones` with `userId`, `offerId`, and `level` in JSON,
+plus `X-Milestone-Timestamp` (Unix milliseconds), `X-Milestone-Event-Id`
+(unique provider event ID), and `X-Milestone-Signature` (HMAC-SHA256 hex over
+`<timestamp>.<eventId>.<userId>.<offerId>.<level>`). Callbacks older than five
+minutes are rejected; IDs are idempotent and only verified server callbacks
+can credit rewards. The seeded EarnX milestones are levels 5, 10, and 20.
+
+`POST /api/games/rps/play` requires a signed-in user, a choice, and a unique
+`Idempotency-Key`. The optional entry bet defaults to $0.50 and is limited by
+the current wallet balance. Wins pay twice the entry (the total pot), losses
+forfeit the entry, and draws refund it.
+
+Dynamic offer campaigns are managed through `GET/POST /api/admin/offers` and
+`PUT/DELETE /api/admin/offers/:id`, using an active `x-admin-token` and the
+PostgreSQL database. Campaign milestones are stored with their tier details and
+mirrored into the verified milestone ledger transactionally. Deleting a
+campaign deactivates it for users while preserving its historical claims.
+
+Affiliate reward callbacks use `GET/POST /api/v1/callbacks/postback` and require
+`POSTBACK_SECRET`. Sign the canonical string
+`<click_id>.<user_id>.<offer_id>.<milestone_step>.<payout_cents>` with
+HMAC-SHA256; send its hex digest as `signature` or in `X-Postback-Signature`.
+The payout must match the active configured tier. Transactions credit
+`users.balance` exactly once per click, offer, and step and are recorded in the
+`transactions` ledger. This dollar balance is separate from survey points.
+
+`GET /api/live-offers` is a public, capped feed of the 15 newest successfully
+credited affiliate and CPX offers. It returns masked usernames, offerwall and
+offer labels, payout amounts, and credit timestamps; raw user IDs are never
+returned. Feed rows are stored idempotently with the successful credit and
+queried through a timestamp index. The `/ws/activity` socket also broadcasts
+new public credits as `offers.credit` events. CPX reversals remove the related
+entry from the live feed.
+
+The UI-only `/dashboard-preview` page is a layout prototype. Its wallet,
+cash-outs, and offer progress are illustrative sample data and are not linked to
+accounts or payout processing.
 
 ## Render setup
 1. Push this repo to GitHub.

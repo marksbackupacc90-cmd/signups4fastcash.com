@@ -1,4 +1,33 @@
-export type OfferCategory = 'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto';
+export type OfferCategory = 'fintech' | 'brokerage' | 'cashback' | 'apps' | 'crypto' | 'gaming';
+
+export interface OfferMilestone {
+  step_number: number;
+  level: number;
+  description: string;
+  payout_amount: number;
+}
+
+export interface OfferCampaign {
+  id: string;
+  title: string;
+  description: string;
+  category: OfferCategory;
+  total_value: number;
+  milestones: OfferMilestone[];
+  tracking_parameters: Record<string, string>;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlatformNotification {
+  id: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  type: 'CREDIT_ALERT' | 'PVP_ALERT' | 'SYSTEM';
+  created_at: string;
+}
 
 export interface SpeedrunStep {
   step: number;

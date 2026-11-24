@@ -1,11 +1,14 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import { RewardsDashboard } from './components/RewardsDashboard.tsx';
 import './index.css';
+
+const isDashboardPreview = window.location.pathname.replace(/\/+$/, '') === '/dashboard-preview';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {isDashboardPreview ? <RewardsDashboard /> : <App />}
   </StrictMode>,
 );
 

@@ -1,6 +1,6 @@
 import { OfferLandingPage } from './components/OfferLandingPage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
+import { Offer, NewsletterSubscriber, EmailBlastLog, PlatformNotification, SiteSettings, DEFAULT_SITE_SETTINGS } from './types';
 import { PUBLIC_OFFERS, INITIAL_PENDING_OFFERS } from './data/initialOffers';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -20,6 +20,9 @@ import { OfferFinder } from './components/OfferFinder';
 import { MyOffers, MyOfferStatus, readMyOfferEntries } from './components/MyOffers';
 import { OfferComparison } from './components/OfferComparison';
 import { TrackingCheck } from './components/TrackingCheck';
+import { GamesPanel } from './components/GamesPanel';
+import { LivePayoutTicker } from './components/LivePayoutTicker';
+import { SupportDesk } from './components/SupportDesk';
 
 interface AuthUser {
   id: string;
@@ -64,9 +67,11 @@ function clearPausedReferralAttribution() {
 
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
+  const authModeParam = new URLSearchParams(window.location.search).get('auth');
   const isRegistrationRoute = window.location.pathname.replace(/\/+$/, '') === '/register';
+  const isSupportRoute = window.location.pathname.replace(/\/+$/, '') === '/support';
   const isOfferRoute = /^\/offers\/[^/]+\/?$/.test(window.location.pathname);
-  const [activeTab, setActiveTab] = useState<'offers' | 'daily' | 'admin'>('offers');
+  const [activeTab, setActiveTab] = useState<'offers' | 'games' | 'daily' | 'admin'>('offers');
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
     if (saved) {
@@ -158,10 +163,11 @@ export default function App() {
   );
   const [myOffersOpen, setMyOffersOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [notifications, setNotifications] = useState<PlatformNotification[]>([]);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>(isRegistrationRoute ? 'signup' : 'signin');
-  const [authOpenRequest, setAuthOpenRequest] = useState(isRegistrationRoute ? 1 : 0);
+  const [authOpenRequest, setAuthOpenRequest] = useState(isRegistrationRoute || authModeParam === 'signin' ? 1 : 0);
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [trackingCheckOpen, setTrackingCheckOpen] = useState(false);
@@ -301,6 +307,77 @@ export default function App() {
     setToastMessage(msg);
     window.setTimeout(() => setToastMessage(null), 4000);
   };
+
+  const handleToggleNotificationRead = async (notification: PlatformNotification) => {
+    const response = await fetch(`/api/v1/notifications/${encodeURIComponent(notification.id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_read: !notification.is_read }),
+    }).catch(() => null);
+    const data = await response?.json().catch(() => null) as { notification?: PlatformNotification; error?: string } | null;
+    if (!response?.ok || !data?.notification) {
+      showToast(data?.error || 'Could not update this notification.');
+      return;
+    }
+    setNotifications((current) => current.map((item) => item.id === data.notification?.id ? data.notification : item));
+  };
+
+  useEffect(() => {
+    if (!authUser) {
+      setNotifications([]);
+      return;
+    }
+    let active = true;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: number | null = null;
+
+    fetch('/api/v1/notifications', { cache: 'no-store' })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null) as { notifications?: PlatformNotification[]; error?: string } | null;
+        if (!response.ok || !data) throw new Error(data?.error || 'Could not load notifications.');
+        return data;
+      })
+      .then((data) => {
+        if (active) setNotifications(data.notifications || []);
+      })
+      .catch((error: unknown) => {
+        if (active) console.error('Could not load notifications:', error);
+      });
+
+    const connect = () => {
+      if (!active) return;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket = new WebSocket(`${protocol}//${window.location.host}/ws/notifications`);
+      socket.addEventListener('message', (message) => {
+        try {
+          const payload = JSON.parse(message.data) as { event?: string; data?: PlatformNotification };
+          const notification = payload.data;
+          if (
+            payload.event !== 'notification.created' ||
+            !notification ||
+            typeof notification.id !== 'string' ||
+            typeof notification.title !== 'string' ||
+            typeof notification.message !== 'string'
+          ) return;
+          setNotifications((current) => [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 100));
+          showToast(`${notification.title}: ${notification.message}`);
+        } catch (error) {
+          console.error('Could not process notification WebSocket message:', error);
+        }
+      });
+      socket.addEventListener('close', () => {
+        if (active) reconnectTimer = window.setTimeout(connect, 3000);
+      });
+      socket.addEventListener('error', () => socket?.close());
+    };
+    connect();
+
+    return () => {
+      active = false;
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      socket?.close();
+    };
+  }, [authUser]);
 
   const getAdminHeaders = () => {
     const token = localStorage.getItem('signups4fastcash_admin_token');
@@ -982,6 +1059,26 @@ export default function App() {
   if (isOfferRoute) {
     return <OfferLandingPage />;
   }
+  if (isSupportRoute) {
+    return (
+      <div data-site-theme="custom" className="min-h-screen bg-brand-bg font-sans antialiased">
+        <SupportDesk
+          signedIn={authUser ? true : undefined}
+          onSignIn={() => {
+            setAuthModalMode('signin');
+            setAuthOpenRequest((request) => request + 1);
+          }}
+        />
+        <AuthModal
+          user={authUser}
+          onUserChange={handleAuthUserChange}
+          openRequest={authOpenRequest}
+          mode={authModalMode}
+          disabled={recordingMode}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1012,6 +1109,8 @@ export default function App() {
         onOpenFinder={() => setOfferFinderOpen(true)}
         onOpenNewsletter={() => setIsNewsletterOpen(true)}
         onOpenTrackingCheck={() => setTrackingCheckOpen(true)}
+        notifications={notifications}
+        onToggleNotificationRead={(notification) => void handleToggleNotificationRead(notification)}
         onAccount={() => setAccountOpen(true)}
         onSignOut={async () => {
           await fetch('/api/auth/logout', { method: 'POST' });
@@ -1035,6 +1134,8 @@ export default function App() {
         }}
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
+
+      <LivePayoutTicker />
 
       {activeTab === 'offers' && orderedLiveOffers.length > 0 && (
         <div
@@ -1097,6 +1198,15 @@ export default function App() {
       )}
 
       <main className="flex-1">
+        {activeTab === 'games' && (
+          <GamesPanel
+            signedIn={Boolean(authUser)}
+            onSignIn={() => {
+              setAuthModalMode('signin');
+              setAuthOpenRequest((request) => request + 1);
+            }}
+          />
+        )}
         {activeTab === 'offers' && <MyOffers
           offers={liveOffers}
           trackedOfferIds={myOfferIds}
@@ -1120,6 +1230,14 @@ export default function App() {
               onInstallApp={isInstalled ? undefined : () => void handleInstallApp()}
               totalOffersCount={publicOffers.length}
               onOpenNewsletter={() => setIsNewsletterOpen(true)}
+              onStartEarning={() => {
+                if (authUser) {
+                  document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  return;
+                }
+                setAuthModalMode('signup');
+                setAuthOpenRequest((request) => request + 1);
+              }}
             />
 
             <div className="mx-auto max-w-7xl space-y-4 px-4 pb-7 sm:px-6 lg:px-8" id="offers">

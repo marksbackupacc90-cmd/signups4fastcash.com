@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
-import { DEFAULT_SITE_SETTINGS, SiteSettings } from '../types';
-import { Bell, ChevronDown, ListChecks, Search, Share2, ShieldCheck } from 'lucide-react';
+import { DEFAULT_SITE_SETTINGS, PlatformNotification, SiteSettings } from '../types';
+import { Bell, ChevronDown, ListChecks, Search, Share2, ShieldCheck, Swords } from 'lucide-react';
 
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
   siteSettings?: SiteSettings;
-  activeTab: 'offers' | 'daily' | 'admin';
-  setActiveTab: (tab: 'offers' | 'daily' | 'admin') => void;
+  activeTab: 'offers' | 'games' | 'daily' | 'admin';
+  setActiveTab: (tab: 'offers' | 'games' | 'daily' | 'admin') => void;
   onOpenMyOffers: () => void;
   activeOfferCount: number;
   username?: string | null;
@@ -23,6 +23,8 @@ interface NavbarProps {
   onOpenFinder: () => void;
   onOpenNewsletter: () => void;
   onOpenTrackingCheck: () => void;
+  notifications: PlatformNotification[];
+  onToggleNotificationRead: (notification: PlatformNotification) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -45,10 +47,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFinder,
   onOpenNewsletter,
   onOpenTrackingCheck,
+  notifications,
+  onToggleNotificationRead,
 }) => {
   const settings = siteSettings || DEFAULT_SITE_SETTINGS;
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -60,6 +66,19 @@ export const Navbar: React.FC<NavbarProps> = ({
     document.addEventListener('pointerdown', handleOutsidePointerDown);
     return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    if (!notificationMenuOpen) return;
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(event.target as Node)) {
+        setNotificationMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [notificationMenuOpen]);
+
+  const unreadNotifications = notifications.filter((notification) => !notification.is_read).length;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#090d18]/85 backdrop-blur-xl">
@@ -99,6 +118,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             Offers
           </button>
           <button
+            type="button"
+            onClick={() => setActiveTab('games')}
+            className={`retro-button focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md border px-4 py-2 text-xs font-medium transition-all ${
+              activeTab === 'games'
+                ? 'border-[#2dd4ee]/60 bg-[#2dd4ee] text-[#06131a] font-semibold'
+                : 'border-white/15 text-zinc-200 hover:bg-[#141824] hover:text-white'
+            }`}
+          >
+            <Swords className="h-3.5 w-3.5" aria-hidden="true" />
+            RPS
+          </button>
+          <button
             id="nav-my-offers"
             type="button"
             onClick={onOpenMyOffers}
@@ -120,6 +151,76 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {userId && (
+            <div ref={notificationMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationMenuOpen((open) => !open)}
+                className="retro-button focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-zinc-200 hover:bg-white/10"
+                aria-label={`Notifications, ${unreadNotifications} unread`}
+                aria-expanded={notificationMenuOpen}
+                title="Notifications"
+              >
+                <Bell className="h-4 w-4" aria-hidden="true" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-300 px-1 text-[10px] font-black text-[#071016]">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                )}
+              </button>
+              {notificationMenuOpen && (
+                <section
+                  aria-label="Recent notifications"
+                  className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#0e121a] shadow-2xl"
+                >
+                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                    <h2 className="text-sm font-semibold text-white">Notifications</h2>
+                    <span className="text-[11px] text-zinc-400">Past 30 days</span>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-xs text-zinc-400">No notifications in the past 30 days.</p>
+                    ) : notifications.map((notification) => (
+                      <article
+                        key={notification.id}
+                        className={`border-b border-white/5 px-4 py-3 last:border-0 ${notification.is_read ? 'opacity-70' : 'bg-cyan-300/[0.04]'}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${notification.is_read ? 'bg-zinc-600' : 'bg-cyan-300'}`} aria-hidden="true" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-white">{notification.title}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-zinc-300">{notification.message}</p>
+                            <p className="mt-1.5 text-[10px] text-zinc-500">{new Date(notification.created_at).toLocaleString()}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onToggleNotificationRead(notification)}
+                            className="shrink-0 rounded px-1.5 py-1 text-[10px] font-medium text-cyan-200 hover:bg-cyan-300/10"
+                            aria-label={notification.is_read ? `Mark ${notification.title} unread` : `Mark ${notification.title} read`}
+                          >
+                            {notification.is_read ? 'Unread' : 'Read'}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('games')}
+            className={`retro-button focus-ring inline-flex h-9 items-center gap-1.5 rounded-md border px-2 text-xs font-semibold md:hidden ${
+              activeTab === 'games'
+                ? 'border-[#2dd4ee]/60 bg-[#2dd4ee] text-[#06131a]'
+                : 'border-white/15 text-zinc-200 hover:bg-white/10'
+            }`}
+            aria-label="Open Rock-Paper-Scissors"
+          >
+            <Swords className="h-4 w-4" aria-hidden="true" />
+            RPS
+          </button>
           <button
             type="button"
             onClick={onOpenTrackingCheck}
