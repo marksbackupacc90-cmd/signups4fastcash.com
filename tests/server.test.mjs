@@ -13,7 +13,7 @@ process.env.REFERRAL_HASH_SECRET = 'test-referral-secret';
 process.env.MILESTONE_CALLBACK_SECRET = 'test-milestone-secret';
 process.env.POSTBACK_SECRET = 'test-postback-secret';
 process.env.CPX_SECURE_HASH = 'test-cpx-secret';
-const { app, applyCoinsBackTerms, broadcastLiveActivity, buildOfferActivityReport, buildOfferActivitySinceReport, buildPostbackSignaturePayload, calculateReferralCommissionCents, calculateRpsPvpRakeUnits, canApproveReferralPayout, compileOutboundTrackingUrl, createGoogleOAuthState, createMockCashoutEvent, createWithdrawalTrackingHash, evaluateRpsOutcome, getAggregatePageViewCount, getOfferActivityReport, getUtcDailyKey, getUtcRaceKey, hashFraudIdentifier, hashWithdrawalDestination, isOfferAvailableInUs, isTemporarilyHiddenOffer, isValidDeviceFingerprint, isVerificationCurrent, maskPublicOfferUsername, maskWithdrawalDestination, mergeCatalogOffer, mockWithdrawalProvider, newsletterEmailLayout, normalizeOfferFeedPayload, parseRpsWager, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus, validateOfferCampaign, validateWithdrawalDestination } = await import('../dist/server.cjs');
+const { app, applyCoinsBackTerms, broadcastLiveActivity, buildOfferActivityReport, buildOfferActivitySinceReport, buildPostbackSignaturePayload, calculateReferralCommissionCents, calculateRpsPvpRakeUnits, canApproveReferralPayout, compileOutboundTrackingUrl, createGoogleOAuthState, createMockCashoutEvent, createWithdrawalTrackingHash, decryptProviderCredential, encryptProviderCredential, evaluateRpsOutcome, getAggregatePageViewCount, getAuthSessionCookieOptions, getOfferActivityReport, getStrictTransportSecurityOptions, getUtcDailyKey, getUtcRaceKey, hashFraudIdentifier, hashWithdrawalDestination, isOfferAvailableInUs, isTemporarilyHiddenOffer, isValidDeviceFingerprint, isVerificationCurrent, maskPublicOfferUsername, maskWithdrawalDestination, mergeCatalogOffer, mockWithdrawalProvider, newsletterEmailLayout, normalizeOfferFeedPayload, parseRpsWager, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus, validateOfferCampaign, validateWithdrawalDestination } = await import('../dist/server.cjs');
 const { seedCampaigns, seedProfiles, SEED_PREFIX } = await import('../scripts/seed-config.mjs');
 
 const server = createServer(app);
@@ -50,6 +50,7 @@ test('health endpoint reports memory readiness without a database', async () => 
   assert.ok(['configured', 'not_configured'].includes(response.body.email));
   assert.equal(response.headers.get('x-frame-options'), 'DENY');
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('strict-transport-security'), null);
   assert.equal(response.headers.get('cache-control'), 'no-store');
 
   const publicHealth = await request('/health');
@@ -57,6 +58,28 @@ test('health endpoint reports memory readiness without a database', async () => 
   assert.equal(publicHealth.body.status, 'ok');
   assert.equal(publicHealth.body.database, 'memory');
   assert.ok(Number.isInteger(publicHealth.body.uptimeSeconds));
+});
+
+test('provider API credentials are encrypted and authenticated before decryption', () => {
+  const secretValue = 'provider-test-secret';
+  const encryptionSecret = 'test-encryption-secret';
+  const encrypted = encryptProviderCredential(secretValue, encryptionSecret);
+  assert.notEqual(encrypted.ciphertext, secretValue);
+  assert.equal(decryptProviderCredential(encrypted, encryptionSecret), secretValue);
+  assert.throws(() => decryptProviderCredential(encrypted, 'different-encryption-secret'), /authenticate/i);
+});
+
+test('provider credential management requires owner admin authorization', async () => {
+  const list = await request('/api/admin/provider-credentials');
+  assert.equal(list.status, 403);
+  const save = await request('/api/admin/provider-credentials', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providerName: 'Example', credentialName: 'API key', value: 'do-not-store' }),
+  });
+  assert.equal(save.status, 403);
+  const remove = await request('/api/admin/provider-credentials/example/api-key', { method: 'DELETE' });
+  assert.equal(remove.status, 403);
 });
 
 test('compliance pages expose terms, privacy, cookies, and affiliate disclosure', async () => {
@@ -349,6 +372,56 @@ test('password login validates identifiers and reports unavailable persistent st
   assert.equal(validLoginWithoutDatabase.headers.get('set-cookie'), null);
 });
 
+test('auth session cookies are strict and secure in production', () => {
+  assert.deepEqual(getAuthSessionCookieOptions(true), {
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: true,
+    path: '/',
+  });
+  assert.equal(getAuthSessionCookieOptions(false).secure, false);
+});
+
+test('HSTS is enabled only for production with a one-year lifetime', () => {
+  assert.deepEqual(getStrictTransportSecurityOptions(true), { maxAge: 31_536_000 });
+  assert.equal(getStrictTransportSecurityOptions(false), false);
+});
+
+test('signup and login requests are rate limited per client IP', async () => {
+  for (const [path, ip] of [
+    ['/api/auth/signup', '198.51.100.71'],
+    ['/api/auth/login', '198.51.100.72'],
+  ]) {
+    const responses = [];
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      responses.push(await request(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Real-IP': ip },
+        body: JSON.stringify(path.endsWith('signup')
+          ? { email: 'limit@example.test', username: 'limituser', password: 'a-secure-password' }
+          : { identifier: 'limituser', password: 'a-secure-password' }),
+      }));
+    }
+
+    assert.ok(responses.slice(0, 10).every((response) => response.status === 503));
+    assert.equal(responses[10].status, 429);
+    assert.equal(responses[10].body.error, 'Too many authentication attempts. Please try again later.');
+    assert.ok(Number(responses[10].headers.get('retry-after')) > 0);
+  }
+});
+
+test('malformed JSON errors return a generic response instead of a development trace', async () => {
+  const response = await request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{',
+  });
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, { error: 'The request could not be processed.' });
+  assert.equal(JSON.stringify(response.body).includes('SyntaxError'), false);
+});
+
 test('offer campaign schema validates flexible milestone tiers and payout totals', () => {
   const milestones = Array.from({ length: 25 }, (_, index) => ({
     step_number: index + 1,
@@ -612,6 +685,7 @@ test('Google signup ignores referral codes while the member program is paused', 
   const state = redirectUrl.searchParams.get('state');
   const cookie = response.headers.get('set-cookie');
   const nonce = cookie?.match(/sfc_oauth_state=([a-f0-9]+)/)?.[1];
+  assert.match(cookie || '', /SameSite=Lax/i);
   assert.ok(state);
   assert.ok(nonce);
   assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: null });

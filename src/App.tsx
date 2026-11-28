@@ -23,6 +23,7 @@ import { TrackingCheck } from './components/TrackingCheck';
 import { GamesPanel } from './components/GamesPanel';
 import { LivePayoutTicker } from './components/LivePayoutTicker';
 import { SupportDesk } from './components/SupportDesk';
+import { CommunityChat } from './components/CommunityChat';
 
 interface AuthUser {
   id: string;
@@ -1493,6 +1494,12 @@ export default function App() {
         />
       )}
       {trackingCheckOpen && <TrackingCheck onClose={() => setTrackingCheckOpen(false)} />}
+      <CommunityChat
+        persistent
+        username={authUser?.username}
+        userId={authUser?.id}
+        avatarUrl={authUser?.avatarUrl}
+      />
     </div>
   );
 }

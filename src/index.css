@@ -11,9 +11,9 @@
 
 :root {
   color-scheme: dark;
-  --site-background: #0b0e14;
-  --site-accent: #22d3ee;
-  --site-panel: #161b22;
+  --site-background: #0b0c10;
+  --site-accent: #a855f7;
+  --site-panel: #16181f;
   --canvas: var(--site-background);
   --surface: var(--site-panel);
   --surface-raised: color-mix(in srgb, var(--site-panel) 84%, white 16%);
@@ -277,6 +277,38 @@ select[aria-invalid="true"]:focus {
   height: 11px;
   border-radius: 2px;
   animation: completion-confetti-burst 820ms cubic-bezier(0.12, 0.7, 0.3, 1) both;
+}
+
+.retro-desktop,
+.rewards-dashboard {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(168, 85, 247, 0.055), transparent 28rem),
+    radial-gradient(circle at 78% 18%, rgba(34, 197, 94, 0.025), transparent 24rem),
+    #0b0c10;
+}
+
+.retro-desktop [class*="bg-[#0d1724]"],
+.rewards-dashboard [class*="bg-brand-card"] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+@media (min-width: 1280px) {
+  .retro-desktop,
+  .rewards-dashboard {
+    padding-right: 340px;
+  }
+
+  .retro-desktop > header,
+  .rewards-dashboard > header {
+    right: 340px;
+  }
+}
+
+@media (max-width: 1279px) {
+  .retro-desktop,
+  .rewards-dashboard {
+    padding-right: 0;
+  }
 }
 
 @keyframes completion-confetti-burst {

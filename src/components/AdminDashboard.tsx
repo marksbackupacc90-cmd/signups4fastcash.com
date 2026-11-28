@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, DollarSign, Flag, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
+import { BarChart3, DollarSign, Flag, KeyRound, Mail, MousePointerClick, Send, ShieldCheck, Store } from 'lucide-react';
 import { Offer, NewsletterSubscriber, EmailBlastLog, SiteSettings } from '../types';
 import type { OfferActivity, OfferActivitySinceReport } from '../types';
 import { AdminOffersPage } from './AdminOffersPage';
+import { AdminIntegrations } from './AdminIntegrations';
 
-type DashboardView = 'overview' | 'offers' | 'reports' | 'messages' | 'email';
+type DashboardView = 'overview' | 'offers' | 'reports' | 'messages' | 'email' | 'integrations';
 
 interface AdminDashboardProps {
   initialView?: DashboardView;
@@ -292,6 +293,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       id: 'messages' as const,
       label: siteMessagesUnreadCount ? `Messages (${siteMessagesUnreadCount} new)` : 'Messages',
       icon: Mail,
+    }] : []),
+    ...(props.isOwnerAdmin ? [{
+      id: 'integrations' as const,
+      label: 'Integrations',
+      icon: KeyRound,
     }] : []),
     { id: 'email' as const, label: 'Email', icon: Mail },
   ];
@@ -980,6 +986,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           )}
         </section>
       )}
+
+      {view === 'integrations' && props.isOwnerAdmin && <AdminIntegrations />}
     </div>
   );
 };

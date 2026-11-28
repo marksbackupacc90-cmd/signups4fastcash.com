@@ -14,6 +14,10 @@ import { Pool, type PoolClient } from 'pg';
 import { WebSocket, WebSocketServer } from 'ws';
 import { SITE_OFFER_CATALOG as PUBLIC_OFFERS } from './src/data/offerCatalog';
 import { DEFAULT_SITE_SETTINGS, Offer, OfferCampaign, OfferCategory, OfferMilestone, SiteSettings } from './src/types';
+import { decryptProviderCredential, encryptProviderCredential } from './src/providerCredentialCrypto';
+import { createOffersRouter } from './offers.js';
+
+export { decryptProviderCredential, encryptProviderCredential } from './src/providerCredentialCrypto';
 
 dotenv.config({ path: '.env.local' });
 
@@ -22,6 +26,7 @@ const env = process.env as unknown as Record<string, string | undefined>;
 const PORT = Number(env.PORT || 3000);
 const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
+const providerCredentialEncryptionSecret = env.PROVIDER_CREDENTIALS_ENCRYPTION_KEY?.trim() || env.ADMIN_PASSCODE?.trim() || '';
 const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
 const MEMBER_REFERRALS_ENABLED = false;
 const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
@@ -631,9 +636,16 @@ export function resolveUpdatedOfferStatus(existingStatus: string, requestedStatu
 }
 
 app.disable('x-powered-by');
+if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
+
+export function getStrictTransportSecurityOptions(isProduction: boolean) {
+  return isProduction ? { maxAge: 31_536_000 } : false;
+}
+
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: false,
+  strictTransportSecurity: getStrictTransportSecurityOptions(env.NODE_ENV === 'production'),
 }));
 
 const configuredCorsOrigins = (env.CORS_ORIGINS || env.APP_URL || '')
@@ -914,14 +926,18 @@ async function createAuthSession(userId: string) {
   return token;
 }
 
-function setAuthSessionCookie(res: express.Response, token: string) {
-  res.cookie('sfc_session', token, {
+export function getAuthSessionCookieOptions(isProduction = env.NODE_ENV === 'production') {
+  return {
     maxAge: AUTH_SESSION_MAX_AGE_SECONDS * 1000,
     httpOnly: true,
-    sameSite: 'lax',
-    secure: env.NODE_ENV === 'production',
+    sameSite: 'strict' as const,
+    secure: isProduction,
     path: '/',
-  });
+  };
+}
+
+function setAuthSessionCookie(res: express.Response, token: string) {
+  res.cookie('sfc_session', token, getAuthSessionCookieOptions());
 }
 
 async function getAuthenticatedUser(req: express.Request) {
@@ -968,6 +984,51 @@ function getClientIp(req: express.Request) {
   const forwarded = req.headers['cf-connecting-ip'] || req.headers['x-real-ip'];
   if (typeof forwarded === 'string' && forwarded.trim()) return forwarded.trim();
   return socketIp;
+}
+
+const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_RATE_LIMIT_MAX_ATTEMPTS = 10;
+const AUTH_RATE_LIMIT_MAX_KEYS = 10_000;
+const authRateLimitEntries = new Map<string, { count: number; resetAt: number }>();
+
+function createAuthRateLimiter(bucket: 'login' | 'signup'): express.RequestHandler {
+  return (req, res, next) => {
+    const candidateIp = env.NODE_ENV === 'production' ? req.ip : getClientIp(req);
+    const clientIp = isIP(candidateIp) ? candidateIp : req.socket.remoteAddress || 'unknown';
+    const key = `${bucket}:${clientIp}`;
+    const now = Date.now();
+    let entry = authRateLimitEntries.get(key);
+
+    if (!entry || entry.resetAt <= now) {
+      if (authRateLimitEntries.size >= AUTH_RATE_LIMIT_MAX_KEYS) {
+        for (const [existingKey, existingEntry] of authRateLimitEntries) {
+          if (existingEntry.resetAt <= now) authRateLimitEntries.delete(existingKey);
+        }
+        if (authRateLimitEntries.size >= AUTH_RATE_LIMIT_MAX_KEYS) {
+          const oldestKey = authRateLimitEntries.keys().next().value;
+          if (oldestKey) authRateLimitEntries.delete(oldestKey);
+        }
+      }
+      entry = { count: 0, resetAt: now + AUTH_RATE_LIMIT_WINDOW_MS };
+      authRateLimitEntries.set(key, entry);
+    }
+
+    if (entry.count >= AUTH_RATE_LIMIT_MAX_ATTEMPTS) {
+      res.setHeader('Retry-After', String(Math.ceil((entry.resetAt - now) / 1000)));
+      return res.status(429).json({ error: 'Too many authentication attempts. Please try again later.' });
+    }
+
+    entry.count += 1;
+    res.setHeader('RateLimit-Limit', String(AUTH_RATE_LIMIT_MAX_ATTEMPTS));
+    res.setHeader('RateLimit-Remaining', String(AUTH_RATE_LIMIT_MAX_ATTEMPTS - entry.count));
+    res.setHeader('RateLimit-Reset', String(Math.ceil(entry.resetAt / 1000)));
+    return next();
+  };
+}
+
+function logRequestError(context: string, error: unknown) {
+  if (env.NODE_ENV === 'development') console.error(`${context}:`, error);
+  else console.error(`${context}: request failed.`);
 }
 
 function ipIsBlocked(ip: string) {
@@ -1171,13 +1232,13 @@ export async function runOfferFeedSync() {
          SET status = 'failed', completed_at = NOW(),
              details = $2::jsonb
          WHERE id = $1`,
-        [runId, JSON.stringify({ error: error instanceof Error ? error.message : 'Feed sync failed' })],
+        [runId, JSON.stringify({ error: 'Feed sync failed.' })],
       ).catch(() => undefined);
       feedResults.push({
         name: feed.name,
         fetched: 0,
         upserted: 0,
-        status: error instanceof Error ? error.message : 'failed',
+        status: 'failed',
       });
     }
   }
@@ -1350,7 +1411,7 @@ app.get('/api/auth/me', async (req, res) => {
   res.json({ user: authUserResponse(await getAuthenticatedUser(req)) });
 });
 
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
@@ -1469,7 +1530,7 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', createAuthRateLimiter('login'), async (req, res) => {
   const identifier = typeof req.body?.identifier === 'string' ? req.body.identifier.trim() : '';
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
   const deviceFingerprint = typeof req.body?.deviceFingerprint === 'string' ? req.body.deviceFingerprint.trim().toLowerCase() : '';
@@ -1565,7 +1626,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/google', (req, res) => {
+app.get('/api/auth/google', createAuthRateLimiter('login'), (req, res) => {
   if (!googleClientId || !googleClientSecret) {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
@@ -2215,7 +2276,12 @@ app.post('/api/auth/logout', async (req, res) => {
     authSessions.delete(token);
     if (database) await database.query('DELETE FROM auth_sessions WHERE token = $1', [token]);
   }
-  res.setHeader('Set-Cookie', 'sfc_session=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax');
+  res.clearCookie('sfc_session', {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: env.NODE_ENV === 'production',
+    path: '/',
+  });
   res.json({ ok: true });
 });
 
@@ -2722,6 +2788,28 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
+    CREATE TABLE IF NOT EXISTS payout_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      transaction_id TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      offerwall TEXT NOT NULL,
+      offer_name TEXT NOT NULL,
+      payout_usd NUMERIC(12, 4) NOT NULL CHECK (payout_usd > 0),
+      coins INTEGER NOT NULL CHECK (coins > 0),
+      status TEXT NOT NULL CHECK (status IN ('pending', 'credited', 'failed')),
+      credited_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS payout_logs_user_id_created_at_idx
+    ON payout_logs (user_id, created_at DESC)
+  `);
+  await database.query(`
+    CREATE INDEX IF NOT EXISTS payout_logs_status_created_at_idx
+    ON payout_logs (status, created_at DESC)
+  `);
+  await database.query(`
     CREATE TABLE IF NOT EXISTS game_rps_games (
       id UUID PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -3034,6 +3122,19 @@ async function initializeOfferStore() {
       actor TEXT,
       details JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS provider_api_credentials (
+      provider_slug TEXT NOT NULL,
+      credential_slug TEXT NOT NULL,
+      provider_name TEXT NOT NULL,
+      credential_name TEXT NOT NULL,
+      ciphertext TEXT NOT NULL,
+      nonce TEXT NOT NULL,
+      auth_tag TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (provider_slug, credential_slug)
     )
   `);
   const adminAccessCount = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM admin_access');
@@ -6112,6 +6213,17 @@ app.get('/go/:id', async (req, res) => {
   return res.redirect(302, trackedDestination);
 });
 
+app.use(createOffersRouter({
+  database,
+  requireAdmin,
+  liveOffersStore,
+  offerCampaignsStore,
+  validateOfferCampaign,
+  persistOfferCampaign,
+  auditAdminAction,
+  handleAffiliatePostback,
+}));
+
 app.get('/api/admin/offers', requireAdmin, async (_req, res) => {
   try {
     let campaigns = [...offerCampaignsStore.values()];
@@ -6584,6 +6696,120 @@ app.patch('/api/admin/site-messages/:id', requireAuthenticatedOwnerAdmin, async 
   if (!message) return res.status(404).json({ error: 'Visitor message not found.' });
   message.status = status;
   return res.json({ message: { id: message.id, status: message.status } });
+});
+
+app.get('/api/admin/provider-credentials', requireOwnerAdmin, async (_req, res) => {
+  if (!database) {
+    return res.status(503).json({ error: 'Provider credentials require PostgreSQL storage.' });
+  }
+  if (!providerCredentialEncryptionSecret) {
+    return res.status(503).json({ error: 'Provider credential encryption is not configured.' });
+  }
+  try {
+    const result = await database.query<{
+      provider_slug: string;
+      provider_name: string;
+      credential_slug: string;
+      credential_name: string;
+      updated_at: Date;
+    }>(
+      `SELECT provider_slug, provider_name, credential_slug, credential_name, updated_at
+       FROM provider_api_credentials
+       ORDER BY provider_name, credential_name`,
+    );
+    return res.json({
+      credentials: result.rows.map((row) => ({
+        providerSlug: row.provider_slug,
+        providerName: row.provider_name,
+        credentialSlug: row.credential_slug,
+        credentialName: row.credential_name,
+        updatedAt: row.updated_at.toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load provider credentials:', error);
+    return res.status(500).json({ error: 'Could not load provider credentials.' });
+  }
+});
+
+app.put('/api/admin/provider-credentials', requireOwnerAdmin, async (req, res) => {
+  if (!database) {
+    return res.status(503).json({ error: 'Provider credentials require PostgreSQL storage.' });
+  }
+  if (!providerCredentialEncryptionSecret) {
+    return res.status(503).json({ error: 'Provider credential encryption is not configured.' });
+  }
+
+  const providerName = typeof req.body?.providerName === 'string' ? req.body.providerName.trim() : '';
+  const credentialName = typeof req.body?.credentialName === 'string' ? req.body.credentialName.trim() : '';
+  const value = typeof req.body?.value === 'string' ? req.body.value : '';
+  const providerSlug = providerName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const credentialSlug = credentialName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  if (
+    !providerName ||
+    providerName.length > 80 ||
+    /[\u0000-\u001f]/.test(providerName) ||
+    !providerSlug ||
+    !/^[a-z0-9][a-z0-9 _.-]{0,39}$/i.test(credentialName) ||
+    !credentialSlug ||
+    !value.trim() ||
+    value.length > 4096
+  ) {
+    return res.status(400).json({ error: 'Provide a valid provider name, credential label, and secret value.' });
+  }
+
+  try {
+    const encrypted = encryptProviderCredential(value, providerCredentialEncryptionSecret);
+    await database.query(
+      `INSERT INTO provider_api_credentials
+         (provider_slug, credential_slug, provider_name, credential_name, ciphertext, nonce, auth_tag, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (provider_slug, credential_slug) DO UPDATE SET
+         provider_name = EXCLUDED.provider_name,
+         credential_name = EXCLUDED.credential_name,
+         ciphertext = EXCLUDED.ciphertext,
+         nonce = EXCLUDED.nonce,
+         auth_tag = EXCLUDED.auth_tag,
+         updated_at = NOW()`,
+      [
+        providerSlug,
+        credentialSlug,
+        providerName,
+        credentialName,
+        encrypted.ciphertext,
+        encrypted.nonce,
+        encrypted.authTag,
+      ],
+    );
+    await auditAdminAction(req, 'provider_credential_saved', { provider: providerSlug, credential: credentialSlug });
+    return res.status(201).json({ saved: true });
+  } catch (error) {
+    console.error('Could not save provider credential:', error);
+    return res.status(500).json({ error: 'Could not save provider credential.' });
+  }
+});
+
+app.delete('/api/admin/provider-credentials/:providerSlug/:credentialSlug', requireOwnerAdmin, async (req, res) => {
+  if (!database) {
+    return res.status(503).json({ error: 'Provider credentials require PostgreSQL storage.' });
+  }
+  const { providerSlug, credentialSlug } = req.params;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(providerSlug) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(credentialSlug)) {
+    return res.status(400).json({ error: 'Invalid provider or credential name.' });
+  }
+  try {
+    const result = await database.query(
+      `DELETE FROM provider_api_credentials
+       WHERE provider_slug = $1 AND credential_slug = $2`,
+      [providerSlug, credentialSlug],
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Provider credential not found.' });
+    await auditAdminAction(req, 'provider_credential_deleted', { provider: providerSlug, credential: credentialSlug });
+    return res.json({ deleted: true });
+  } catch (error) {
+    console.error('Could not delete provider credential:', error);
+    return res.status(500).json({ error: 'Could not delete provider credential.' });
+  }
 });
 
 app.get('/api/site-settings', (_req, res) => {
@@ -7479,8 +7705,8 @@ app.post('/api/admin/outreach-assistant', requireAdmin, async (req, res) => {
           const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Signups4FastCash-offer-verifier/1.0' } });
           if (response.ok) sourceText = (await response.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 24000);
           else sourceText = `The public page returned HTTP ${response.status}.`;
-        } catch (error) {
-          sourceText = `The public page could not be fetched: ${error instanceof Error ? error.message : 'request failed'}.`;
+        } catch {
+          sourceText = 'The public page could not be fetched.';
         }
       }
 
@@ -7886,9 +8112,9 @@ For each offer, return:
     ];
 
     res.json({ success: true, source: 'omni-ai-curated', findings: fallbackFindings });
-  } catch (error: any) {
-    console.error('Error during CashBot scan:', error);
-    res.status(500).json({ error: error.message || 'Failed to scan' });
+  } catch (error) {
+    logRequestError('CashBot scan', error);
+    res.status(500).json({ error: 'The scan could not be completed.' });
   }
 });
 
@@ -8025,9 +8251,9 @@ Provide a structured consensus response answering the user's specific scenario w
     };
 
     res.json({ success: true, result: fallbackResult });
-  } catch (error: any) {
-    console.error('Error in AI Council matchmaker:', error);
-    res.status(500).json({ error: error.message || 'AI Council analysis failed' });
+  } catch (error) {
+    logRequestError('AI Council matchmaker', error);
+    res.status(500).json({ error: 'The analysis could not be completed.' });
   }
 });
 
@@ -8775,8 +9001,8 @@ app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
         try {
           const response = await fetch(offer.referralUrl || offer.officialMerchantUrl, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(8000) });
           return { offerId: offer.id, company: offer.company, status: response.status, healthy: response.status >= 200 && response.status < 400 };
-        } catch (error) {
-          return { offerId: offer.id, company: offer.company, status: 0, healthy: false, error: error instanceof Error ? error.message : 'Request failed' };
+        } catch {
+          return { offerId: offer.id, company: offer.company, status: 0, healthy: false, error: 'Request failed' };
         }
       }));
       return res.json({ checkedAt: new Date().toISOString(), results });
@@ -9043,9 +9269,9 @@ app.post('/api/admin/newsletter/broadcast', requireAdmin, async (req, res) => {
     await auditAdminAction(req, 'newsletter_broadcast', { offerId: offer.id, recipientCount: subscribers.rows.length });
     return res.json({ delivered: subscribers.rows.length, recipientCount: subscribers.rows.length, status: 'delivered' });
   } catch (error) {
-    console.error('Newsletter broadcast failed:', error);
+    logRequestError('Newsletter broadcast', error);
     await auditAdminAction(req, 'newsletter_broadcast_failed', { offerId: offer.id, recipientCount: subscribers.rows.length });
-    return res.status(502).json({ error: error instanceof Error ? error.message : 'Newsletter delivery failed.' });
+    return res.status(502).json({ error: 'Newsletter delivery failed. Please try again later.' });
   }
 });
 
@@ -9110,8 +9336,8 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
       const count = await database.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM newsletter_subscribers WHERE verified = TRUE AND unsubscribed_at IS NULL');
       return res.json({ success: true, pendingConfirmation: true, subscriberCount: Number(count.rows[0]?.count || 0) });
     } catch (error) {
-      console.error('Could not subscribe:', error);
-      return res.status(500).json({ error: error instanceof Error ? error.message : 'Could not subscribe at this time' });
+      logRequestError('Newsletter subscription', error);
+      return res.status(500).json({ error: 'Could not subscribe at this time.' });
     }
   }
   return res.status(503).json({ error: 'Newsletter delivery is not configured yet.' });
@@ -9222,6 +9448,25 @@ app.get('/api/admin/newsletter/subscribers', requireOwnerAdmin, async (_req, res
   }
 });
 
+const requestErrorHandler: express.ErrorRequestHandler = (error, req, res, next) => {
+  const errorStatus = typeof error === 'object' && error !== null && 'status' in error
+    ? error.status
+    : undefined;
+  const status = typeof errorStatus === 'number' && errorStatus >= 400 && errorStatus < 500
+    ? errorStatus
+    : 500;
+  logRequestError(`Request ${req.method} ${req.path} (${status})`, error);
+
+  if (res.headersSent) return next(error);
+  return res.status(status).json({
+    error: status >= 500
+      ? 'An unexpected server error occurred.'
+      : 'The request could not be processed.',
+  });
+};
+
+app.use(requestErrorHandler);
+
 // Start server with Vite middleware integration
 async function startServer() {
   if (env.NODE_ENV !== 'production') {
@@ -9237,6 +9482,7 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+  app.use(requestErrorHandler);
 
   const httpServer = createHttpServer(app);
   liveActivitySocketServer = new WebSocketServer({ noServer: true });

@@ -13,6 +13,7 @@ Set these in the hosting panel:
 - `NODE_ENV=production`
 - `DATABASE_URL` — PostgreSQL connection string for persistent Admin Panel edits
 - `ADMIN_PASSCODE` — private passcode used to unlock the Admin Panel; set this only in Render and `.env.local`
+- `PROVIDER_CREDENTIALS_ENCRYPTION_KEY` — optional stable secret for credentials saved in Admin > Integrations; if omitted, `ADMIN_PASSCODE` is used. Keep the selected secret unchanged while credentials are stored.
 - `CPX_APP_ID` — CPX app ID, currently `36089`
 - `CPX_SECURE_HASH` — private CPX postback secret; set this in Render and never commit it
 - `GOOGLE_CLIENT_ID` — Google OAuth web application client ID

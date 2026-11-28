@@ -150,9 +150,10 @@ const CHOICES: Array<{ value: RpsChoice; emoji: string }> = [
 interface PvPLobbyArenaProps {
   signedIn?: boolean;
   onSignIn?: () => void;
+  compact?: boolean;
 }
 
-export const PvPLobbyArena: React.FC<PvPLobbyArenaProps> = ({ signedIn, onSignIn }) => {
+export const PvPLobbyArena: React.FC<PvPLobbyArenaProps> = ({ signedIn, onSignIn, compact = false }) => {
   const [isSignedIn, setIsSignedIn] = useState(signedIn === true);
   const [authLoading, setAuthLoading] = useState(signedIn === undefined);
   const [currency, setCurrency] = useState<WagerCurrency>('cash');
@@ -377,8 +378,8 @@ export const PvPLobbyArena: React.FC<PvPLobbyArenaProps> = ({ signedIn, onSignIn
     : null;
 
   return (
-    <section className="space-y-5" aria-labelledby="pvp-arena-title">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <section className={compact ? 'space-y-3' : 'space-y-5'} aria-labelledby="pvp-arena-title">
+      <header className={compact ? 'hidden' : 'flex flex-wrap items-end justify-between gap-3'}>
         <div>
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-violet-200">
             <Swords className="h-4 w-4" aria-hidden="true" /> Player vs. player
@@ -447,7 +448,9 @@ export const PvPLobbyArena: React.FC<PvPLobbyArenaProps> = ({ signedIn, onSignIn
                     type="button"
                     onClick={() => void submitMove(choice.value)}
                     disabled={busy || Boolean(room.yourChoice)}
-                    className="flex min-h-24 flex-col items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/45 text-white transition duration-200 hover:border-cyan-300/60 hover:bg-cyan-300/[0.08] hover:shadow-[0_0_24px_rgba(34,211,238,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-28"
+                    className={compact
+                      ? 'flex min-h-20 flex-col items-center justify-center rounded-xl border border-violet-400/20 bg-[#0d0f14] text-white transition duration-200 hover:scale-[1.03] hover:border-violet-300/70 hover:bg-violet-400/[0.08] hover:shadow-[0_0_18px_rgba(168,85,247,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300 disabled:cursor-not-allowed disabled:opacity-55'
+                      : 'flex min-h-24 flex-col items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/45 text-white transition duration-200 hover:border-cyan-300/60 hover:bg-cyan-300/[0.08] hover:shadow-[0_0_24px_rgba(34,211,238,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200 disabled:cursor-not-allowed disabled:opacity-55 sm:min-h-28'}
                   >
                     <span className="text-4xl" aria-hidden="true">{choice.emoji}</span>
                     <span className="mt-2 text-xs font-bold capitalize">{choice.value}</span>
@@ -486,8 +489,8 @@ export const PvPLobbyArena: React.FC<PvPLobbyArenaProps> = ({ signedIn, onSignIn
           </button>
         </section>
       ) : (
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
-          <form onSubmit={(event) => void createLobby(event)} className="ui-card space-y-4">
+        <div className={compact ? 'grid items-start gap-3' : 'grid items-start gap-5 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]'}>
+          <form onSubmit={(event) => void createLobby(event)} className={compact ? 'rounded-xl border border-violet-400/15 bg-[#16181f] p-3 space-y-3' : 'ui-card space-y-4'}>
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-violet-200"><Coins className="h-4 w-4" aria-hidden="true" /> Match creation</p>
               <h2 className="mt-2 text-lg font-bold text-white">Set your wager</h2>
@@ -530,7 +533,7 @@ export const PvPLobbyArena: React.FC<PvPLobbyArenaProps> = ({ signedIn, onSignIn
             <p className="text-xs leading-5 text-slate-500">The server verifies and reserves each player’s wager. Winners receive the pool after the disclosed 3% rake; draws refund both entries.</p>
           </form>
 
-          <section className="ui-card" aria-labelledby="open-lobbies-title">
+          <section className={compact ? 'rounded-xl border border-violet-400/15 bg-[#16181f] p-3' : 'ui-card'} aria-labelledby="open-lobbies-title">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Matchmaking</p>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LivePayoutTicker } from './LivePayoutTicker';
 import { PvPLobbyArena } from './PvPLobbyArena';
 import { SupportDesk } from './SupportDesk';
+import { CommunityChat } from './CommunityChat';
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -285,7 +286,7 @@ export const RewardsDashboard: React.FC = () => {
         <Home className="h-4 w-4 shrink-0" aria-hidden="true" />
         Earn Dashboard
       </button>
-      <button type="button" onClick={() => { setDashboardView('arena'); setMobileNavOpen(false); }} aria-current={dashboardView === 'arena' ? 'page' : undefined} className={`flex min-h-11 w-full items-center gap-3 rounded-xl border px-3 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent ${dashboardView === 'arena' ? 'border-violet-300/20 bg-violet-300/[0.09] font-semibold text-violet-100' : 'border-transparent font-medium text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>
+      <button type="button" onClick={() => { setDashboardView('earn'); setMobileNavOpen(false); window.dispatchEvent(new CustomEvent('s4fc-open-rps')); }} className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-transparent px-3 text-left text-sm font-medium text-slate-300 transition hover:bg-violet-300/[0.08] hover:text-violet-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent">
         <Swords className="h-4 w-4 shrink-0 text-violet-300" aria-hidden="true" />
         PvP Arena
       </button>
@@ -455,8 +456,8 @@ export const RewardsDashboard: React.FC = () => {
               <div className={`cashout-marquee-track ${tickerPaused ? 'cashout-marquee-paused' : ''}`}>
                 {[0, 1].map((copy) => (
                   <ul key={copy} className="space-y-3 pb-3" aria-hidden={copy === 1}>
-                    {liveCashouts.map((cashout) => (
-                      <li key={`${copy}-${cashout.handle}`} className="rounded-xl border border-slate-700/70 bg-slate-950/45 p-3">
+                    {liveCashouts.map((cashout, cashoutIndex) => (
+                      <li key={`${copy}-${cashoutIndex}-${cashout.handle}`} className="rounded-xl border border-slate-700/70 bg-slate-950/45 p-3">
                         <div className="flex items-center gap-2.5">
                           <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-xs font-extrabold ${{
                             teal: 'bg-teal-300/10 text-teal-200',
@@ -566,6 +567,7 @@ export const RewardsDashboard: React.FC = () => {
           </section>
         </div>
       )}
+      <CommunityChat persistent username="Demo member" />
     </div>
   );
 };

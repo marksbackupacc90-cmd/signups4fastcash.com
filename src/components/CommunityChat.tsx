@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, MessageCircle, Send, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Send, Swords, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
+import { PvPLobbyArena } from './PvPLobbyArena';
 
 interface CommunityMessage {
   id: string;
@@ -12,12 +13,15 @@ interface CommunityChatProps {
   username?: string | null;
   userId?: string;
   avatarUrl?: string | null;
+  persistent?: boolean;
 }
 
 type FriendEntry = { id: string; username: string; avatarUrl?: string | null; lastOnline?: string | null };
 
-export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, avatarUrl }) => {
-  const [open, setOpen] = useState(false);
+export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, avatarUrl, persistent = false }) => {
+  const [open, setOpen] = useState(() => persistent
+    ? window.matchMedia('(min-width:1280px)').matches
+    : false);
   const [visitorId] = useState(() => {
     const key = 's4fc_chat_visitor';
     const existing = localStorage.getItem(key);
@@ -35,7 +39,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
   const [users, setUsers] = useState<FriendEntry[]>([]);
   const [directUserId, setDirectUserId] = useState('');
   const [directMessages, setDirectMessages] = useState<Array<{ id: string; sender_id: string; content: string }>>([]);
-  const [section, setSection] = useState<'community' | 'private'>('community');
+  const [section, setSection] = useState<'community' | 'private' | 'rps'>('community');
   const [privateView, setPrivateView] = useState<'list' | 'conversation'>('list');
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<FriendEntry[]>([]);
@@ -47,6 +51,13 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
   const directMessagesRef = useRef<HTMLDivElement | null>(null);
   const chatMenuRef = useRef<HTMLElement | null>(null);
   const displayName = username ? `@${username}` : 'Guest';
+
+  useEffect(() => {
+    if (!persistent) return;
+    const openRps = () => setSection('rps');
+    window.addEventListener('s4fc-open-rps', openRps);
+    return () => window.removeEventListener('s4fc-open-rps', openRps);
+  }, [persistent]);
 
   useEffect(() => {
     if (!open && !contextUser) return;
@@ -215,9 +226,13 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
   };
 
   return (
-    <aside ref={chatMenuRef} className="fixed bottom-5 right-5 z-40 inline-block">
-      {open && (
-        <section className="absolute bottom-full right-0 z-50 mb-2 flex h-[40rem] max-h-[78vh] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-[#2dd4ee]/25 bg-[#0d1724] shadow-2xl">
+    <aside ref={chatMenuRef} className={persistent
+      ? (open
+        ? 'fixed bottom-0 right-0 z-50 flex h-[70vh] w-[min(340px,calc(100vw-1rem))] flex-col border-l border-violet-400/15 bg-[#0d0f14] shadow-[-18px_0_48px_rgba(0,0,0,0.28)] xl:top-0 xl:h-full xl:w-[340px]'
+        : 'fixed bottom-5 right-5 z-40 inline-block xl:fixed xl:bottom-0 xl:right-0 xl:top-0 xl:flex xl:h-full xl:w-[340px] xl:flex-col xl:border-l xl:border-violet-400/15 xl:bg-[#0d0f14]')
+      : 'fixed bottom-5 right-5 z-40 inline-block'}>
+      {(open || persistent) && (
+        <section className={persistent ? 'flex h-full w-full flex-col overflow-hidden bg-[#0d0f14]' : 'absolute bottom-full right-0 z-50 mb-2 flex h-[40rem] max-h-[78vh] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-violet-400/25 bg-[#0d1724] shadow-2xl'}>
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#f1e6cf]">
@@ -234,15 +249,25 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
                 )) : <span className="text-[9px] text-zinc-500">No one is active yet</span>}
               </div>
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf]" aria-label="Close community chat">
-              <X className="h-4 w-4" />
-            </button>
+            {(open || !persistent) && (
+              <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf] xl:hidden" aria-label="Close community chat">
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
-          <div className="grid grid-cols-2 border-b border-white/[0.08] bg-[#0e121a] p-1">
+          <div className="grid grid-cols-3 border-b border-white/[0.08] bg-[#0e121a] p-1">
             <button type="button" onClick={() => setSection('community')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'community' ? 'bg-[#2dd4ee] font-semibold text-[#06131a]' : 'text-zinc-400'}`}>Community</button>
             <button type="button" onClick={() => setSection('private')} className={`rounded-md px-2 py-1.5 text-xs ${section === 'private' ? 'bg-[#2dd4ee] font-semibold text-[#06131a]' : 'text-zinc-400'}`}>Private</button>
+            <button type="button" onClick={() => setSection('rps')} className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs ${section === 'rps' ? 'bg-violet-400 font-semibold text-white' : 'text-violet-200'}`}>
+              <Swords className="h-3 w-3" aria-hidden="true" />
+              RPS
+            </button>
           </div>
-          {section === 'private' && userId && privateView === 'list' && (
+          {section === 'rps' ? (
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#141824] p-2.5">
+              <PvPLobbyArena compact signedIn={Boolean(userId)} onSignIn={() => window.location.assign('/?auth=signin')} />
+            </div>
+          ) : section === 'private' && userId && privateView === 'list' && (
             <div className="flex min-h-0 flex-1 flex-col border-b border-white/[0.08] bg-[#0e121a] p-2.5">
               <div className="mb-2 flex gap-1.5">
                 <input value={friendName} onChange={(event) => setFriendName(event.target.value)} placeholder="Add friend by username" className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#090d18] px-2 py-1.5 text-xs text-white" />
@@ -282,7 +307,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
               </div>
             </div>
           )}
-          {section === 'private' && !userId ? (
+          {section === 'rps' ? null : section === 'private' && !userId ? (
             <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-400">Sign in to add friends and send private messages.</div>
           ) : section === 'private' && directUserId ? (
             <>
@@ -364,7 +389,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
         <button type="button" onClick={() => {
           setOpen(true);
           requestAnimationFrame(() => scrollToLatest());
-        }} className="retro-button focus-ring flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[#2dd4ee]/30 bg-[#0d1724] px-3 py-3 text-xs font-medium text-zinc-200 shadow-xl hover:bg-[#12263a] hover:text-[#edf6ff] sm:gap-2 sm:px-4" aria-label={`Open community chat (${activeCount} active)`}>
+        }} className="retro-button focus-ring flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-violet-400/30 bg-[#0d1724] px-3 py-3 text-xs font-medium text-zinc-200 shadow-xl hover:border-violet-300/50 hover:bg-[#1a1823] hover:text-[#edf6ff] sm:gap-2 sm:px-4 xl:hidden" aria-label={`Open community chat (${activeCount} active)`}>
           <MessageCircle className="h-4 w-4 text-[#2dd4ee]" />
           <span className="hidden sm:inline">Chat</span>
           <span className="text-[#2dd4ee]">{activeCount}</span>

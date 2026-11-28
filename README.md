@@ -32,6 +32,7 @@ Required for production:
 - `APP_URL=https://signups4fastcash.com`
 - `DATABASE_URL` — PostgreSQL connection string
 - `ADMIN_PASSCODE` — private admin unlock passcode
+- `PROVIDER_CREDENTIALS_ENCRYPTION_KEY` — optional stable key for credentials saved in Admin > Integrations; falls back to `ADMIN_PASSCODE` and must remain unchanged while those credentials are stored
 
 Feature-specific:
 
@@ -44,6 +45,8 @@ Feature-specific:
 - `POSTBACK_SECRET` — private HMAC-SHA256 key shared with the trusted affiliate network
 
 Never commit `.env.local` or provider secrets.
+
+Admin → Integrations stores credentials encrypted in PostgreSQL and never returns their values to the browser. Saving a credential does not automatically connect an API; a provider-specific integration must be implemented and tested before the site can use it.
 
 ## RPS games and offer milestones
 
