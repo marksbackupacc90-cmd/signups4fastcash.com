@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, MessageCircle, Send, Swords, UserPlus, UserMinus, ShieldBan, X } from 'lucide-react';
 import { PvPLobbyArena } from './PvPLobbyArena';
 
@@ -14,14 +14,26 @@ interface CommunityChatProps {
   userId?: string;
   avatarUrl?: string | null;
   persistent?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 type FriendEntry = { id: string; username: string; avatarUrl?: string | null; lastOnline?: string | null };
 
-export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, avatarUrl, persistent = false }) => {
-  const [open, setOpen] = useState(() => persistent
-    ? window.matchMedia('(min-width:1280px)').matches
-    : false);
+export const CommunityChat: React.FC<CommunityChatProps> = ({
+  username,
+  userId,
+  avatarUrl,
+  persistent = false,
+  isOpen,
+  onOpenChange,
+}) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isOpen ?? internalOpen;
+  const setOpen = useCallback((next: boolean) => {
+    if (isOpen === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
+  }, [isOpen, onOpenChange]);
   const [visitorId] = useState(() => {
     const key = 's4fc_chat_visitor';
     const existing = localStorage.getItem(key);
@@ -54,14 +66,18 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
 
   useEffect(() => {
     if (!persistent) return;
-    const openRps = () => setSection('rps');
+    const openRps = () => {
+      setSection('rps');
+      setOpen(true);
+    };
     window.addEventListener('s4fc-open-rps', openRps);
     return () => window.removeEventListener('s4fc-open-rps', openRps);
-  }, [persistent]);
+  }, [persistent, setOpen]);
 
   useEffect(() => {
     if (!open && !contextUser) return;
     const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest('[data-community-chat-trigger]')) return;
       if (chatMenuRef.current && !chatMenuRef.current.contains(event.target as Node)) {
         setOpen(false);
         setContextUser(null);
@@ -226,12 +242,16 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
   };
 
   return (
-    <aside ref={chatMenuRef} className={persistent
-      ? (open
-        ? 'fixed bottom-0 right-0 z-50 flex h-[70vh] w-[min(340px,calc(100vw-1rem))] flex-col border-l border-violet-400/15 bg-[#0d0f14] shadow-[-18px_0_48px_rgba(0,0,0,0.28)] xl:top-0 xl:h-full xl:w-[340px]'
-        : 'fixed bottom-5 right-5 z-40 inline-block xl:fixed xl:bottom-0 xl:right-0 xl:top-0 xl:flex xl:h-full xl:w-[340px] xl:flex-col xl:border-l xl:border-violet-400/15 xl:bg-[#0d0f14]')
-      : 'fixed bottom-5 right-5 z-40 inline-block'}>
-      {(open || persistent) && (
+    <aside
+      ref={chatMenuRef}
+      id="community-chat-panel"
+      className={persistent
+        ? (open
+          ? 'fixed inset-0 z-[60] flex h-dvh w-full flex-col border-l border-violet-400/20 bg-[#0d0f14] shadow-[-18px_0_48px_rgba(0,0,0,0.35)] animate-in slide-in-from-right duration-200 sm:left-auto sm:w-[320px]'
+          : 'fixed bottom-5 right-5 z-40 inline-block')
+        : 'fixed bottom-5 right-5 z-40 inline-block'}
+    >
+      {open && (
         <section className={persistent ? 'flex h-full w-full flex-col overflow-hidden bg-[#0d0f14]' : 'absolute bottom-full right-0 z-50 mb-2 flex h-[40rem] max-h-[78vh] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-violet-400/25 bg-[#0d1724] shadow-2xl'}>
           <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0e121a] px-3 py-2.5">
             <div>
@@ -250,7 +270,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
               </div>
             </div>
             {(open || !persistent) && (
-              <button type="button" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-[#f1e6cf] xl:hidden" aria-label="Close community chat">
+              <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1.5 text-zinc-400 hover:bg-white/10 hover:text-[#f1e6cf]" aria-label="Close community chat">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -352,7 +372,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
             </>
           ) : section === 'community' ? (
           <>
-            <div ref={communityMessagesRef} className="max-h-80 space-y-2 overflow-y-auto bg-[#141824] p-3">
+            <div ref={communityMessagesRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#141824] p-3">
             {messages.length === 0 && (
               <div className="rounded-lg border border-[#2dd4ee]/20 bg-[#0d1724] px-3 py-3 text-center text-xs leading-relaxed text-zinc-300">
                 Welcome! Drop a quick hello and tell the community which signup bonus or cashback deal you’re looking at.
@@ -385,7 +405,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ username, userId, 
           ) : <div className="bg-[#141824] px-3 py-8 text-center text-xs text-zinc-500">Choose a friend to start a private conversation.</div>}
         </section>
       )}
-      {!open && (
+      {!open && !persistent && (
         <button type="button" onClick={() => {
           setOpen(true);
           requestAnimationFrame(() => scrollToLatest());

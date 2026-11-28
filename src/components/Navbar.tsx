@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, PlatformNotification, SiteSettings } from '../types';
-import { Bell, ChevronDown, ListChecks, Search, Share2, ShieldCheck, Swords } from 'lucide-react';
+import { Bell, ChevronDown, ListChecks, MessageCircle, Search, Share2, ShieldCheck, Swords } from 'lucide-react';
 
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
@@ -9,6 +9,8 @@ interface NavbarProps {
   activeTab: 'offers' | 'games' | 'daily' | 'admin';
   setActiveTab: (tab: 'offers' | 'games' | 'daily' | 'admin') => void;
   onOpenMyOffers: () => void;
+  onOpenCommunityChat: () => void;
+  communityChatOpen: boolean;
   activeOfferCount: number;
   username?: string | null;
   avatarUrl?: string | null;
@@ -33,6 +35,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onOpenMyOffers,
+  onOpenCommunityChat,
+  communityChatOpen,
   activeOfferCount,
   username,
   avatarUrl,
@@ -151,6 +155,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            data-community-chat-trigger
+            onClick={onOpenCommunityChat}
+            className="retro-button focus-ring inline-flex h-9 items-center gap-1.5 rounded-md border border-violet-300/25 px-2.5 text-xs font-semibold text-violet-100 hover:bg-violet-300/10 sm:px-3"
+            aria-label="Open community chat"
+            aria-expanded={communityChatOpen}
+            aria-controls="community-chat-panel"
+            title="Community chat"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Chat</span>
+          </button>
           {userId && (
             <div ref={notificationMenuRef} className="relative">
               <button

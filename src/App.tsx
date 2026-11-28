@@ -172,6 +172,7 @@ export default function App() {
   const [shareCopied, setShareCopied] = useState(false);
   const [offerFinderOpen, setOfferFinderOpen] = useState(false);
   const [trackingCheckOpen, setTrackingCheckOpen] = useState(false);
+  const [communityChatOpen, setCommunityChatOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [comparisonOfferIds, setComparisonOfferIds] = useState<string[]>([]);
   const [comparisonOpen, setComparisonOpen] = useState(false);
@@ -1089,7 +1090,7 @@ export default function App() {
         '--site-accent': siteSettings.themeAccentColor,
         '--site-panel': siteSettings.themePanelColor,
       } as React.CSSProperties}
-      className="retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black"
+      className={`retro-desktop min-h-screen flex flex-col font-sans antialiased selection:bg-blue-200 selection:text-black ${communityChatOpen ? 'lg:pr-[320px]' : ''}`}
     >
       <Navbar
         siteSettings={siteSettings}
@@ -1097,6 +1098,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenMyOffers={() => setMyOffersOpen(true)}
+        onOpenCommunityChat={() => setCommunityChatOpen(true)}
+        communityChatOpen={communityChatOpen}
         activeOfferCount={readMyOfferEntries().filter((entry) => entry.status === 'active').length}
         username={authUser?.username}
         avatarUrl={authUser?.avatarUrl}
@@ -1496,6 +1499,8 @@ export default function App() {
       {trackingCheckOpen && <TrackingCheck onClose={() => setTrackingCheckOpen(false)} />}
       <CommunityChat
         persistent
+        isOpen={communityChatOpen}
+        onOpenChange={setCommunityChatOpen}
         username={authUser?.username}
         userId={authUser?.id}
         avatarUrl={authUser?.avatarUrl}
