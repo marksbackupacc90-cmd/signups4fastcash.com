@@ -2,12 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { SfcCoinLogo } from './SfcCoinLogo';
 import { DEFAULT_SITE_SETTINGS, PlatformNotification, SiteSettings } from '../types';
 import { Bell, ChevronDown, ListChecks, MessageCircle, Search, Share2, ShieldCheck, Swords } from 'lucide-react';
+import type { AppSection } from './AppSidebar';
 
 interface NavbarProps {
   adminSection: 'live' | 'blasts';
   siteSettings?: SiteSettings;
-  activeTab: 'offers' | 'games' | 'daily' | 'admin';
-  setActiveTab: (tab: 'offers' | 'games' | 'daily' | 'admin') => void;
+  activeTab: AppSection;
+  setActiveTab: (tab: AppSection) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
   onOpenMyOffers: () => void;
   onOpenCommunityChat: () => void;
   communityChatOpen: boolean;
@@ -34,6 +37,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   adminSection,
   activeTab,
   setActiveTab,
+  searchQuery,
+  onSearchChange,
   onOpenMyOffers,
   onOpenCommunityChat,
   communityChatOpen,
@@ -108,8 +113,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
+        <label className="relative hidden min-w-32 max-w-56 flex-1 md:block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => {
+              onSearchChange(event.target.value);
+              if (activeTab !== 'offers') setActiveTab('offers');
+            }}
+            placeholder="Search offers"
+            aria-label="Search offers"
+            className="h-9 w-full rounded-lg border border-white/10 bg-[#080c13] pl-9 pr-3 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-cyan-200/40"
+          />
+        </label>
+
         {/* Center / Navigation Links */}
-        <nav className="hidden flex-1 items-center justify-center gap-2 overflow-visible px-1 py-1 md:flex">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-2 overflow-visible px-1 py-1 md:flex">
           <button
             id="nav-offers-tab"
             onClick={() => setActiveTab('offers')}
@@ -225,38 +245,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setActiveTab('games')}
-            className={`retro-button focus-ring inline-flex h-9 items-center gap-1.5 rounded-md border px-2 text-xs font-semibold md:hidden ${
-              activeTab === 'games'
-                ? 'border-[#2dd4ee]/60 bg-[#2dd4ee] text-[#06131a]'
-                : 'border-white/15 text-zinc-200 hover:bg-white/10'
-            }`}
-            aria-label="Open Rock-Paper-Scissors"
-          >
-            <Swords className="h-4 w-4" aria-hidden="true" />
-            RPS
-          </button>
-          <button
-            type="button"
-            onClick={onOpenTrackingCheck}
-            className="retro-button focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md border border-cyan-300/25 text-cyan-100 hover:bg-cyan-300/10 md:hidden"
-            aria-label="Run browser tracking check"
-            title="Tracking check"
-          >
-            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={onOpenMyOffers}
-            className="retro-button focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-zinc-200 hover:bg-white/10 md:hidden"
-            aria-label={`Open My Offers, ${activeOfferCount} active`}
-            title="My Offers"
-          >
-            <ListChecks className="h-4 w-4 text-cyan-300" />
-            {activeOfferCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-300 px-1 text-[11px] font-black text-[#071016]">{activeOfferCount}</span>}
-          </button>
           {username ? (
             <div ref={accountMenuRef} className="relative">
               <button onClick={() => setAccountMenuOpen((open) => !open)} className="retro-button focus-ring inline-flex max-w-[10rem] items-center gap-1.5 truncate px-2 py-1.5 text-xs text-cyan-200 hover:text-white sm:px-3" aria-expanded={accountMenuOpen} aria-label={`Open account menu for ${username}`}>

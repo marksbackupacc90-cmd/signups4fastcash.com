@@ -33,7 +33,12 @@ function formatMoney(cents: number) {
   }).format(cents / 100);
 }
 
-export const ReferralDashboard: React.FC = () => {
+interface ReferralDashboardProps {
+  signedIn: boolean;
+  onSignIn: () => void;
+}
+
+export const ReferralDashboard: React.FC<ReferralDashboardProps> = ({ signedIn, onSignIn }) => {
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
   const [customCode, setCustomCode] = useState('');
   const [loading, setLoading] = useState(true);
@@ -72,10 +77,15 @@ export const ReferralDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!signedIn) {
+      setLoading(false);
+      setSummary(null);
+      return;
+    }
     const controller = new AbortController();
     void loadReferralSummary(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [signedIn]);
 
   const saveCustomCode = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -123,7 +133,21 @@ export const ReferralDashboard: React.FC = () => {
   };
 
   return (
-    <section aria-labelledby="referral-dashboard-title" className="mt-7 border-t border-white/10 pt-6">
+    <section aria-labelledby="referral-dashboard-title" className="mt-2">
+      {!signedIn ? (
+        <div className="rounded-3xl border border-white/10 bg-[radial-gradient(ellipse_at_top_right,_rgba(34,211,238,0.12),_transparent_48%),#0e121a] p-7 text-center sm:p-10">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
+            <Users className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Invite & earn</p>
+          <h2 id="referral-dashboard-title" className="mt-2 text-2xl font-black text-white">Earn 500 points for an eligible referral</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-300">
+            A $5 reward is credited to your points wallet only after S4FC receives at least $10 in actual net commission from that signup and an owner approves it.
+          </p>
+          <button type="button" onClick={onSignIn} className="mt-5 min-h-11 rounded-xl bg-cyan-300 px-5 text-sm font-bold text-[#071016] hover:bg-cyan-200">Sign in to get your link</button>
+        </div>
+      ) : (
+      <>
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
           <Users className="h-5 w-5" aria-hidden="true" />
@@ -155,6 +179,13 @@ export const ReferralDashboard: React.FC = () => {
         </div>
       ) : summary ? (
         <>
+          <div className="rounded-3xl border border-white/10 bg-[radial-gradient(ellipse_at_top_right,_rgba(34,211,238,0.12),_transparent_48%),#0e121a] p-6 sm:p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Invite & earn</p>
+            <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Earn 500 points for an eligible referral</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-300">
+              The $5 reward is credited to your points wallet only after S4FC receives at least $10 in actual net commission from that signup and an owner approves it. It is not an automatic or guaranteed payout.
+            </p>
+          </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <article className="rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.09] to-white/[0.02] p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-amber-100">
@@ -167,10 +198,10 @@ export const ReferralDashboard: React.FC = () => {
             <article className="rounded-xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.09] to-white/[0.02] p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-100">
                 <Check className="h-4 w-4 text-emerald-200" aria-hidden="true" />
-                Completed Cash
+                Approved Rewards
               </div>
               <p className="mt-3 text-3xl font-extrabold tracking-tight text-white">{formatMoney(summary.completedCashCents)}</p>
-              <p className="mt-1 text-[11px] text-zinc-400">Approved referral rewards</p>
+              <p className="mt-1 text-[11px] text-zinc-400">Dollar equivalent credited as points after owner review</p>
             </article>
           </div>
 
@@ -307,6 +338,8 @@ export const ReferralDashboard: React.FC = () => {
           {copied && <p role="status" className="mt-2 text-xs text-emerald-300">Referral link copied to clipboard.</p>}
         </>
       ) : null}
+      </>
+      )}
     </section>
   );
 };

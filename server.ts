@@ -28,7 +28,7 @@ const databaseUrl = env.DATABASE_URL;
 const database = databaseUrl ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } }) : null;
 const providerCredentialEncryptionSecret = env.PROVIDER_CREDENTIALS_ENCRYPTION_KEY?.trim() || env.ADMIN_PASSCODE?.trim() || '';
 const referralHashSecret = env.REFERRAL_HASH_SECRET || env.GOOGLE_CLIENT_SECRET;
-const MEMBER_REFERRALS_ENABLED = false;
+const MEMBER_REFERRALS_ENABLED = true;
 const REFERRAL_CODE_PATTERN = /^[A-Z0-9](?:[A-Z0-9_-]{1,22}[A-Z0-9])$/;
 const REFERRAL_MIN_NET_REVENUE = 10;
 const AUTH_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -1433,15 +1433,26 @@ app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) =
   }
   if (!database) return res.status(503).json({ error: 'Account creation is temporarily unavailable.' });
 
+  let client: PoolClient | undefined;
+  let transactionOpen = false;
   try {
     const passwordHash = await hashPassword(password, 12);
+    const signupIpHeader = req.header('cf-connecting-ip')?.trim() || '';
+    const signupIp = isIP(signupIpHeader) ? signupIpHeader : req.ip;
+    const signupIpHash = referralHashSecret && signupIp && isIP(signupIp)
+      ? hashReferralValue(`ip:${signupIp}`)
+      : null;
+    const accountReferralCode = MEMBER_REFERRALS_ENABLED ? randomBytes(6).toString('hex').toUpperCase() : null;
+    client = await database.connect();
+    await client.query('BEGIN');
+    transactionOpen = true;
     const existingDevice = deviceFingerprint
-      ? await database.query<{ user_id: string }>(
+      ? await client.query<{ user_id: string }>(
           'SELECT user_id FROM account_devices WHERE fingerprint_hash = $1 LIMIT 1',
           [deviceFingerprint],
         )
       : { rows: [] as { user_id: string }[] };
-    const result = await database.query<{
+    const result = await client.query<{
       id: string;
       email: string;
       username: string;
@@ -1451,29 +1462,52 @@ app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) =
       sex: string | null;
       state: string | null;
     }>(
-      `INSERT INTO users (id, google_sub, email, username, password_hash, signup_ip_hash, last_login_at)
-       VALUES ($1, NULL, $2, $3, $4, $5, NOW())
+      `INSERT INTO users (id, google_sub, email, username, password_hash, referral_code, signup_ip_hash, last_login_at)
+       VALUES ($1, NULL, $2, $3, $4, $5, $6, NOW())
        RETURNING id, email, username, avatar_url, paypal_email, date_of_birth, sex, state`,
-      [randomUUID(), email, username, passwordHash, hashFraudIdentifier(getClientIp(req))],
+      [randomUUID(), email, username, passwordHash, accountReferralCode, signupIpHash],
     );
     const account = result.rows[0];
-    if (REFERRAL_CODE_PATTERN.test(referralCode)) {
-      const referrer = await database.query<{ user_id: string }>(
+    if (accountReferralCode) {
+      await client.query(
+        `INSERT INTO referral_code_aliases (code, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (code) DO NOTHING`,
+        [accountReferralCode, account.id],
+      );
+    }
+    if (REFERRAL_CODE_PATTERN.test(referralCode) && signupIpHash && referralHashSecret) {
+      const referrer = await client.query<{ user_id: string }>(
         'SELECT user_id FROM referral_code_aliases WHERE code = $1 LIMIT 1',
         [referralCode],
       );
       const referrerId = referrer.rows[0]?.user_id;
       if (referrerId && referrerId !== account.id) {
-        await database.query(
-          `UPDATE users
-           SET referred_by = $1, referred_by_user_id = $1, updated_at = NOW()
-           WHERE id = $2`,
-          [referrerId, account.id],
+        const emailHash = hashReferralValue(`email:${email}`);
+        const duplicateReferral = await client.query(
+          `SELECT 1 FROM referrals
+           WHERE signup_ip_hash = $1 OR referred_email_hash = $2
+           LIMIT 1`,
+          [signupIpHash, emailHash],
         );
+        if (!duplicateReferral.rowCount) {
+          await client.query(
+            `UPDATE users
+             SET referred_by = $1, referred_by_user_id = $1, updated_at = NOW()
+             WHERE id = $2`,
+            [referrerId, account.id],
+          );
+          await client.query(
+            `INSERT INTO referrals
+              (id, referrer_id, referred_user_id, referred_email_hash, signup_ip_hash, status, bonus_amount)
+             VALUES ($1, $2, $3, $4, $5, 'pending', 5.00)`,
+            [randomUUID(), referrerId, account.id, emailHash, signupIpHash],
+          );
+        }
       }
     }
     if (deviceFingerprint) {
-      await database.query(
+      await client.query(
         `INSERT INTO account_devices (user_id, fingerprint_hash, ip_hash)
          VALUES ($1, $2, $3)
          ON CONFLICT (user_id, fingerprint_hash) DO UPDATE SET
@@ -1482,18 +1516,20 @@ app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) =
       );
       const existingOwner = existingDevice.rows[0]?.user_id;
       if (existingOwner && existingOwner !== account.id) {
-        await database.query(
+        await client.query(
           `UPDATE users
            SET fraud_status = 'suspicious', cashout_restricted = TRUE, updated_at = NOW()
            WHERE id IN ($1, $2)`,
           [existingOwner, account.id],
         );
-        await database.query(
+        await client.query(
           `INSERT INTO fraud_flags (id, user_id, fingerprint_hash, reason)
            VALUES ($1, $2, $3, 'duplicate_device_registration'), ($4, $5, $3, 'duplicate_device_registration')
            ON CONFLICT DO NOTHING`,
           [randomUUID(), existingOwner, deviceFingerprint, randomUUID(), account.id],
         );
+        await client.query('COMMIT');
+        transactionOpen = false;
         return res.status(403).json({
           error: 'This device is linked to an existing account. Contact support for review.',
           suspicious: true,
@@ -1501,6 +1537,8 @@ app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) =
       }
       memoryDeviceOwners.set(deviceFingerprint, account.id);
     }
+    await client.query('COMMIT');
+    transactionOpen = false;
     const sessionToken = await createAuthSession(account.id);
     setAuthSessionCookie(res, sessionToken);
     return res.status(201).json({
@@ -1516,6 +1554,7 @@ app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) =
       }),
     });
   } catch (error) {
+    if (transactionOpen) await client?.query('ROLLBACK').catch(() => undefined);
     const databaseError = error as { code?: string; constraint?: string };
     if (databaseError.code === '23505') {
       if (databaseError.constraint === 'users_email_lower_unique') {
@@ -1527,6 +1566,8 @@ app.post('/api/auth/signup', createAuthRateLimiter('signup'), async (req, res) =
     }
     console.error('Password sign-up failed:', error);
     return res.status(500).json({ error: 'Could not create your account. Please try again.' });
+  } finally {
+    client?.release();
   }
 });
 
@@ -1631,7 +1672,13 @@ app.get('/api/auth/google', createAuthRateLimiter('login'), (req, res) => {
     return res.status(503).json({ error: 'Google sign-in is not configured yet.' });
   }
   const nonce = randomBytes(32).toString('hex');
-  const state = createGoogleOAuthState(nonce, null);
+  const requestedReferralCode = (
+    typeof req.query.ref === 'string' ? req.query.ref : getCookieValue(req, 'sfc_referral')
+  ).trim().toUpperCase();
+  const referralCode = MEMBER_REFERRALS_ENABLED && REFERRAL_CODE_PATTERN.test(requestedReferralCode)
+    ? requestedReferralCode
+    : null;
+  const state = createGoogleOAuthState(nonce, referralCode);
   const redirectUri = `${getOAuthAppUrl(req)}/api/auth/google/callback`;
   const params = new URLSearchParams({
     client_id: googleClientId,
@@ -1782,7 +1829,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
               await client.query('SAVEPOINT referral_claim');
               try {
                 await client.query(
-                  'UPDATE users SET referred_by_user_id = $1 WHERE id = $2',
+                  'UPDATE users SET referred_by = $1, referred_by_user_id = $1 WHERE id = $2',
                   [referrer.id, user.id],
                 );
                 await client.query(
@@ -2788,6 +2835,15 @@ async function initializeOfferStore() {
     )
   `);
   await database.query(`
+    CREATE TABLE IF NOT EXISTS daily_reward_claims (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      claim_date DATE NOT NULL,
+      reward_points INTEGER NOT NULL CHECK (reward_points IN (1, 2, 5, 10, 25)),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, claim_date)
+    )
+  `);
+  await database.query(`
     CREATE TABLE IF NOT EXISTS payout_logs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       transaction_id TEXT NOT NULL UNIQUE,
@@ -3036,6 +3092,14 @@ async function initializeOfferStore() {
       signup_ip_hash TEXT NOT NULL UNIQUE,
       status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'void')),
       bonus_amount NUMERIC(10,2) NOT NULL DEFAULT 5.00 CHECK (bonus_amount >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS referral_wallet_credits (
+      referral_id UUID PRIMARY KEY REFERENCES referrals(id) ON DELETE CASCADE,
+      referrer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      points INTEGER NOT NULL CHECK (points > 0),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
@@ -5072,6 +5136,143 @@ app.get('/api/live-offers', async (_req, res) => {
   }
 });
 
+app.get('/api/rewards/wallet', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view your points wallet.' });
+  if (!database) return res.status(503).json({ error: 'The points wallet requires the production account database.' });
+  try {
+    const [balance, payouts] = await Promise.all([
+      database.query<{ points: number }>(
+        'SELECT points FROM survey_reward_balances WHERE user_id = $1',
+        [user.id],
+      ),
+      database.query<{ id: string; points: number; status: 'pending' | 'processing' | 'paid' | 'rejected'; created_at: Date | string }>(
+        `SELECT id, points, status, created_at
+         FROM survey_payout_requests
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 10`,
+        [user.id],
+      ),
+    ]);
+    const points = Number(balance.rows[0]?.points || 0);
+    return res.json({
+      points,
+      dollars: points / SURVEY_POINTS_PER_DOLLAR,
+      pointsPerDollar: SURVEY_POINTS_PER_DOLLAR,
+      minimumPayoutPoints: SURVEY_MINIMUM_PAYOUT_POINTS,
+      payoutRequests: payouts.rows.map((request) => ({
+        id: request.id,
+        points: Number(request.points),
+        status: request.status,
+        createdAt: new Date(request.created_at).toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Could not load points wallet:', error);
+    return res.status(500).json({ error: 'Could not load your points wallet.' });
+  }
+});
+
+app.get('/api/rewards/daily-spin', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view your daily spin.' });
+  if (!database) return res.status(503).json({ error: 'Daily rewards require the production account database.' });
+  const claimDate = getUtcDailyKey();
+  try {
+    const [claim, balance] = await Promise.all([
+      database.query<{ reward_points: number }>(
+        'SELECT reward_points FROM daily_reward_claims WHERE user_id = $1 AND claim_date = $2',
+        [user.id, claimDate],
+      ),
+      database.query<{ points: number }>(
+        'SELECT points FROM survey_reward_balances WHERE user_id = $1',
+        [user.id],
+      ),
+    ]);
+    const nextSpinAt = new Date(new Date(`${claimDate}T00:00:00.000Z`).getTime() + 86_400_000).toISOString();
+    return res.json({
+      claimed: Boolean(claim.rowCount),
+      rewardPoints: claim.rowCount ? Number(claim.rows[0].reward_points) : null,
+      balancePoints: Number(balance.rows[0]?.points || 0),
+      nextSpinAt,
+    });
+  } catch (error) {
+    console.error('Could not load daily spin status:', error);
+    return res.status(500).json({ error: 'Could not load your daily spin status.' });
+  }
+});
+
+app.post('/api/rewards/daily-spin', async (req, res) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to claim your daily spin.' });
+  if (!database) return res.status(503).json({ error: 'Daily rewards require the production account database.' });
+
+  const claimDate = getUtcDailyKey();
+  const nextSpinAt = new Date(new Date(`${claimDate}T00:00:00.000Z`).getTime() + 86_400_000).toISOString();
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO survey_reward_balances (user_id, points)
+       VALUES ($1, 0)
+       ON CONFLICT (user_id) DO NOTHING`,
+      [user.id],
+    );
+    const balance = await client.query<{ points: number }>(
+      'SELECT points FROM survey_reward_balances WHERE user_id = $1 FOR UPDATE',
+      [user.id],
+    );
+    const existing = await client.query<{ reward_points: number }>(
+      'SELECT reward_points FROM daily_reward_claims WHERE user_id = $1 AND claim_date = $2',
+      [user.id, claimDate],
+    );
+    if (existing.rowCount) {
+      await client.query('COMMIT');
+      return res.json({
+        claimed: true,
+        alreadyClaimed: true,
+        rewardPoints: Number(existing.rows[0].reward_points),
+        balancePoints: Number(balance.rows[0]?.points || 0),
+        nextSpinAt,
+      });
+    }
+
+    const rewardPoints = selectDailySpinReward(randomInt(100));
+    const currentPoints = Number(balance.rows[0]?.points || 0);
+    if (currentPoints > 2_147_483_647 - rewardPoints) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Your points balance has reached its limit; the spin was not used.' });
+    }
+    await client.query(
+      `INSERT INTO daily_reward_claims (user_id, claim_date, reward_points)
+       VALUES ($1, $2, $3)`,
+      [user.id, claimDate, rewardPoints],
+    );
+    const updated = await client.query<{ points: number }>(
+      `UPDATE survey_reward_balances
+       SET points = points + $2, updated_at = NOW()
+       WHERE user_id = $1
+       RETURNING points`,
+      [user.id, rewardPoints],
+    );
+    await client.query('COMMIT');
+    return res.status(201).json({
+      claimed: true,
+      alreadyClaimed: false,
+      rewardPoints,
+      balancePoints: Number(updated.rows[0].points),
+      nextSpinAt,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    console.error('Could not claim daily spin:', error);
+    return res.status(500).json({ error: 'Could not claim your daily spin.' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/rewards/cashout', async (req, res) => {
   const user = await getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in with Google before requesting a payout.' });
@@ -5411,6 +5612,17 @@ export function getUtcRaceKey(now = new Date()) {
 
 export function getUtcDailyKey(now = new Date()) {
   return now.toISOString().slice(0, 10);
+}
+
+export function selectDailySpinReward(roll: number) {
+  if (!Number.isInteger(roll) || roll < 0 || roll >= 100) {
+    throw new RangeError('Daily spin roll must be an integer from 0 to 99.');
+  }
+  if (roll < 50) return 1;
+  if (roll < 80) return 2;
+  if (roll < 95) return 5;
+  if (roll < 99) return 10;
+  return 25;
 }
 
 export async function runDailyResetWorker(now = new Date()) {
@@ -8596,35 +8808,98 @@ app.put('/api/admin/referrals/:id/status', requireOwnerAdmin, async (req, res) =
   if (status !== 'completed' && status !== 'void') {
     return res.status(400).json({ error: 'Choose completed or void as the referral status.' });
   }
+  const client = await database.connect();
   try {
+    await client.query('BEGIN');
+    const eligibility = await client.query<{
+      id: string;
+      referrer_id: string;
+      status: string;
+      bonus_amount: string;
+      verified_net_revenue: string;
+    }>(
+      `SELECT id, referrer_id, status, bonus_amount::text, verified_net_revenue::text
+       FROM referrals WHERE id = $1 FOR UPDATE`,
+      [req.params.id],
+    );
+    const referral = eligibility.rows[0];
+    if (!referral || referral.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Pending referral payout not found. Refresh the queue and try again.' });
+    }
+    if (status === 'completed' && !canApproveReferralPayout(Number(referral.verified_net_revenue))) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: `At least $${REFERRAL_MIN_NET_REVENUE.toFixed(2)} in verified net commission must be received for this signup before its $5.00 reward can be completed.`,
+      });
+    }
+
+    let creditedPoints = 0;
+    let walletBalancePoints: number | null = null;
     if (status === 'completed') {
-      const eligibility = await database.query<{ verified_net_revenue: string; status: string }>(
-        'SELECT verified_net_revenue::text, status FROM referrals WHERE id = $1',
-        [req.params.id],
-      );
-      const referral = eligibility.rows[0];
-      if (!referral || referral.status !== 'pending') {
-        return res.status(404).json({ error: 'Pending referral payout not found.' });
+      const points = Math.round(Number(referral.bonus_amount) * SURVEY_POINTS_PER_DOLLAR);
+      if (!Number.isSafeInteger(points) || points <= 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'This referral does not have a valid points reward.' });
       }
-      if (!canApproveReferralPayout(Number(referral.verified_net_revenue))) {
-        return res.status(409).json({
-          error: `At least $${REFERRAL_MIN_NET_REVENUE.toFixed(2)} in verified net commission must be received for this signup before its $5.00 reward can be completed.`,
-        });
+      await client.query(
+        `INSERT INTO survey_reward_balances (user_id, points)
+         VALUES ($1, 0)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [referral.referrer_id],
+      );
+      const balance = await client.query<{ points: number }>(
+        'SELECT points FROM survey_reward_balances WHERE user_id = $1 FOR UPDATE',
+        [referral.referrer_id],
+      );
+      const previousCredit = await client.query(
+        'SELECT 1 FROM referral_wallet_credits WHERE referral_id = $1',
+        [referral.id],
+      );
+      if (!previousCredit.rowCount) {
+        const currentPoints = Number(balance.rows[0]?.points || 0);
+        if (currentPoints > 2_147_483_647 - points) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: 'The referrer wallet is at its points limit; this reward was not approved.' });
+        }
+        await client.query(
+          `INSERT INTO referral_wallet_credits (referral_id, referrer_id, points)
+           VALUES ($1, $2, $3)`,
+          [referral.id, referral.referrer_id, points],
+        );
+        const updatedBalance = await client.query<{ points: number }>(
+          `UPDATE survey_reward_balances
+           SET points = points + $2, updated_at = NOW()
+           WHERE user_id = $1
+           RETURNING points`,
+          [referral.referrer_id, points],
+        );
+        creditedPoints = points;
+        walletBalancePoints = Number(updatedBalance.rows[0].points);
+      } else {
+        walletBalancePoints = Number(balance.rows[0]?.points || 0);
       }
     }
-    const result = await database.query<{ id: string; status: 'completed' | 'void' }>(
-      `UPDATE referrals
-       SET status = $1
-       WHERE id = $2 AND status = 'pending'
-         AND ($1 = 'void' OR verified_net_revenue >= $3)
+    const result = await client.query<{ id: string; status: 'completed' | 'void' }>(
+      `UPDATE referrals SET status = $1 WHERE id = $2 AND status = 'pending'
        RETURNING id, status`,
-      [status, req.params.id, REFERRAL_MIN_NET_REVENUE],
+      [status, referral.id],
     );
-    if (!result.rowCount) return res.status(409).json({ error: 'This referral payout changed before it could be updated. Refresh the queue and try again.' });
-    return res.json({ referral: result.rows[0] });
+    if (!result.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This referral payout changed before it could be updated. Refresh the queue and try again.' });
+    }
+    await client.query('COMMIT');
+    return res.json({
+      referral: result.rows[0],
+      ...(status === 'completed' ? { creditedPoints, walletBalancePoints } : {}),
+    });
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
     console.error('Could not update referral payout status:', error);
     return res.status(500).json({ error: 'Could not update referral payout status.' });
+  } finally {
+    client.release();
   }
 });
 

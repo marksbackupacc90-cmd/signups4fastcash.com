@@ -24,6 +24,10 @@ import { GamesPanel } from './components/GamesPanel';
 import { LivePayoutTicker } from './components/LivePayoutTicker';
 import { SupportDesk } from './components/SupportDesk';
 import { CommunityChat } from './components/CommunityChat';
+import { AppSidebar, type AppSection } from './components/AppSidebar';
+import { DailySpinPage } from './components/DailySpinPage';
+import { WalletDashboard } from './components/WalletDashboard';
+import { ReferralDashboard } from './components/ReferralDashboard';
 
 interface AuthUser {
   id: string;
@@ -51,28 +55,13 @@ function shuffleOfferIds(offers: Offer[]) {
     .map((offer) => offer.id);
 }
 
-const REFERRAL_CODE_STORAGE_KEY = 'signups4fastcash_referral_code';
-
-function clearPausedReferralAttribution() {
-  try {
-    sessionStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
-  } catch (error) {
-    console.warn('Could not clear the paused referral code:', error);
-  }
-  const url = new URL(window.location.href);
-  if (url.searchParams.has('ref')) {
-    url.searchParams.delete('ref');
-    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
-  }
-}
-
 export default function App() {
   const recordingMode = new URLSearchParams(window.location.search).get('recording') === '1';
   const authModeParam = new URLSearchParams(window.location.search).get('auth');
   const isRegistrationRoute = window.location.pathname.replace(/\/+$/, '') === '/register';
   const isSupportRoute = window.location.pathname.replace(/\/+$/, '') === '/support';
   const isOfferRoute = /^\/offers\/[^/]+\/?$/.test(window.location.pathname);
-  const [activeTab, setActiveTab] = useState<'offers' | 'games' | 'daily' | 'admin'>('offers');
+  const [activeTab, setActiveTab] = useState<AppSection>('offers');
   const [liveOffers, setLiveOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('signups4fastcash_offers');
     if (saved) {
@@ -190,10 +179,6 @@ export default function App() {
         window.history.replaceState(null, '', '/');
       }
     }
-  }, []);
-
-  useEffect(() => {
-    clearPausedReferralAttribution();
   }, []);
 
   useEffect(() => {
@@ -1097,6 +1082,8 @@ export default function App() {
         adminSection={adminSection}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
         onOpenMyOffers={() => setMyOffersOpen(true)}
         onOpenCommunityChat={() => setCommunityChatOpen(true)}
         communityChatOpen={communityChatOpen}
@@ -1139,13 +1126,36 @@ export default function App() {
         canAccessAdmin={isAdminUnlocked || canAccessAdmin}
       />
 
-      <LivePayoutTicker />
+      <AppSidebar
+        activeTab={activeTab}
+        showAdmin={isAdminUnlocked || canAccessAdmin}
+        onSelect={(section) => {
+          if (section !== 'admin') {
+            setActiveTab(section);
+            return;
+          }
+          setAdminSection('live');
+          if (isAdminUnlocked) {
+            setAdminPanelVisible(true);
+            setActiveTab('admin');
+            return;
+          }
+          void handleDelegatedAdminAccess(false).then((unlocked) => {
+            if (unlocked) {
+              setAdminPanelVisible(true);
+              setActiveTab('admin');
+            }
+          });
+        }}
+      />
+
+      <div className="md:ml-60"><LivePayoutTicker /></div>
 
       {activeTab === 'offers' && orderedLiveOffers.length > 0 && (
         <div
           role="region"
           aria-label="Featured offer logos"
-          className="w-full overflow-hidden bg-[#04080d]"
+          className="w-full overflow-hidden bg-[#04080d] md:ml-60 md:w-[calc(100%-15rem)]"
         >
           <div className="logo-marquee-track flex w-max items-center">
             {[0, 1].map((copy) => (
@@ -1201,7 +1211,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1">
+      <main className="flex-1 pb-16 md:ml-60 md:pb-0">
         {activeTab === 'games' && (
           <GamesPanel
             signedIn={Boolean(authUser)}
@@ -1210,6 +1220,36 @@ export default function App() {
               setAuthOpenRequest((request) => request + 1);
             }}
           />
+        )}
+        {activeTab === 'daily' && (
+          <DailySpinPage
+            signedIn={Boolean(authUser)}
+            onSignIn={() => {
+              setAuthModalMode('signin');
+              setAuthOpenRequest((request) => request + 1);
+            }}
+          />
+        )}
+        {activeTab === 'wallet' && (
+          <WalletDashboard
+            signedIn={Boolean(authUser)}
+            paypalEmail={authUser?.paypalEmail}
+            onSignIn={() => {
+              setAuthModalMode('signin');
+              setAuthOpenRequest((request) => request + 1);
+            }}
+          />
+        )}
+        {activeTab === 'referrals' && (
+          <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            <ReferralDashboard
+              signedIn={Boolean(authUser)}
+              onSignIn={() => {
+                setAuthModalMode('signin');
+                setAuthOpenRequest((request) => request + 1);
+              }}
+            />
+          </div>
         )}
         {activeTab === 'offers' && <MyOffers
           offers={liveOffers}
@@ -1444,31 +1484,33 @@ export default function App() {
           <span className="max-w-xs">{toastMessage}</span>
         </div>
       )}
-      <Footer
-        siteSettings={siteSettings}
-        onOpenNewsletter={() => setIsNewsletterOpen(true)}
-        onTogglePush={handleTogglePush}
-        pushEnabled={pushEnabled}
-        onOpenLegal={setLegalSection}
-        onSelectOffers={() => {
-          setActiveTab('offers');
-        }}
-        onSelectAdmin={() => {
-          if (!authUser) {
-            setAuthModalMode('signin');
-            setAuthOpenRequest((request) => request + 1);
-            return;
-          }
-          if (isAdminUnlocked) {
-            setAdminPanelVisible(true);
-            setActiveTab('admin');
-            return;
-          }
-          setAdminSection('live');
-          void handleDelegatedAdminAccess(true);
-        }}
-        isAdminUnlocked={isAdminUnlocked}
-      />
+      <div className="md:ml-60">
+        <Footer
+          siteSettings={siteSettings}
+          onOpenNewsletter={() => setIsNewsletterOpen(true)}
+          onTogglePush={handleTogglePush}
+          pushEnabled={pushEnabled}
+          onOpenLegal={setLegalSection}
+          onSelectOffers={() => {
+            setActiveTab('offers');
+          }}
+          onSelectAdmin={() => {
+            if (!authUser) {
+              setAuthModalMode('signin');
+              setAuthOpenRequest((request) => request + 1);
+              return;
+            }
+            if (isAdminUnlocked) {
+              setAdminPanelVisible(true);
+              setActiveTab('admin');
+              return;
+            }
+            setAdminSection('live');
+            void handleDelegatedAdminAccess(true);
+          }}
+          isAdminUnlocked={isAdminUnlocked}
+        />
+      </div>
 
       <LegalModal section={legalSection} onClose={() => setLegalSection(null)} />
       {offerFinderOpen && <OfferFinder offers={publicOffers} onViewOffer={handleFinderOffer} onClose={() => setOfferFinderOpen(false)} />}

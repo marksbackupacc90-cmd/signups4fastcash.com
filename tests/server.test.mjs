@@ -13,7 +13,7 @@ process.env.REFERRAL_HASH_SECRET = 'test-referral-secret';
 process.env.MILESTONE_CALLBACK_SECRET = 'test-milestone-secret';
 process.env.POSTBACK_SECRET = 'test-postback-secret';
 process.env.CPX_SECURE_HASH = 'test-cpx-secret';
-const { app, applyCoinsBackTerms, broadcastLiveActivity, buildOfferActivityReport, buildOfferActivitySinceReport, buildPostbackSignaturePayload, calculateReferralCommissionCents, calculateRpsPvpRakeUnits, canApproveReferralPayout, compileOutboundTrackingUrl, createGoogleOAuthState, createMockCashoutEvent, createWithdrawalTrackingHash, decryptProviderCredential, encryptProviderCredential, evaluateRpsOutcome, getAggregatePageViewCount, getAuthSessionCookieOptions, getOfferActivityReport, getStrictTransportSecurityOptions, getUtcDailyKey, getUtcRaceKey, hashFraudIdentifier, hashWithdrawalDestination, isOfferAvailableInUs, isTemporarilyHiddenOffer, isValidDeviceFingerprint, isVerificationCurrent, maskPublicOfferUsername, maskWithdrawalDestination, mergeCatalogOffer, mockWithdrawalProvider, newsletterEmailLayout, normalizeOfferFeedPayload, parseRpsWager, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus, validateOfferCampaign, validateWithdrawalDestination } = await import('../dist/server.cjs');
+const { app, applyCoinsBackTerms, broadcastLiveActivity, buildOfferActivityReport, buildOfferActivitySinceReport, buildPostbackSignaturePayload, calculateReferralCommissionCents, calculateRpsPvpRakeUnits, canApproveReferralPayout, compileOutboundTrackingUrl, createGoogleOAuthState, createMockCashoutEvent, createWithdrawalTrackingHash, decryptProviderCredential, encryptProviderCredential, evaluateRpsOutcome, getAggregatePageViewCount, getAuthSessionCookieOptions, getOfferActivityReport, getStrictTransportSecurityOptions, getUtcDailyKey, getUtcRaceKey, hashFraudIdentifier, hashWithdrawalDestination, isOfferAvailableInUs, isTemporarilyHiddenOffer, isValidDeviceFingerprint, isVerificationCurrent, maskPublicOfferUsername, maskWithdrawalDestination, mergeCatalogOffer, mockWithdrawalProvider, newsletterEmailLayout, normalizeOfferFeedPayload, parseRpsWager, readGoogleOAuthState, resolveOfferVerificationUpdate, resolveUpdatedOfferStatus, selectDailySpinReward, validateOfferCampaign, validateWithdrawalDestination } = await import('../dist/server.cjs');
 const { seedCampaigns, seedProfiles, SEED_PREFIX } = await import('../scripts/seed-config.mjs');
 
 const server = createServer(app);
@@ -58,6 +58,30 @@ test('health endpoint reports memory readiness without a database', async () => 
   assert.equal(publicHealth.body.status, 'ok');
   assert.equal(publicHealth.body.database, 'memory');
   assert.ok(Number.isInteger(publicHealth.body.uptimeSeconds));
+});
+
+test('daily spin reward bands match the published odds and reject invalid rolls', () => {
+  for (const [roll, expected] of [[0, 1], [49, 1], [50, 2], [79, 2], [80, 5], [94, 5], [95, 10], [98, 10], [99, 25]]) {
+    assert.equal(selectDailySpinReward(roll), expected);
+  }
+  for (const roll of [-1, 100, 1.5]) {
+    assert.throws(() => selectDailySpinReward(roll), RangeError);
+  }
+});
+
+test('wallet and daily spin endpoints require a signed-in account', async () => {
+  for (const path of ['/api/rewards/wallet', '/api/rewards/daily-spin']) {
+    const response = await request(path);
+    assert.equal(response.status, 401);
+  }
+  for (const path of ['/api/rewards/cashout', '/api/rewards/daily-spin']) {
+    const response = await request(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(response.status, 401);
+  }
 });
 
 test('provider API credentials are encrypted and authenticated before decryption', () => {
@@ -612,27 +636,27 @@ test('homepage suggestions are stored and only the owner can read them', async (
   assert.equal(invalidEmail.status, 400);
 });
 
-test('member referral endpoints are paused without deleting prior records', async () => {
+test('member referral endpoints require sign-in and database-backed referrals', async () => {
   const account = await request('/api/referrals/me');
-  assert.equal(account.status, 410);
-  assert.match(account.body.error, /temporarily paused/i);
+  assert.equal(account.status, 401);
+  assert.match(account.body.error, /sign in/i);
   const claim = await request('/api/referrals/claim', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ referralCode: 'ABCDEF123456' }),
   });
-  assert.equal(claim.status, 410);
+  assert.equal(claim.status, 401);
 
   const updateCode = await request('/api/referrals/me/code', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ referralCode: 'MY-CUSTOM-LINK' }),
   });
-  assert.equal(updateCode.status, 410);
+  assert.equal(updateCode.status, 401);
 
   const preview = await request('/api/referrals/preview?code=MY-CUSTOM-LINK');
-  assert.equal(preview.status, 410);
-  assert.match(preview.body.error, /temporarily paused/i);
+  assert.equal(preview.status, 503);
+  assert.match(preview.body.error, /temporarily unavailable/i);
 });
 
 test('missing-credit support tickets require auth and reject unsafe details', async () => {
@@ -677,7 +701,7 @@ test('Google OAuth referral state is signed, nonce-bound, and expires', () => {
   assert.equal(readGoogleOAuthState(expiredState, 'test-nonce'), null);
 });
 
-test('Google signup ignores referral codes while the member program is paused', async () => {
+test('Google signup preserves valid referral codes in OAuth state', async () => {
   const response = await requestText('/api/auth/google?ref=MARK-REF_1', { redirect: 'manual' });
   assert.equal(response.status, 302);
   const redirectUrl = new URL(response.headers.get('location'));
@@ -688,7 +712,7 @@ test('Google signup ignores referral codes while the member program is paused', 
   assert.match(cookie || '', /SameSite=Lax/i);
   assert.ok(state);
   assert.ok(nonce);
-  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: null });
+  assert.deepEqual(readGoogleOAuthState(state, nonce), { referralCode: 'MARK-REF_1' });
 
   const malformedCode = await requestText('/api/auth/google?ref=bad%20code', { redirect: 'manual' });
   assert.equal(malformedCode.status, 302);
